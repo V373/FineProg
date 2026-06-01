@@ -1,0 +1,16 @@
+# V2 config for visualize_embeddings_tsne.py (single-group)
+# ----------------------------------------------------------
+# Merged on top of configs_v2/visualize/base.yaml by ConfigV2.load_visualize().
+# Only fields that differ from or extend the base need to be listed here.
+
+# ── Embedding source ──────────────────────────────────────────────────────────
+# Set embedding_ref to a key in configs_v2/registry/runs.yaml :: embeddings
+embedding_ref: can_ph_valid_ep50k
+
+# Optional explicit output directory override (null = auto-derived as
+# outputs/tsne/<run_name>/<h5_stem>/).
+output_dir: ~
+
+# ── Plot additions (merged into base plot section) ────────────────────────────
+plot:
+  cmap_progress: viridis

@@ -1,0 +1,15 @@
+# V2 config for compute_mean_embedding_path.py (visualization section)
+# ---------------------------------------------------------------------
+# Merged on top of configs_v2/visualize/base.yaml by ConfigV2.load_visualize().
+# Controls the optional t-SNE visualization rendered inside compute_mean_embedding_path.py.
+
+# ── Embedding source ──────────────────────────────────────────────────────────
+embedding_ref: can_ph_train_ep50k
+
+# Optional explicit output directory override
+output_dir: ~
+
+# ── Plot additions ────────────────────────────────────────────────────────────
+plot:
+  cmap_progress: "Blues"
+  group1_label:  "Training"

@@ -1,0 +1,94 @@
+# V2: Training Stage Configuration
+# ═══════════════════════════════════════════════════════════════════════
+# Entrypoint: train.py  (future: via ConfigV2.load_train())
+# ═══════════════════════════════════════════════════════════════════════
+
+# ── Dataset ───────────────────────────────────────────────────────────
+# Key from configs_v2/datasets.yaml  →  resolved to processed_h5_path at runtime
+train_dataset: robomimic_can_ph_36vid_train
+
+# ── Model ─────────────────────────────────────────────────────────────
+backbone_name:   resnet50_conv4c
+pretrained:      true
+train_base:      only_bn      # frozen | only_bn | train_all
+train_embedding: true
+
+# ── Reproducibility ───────────────────────────────────────────────────
+seed: 42
+
+# ── Training duration ─────────────────────────────────────────────────
+num_epochs: 100000
+
+# ── DataLoader ────────────────────────────────────────────────────────
+# Training-specific DataLoader settings.  (Not shared with extract.)
+batch_size:  2
+num_workers: 4
+limit_cpu_threads: false   # force OMP / MKL / OpenBLAS / NumExpr and torch CPU threads to 1
+
+# ── Sequence sampling ─────────────────────────────────────────────────
+# These values determine the encoder input shape.
+# WARNING: extract.yaml MUST use the same clip_len / context_size / context_stride.
+clip_len:           20
+context_size:       2
+context_stride:     15
+sampling_strategy:  offset_uniform
+random_offset:      1
+
+# ── Optimizer ─────────────────────────────────────────────────────────
+learning_rate: 1.0e-4
+
+# ── Logging ───────────────────────────────────────────────────────────
+log_every: 10    # log loss to wandb every N epochs
+
+# ── Checkpoint ────────────────────────────────────────────────────────
+checkpoint_every: 5000   # save encoder .pt every N epochs
+checkpoint_dir:   checkpoint   # relative to project_root
+
+# ── Backbone feature cache ────────────────────────────────────────────
+# Only active when train_base = only_bn.
+# Caches backbone outputs to skip redundant forward passes.
+extract_backbone_cache: true
+cache_refresh_every:    500    # re-run backbone every N epochs to refresh cache
+
+# ── Loss ─────────────────────────────────────────────────────────────
+# loss_name: which loss function to use (see algos/loss/encoder_loss.py)
+#   tcc                        → TCCLoss (cycle-consistency, cross-video)
+#   temporal_infonce           → TemporalInfoNCELoss (intra-video threshold)
+#   composite                   → CompositeEncoderLoss (weighted sum of multiple losses; see loss/loss_composite_tcc_infonce.yaml)
+#   temporal_triplet            → TemporalTripletLoss (intra-video triplet margin loss)
+# loss_config: YAML path relative to configs_v2/ for loss hyperparameters (supports subdirs)
+loss_name:   composite
+loss_config: loss/loss_composite_tcc_triplet.yaml
+
+# loss_composite_tcc_triplet
+
+# ── In-Training Evaluation ────────────────────────────────────────────
+# Runs all selected eval tasks after every eval_freq_in_training checkpoint
+# saves.  Embeddings are extracted once per checkpoint and shared by all tasks.
+# Results are logged to the active wandb run; the temporary H5 is removed
+# automatically after each eval.
+#
+# Supported tasks: latent_distance_heatmap, kendalls_tau
+# Excluded: classification, expert_projection
+in_training_eval:
+  enabled:                        true
+  # Ordered list of eval tasks to run at each in-training checkpoint.
+  # Both tasks run against one shared embedding extraction per checkpoint.
+  # Backward-compat: selected_eval_task_in_training (single string) still accepted.
+  selected_eval_tasks_in_training:
+    - latent_distance_heatmap
+    - kendalls_tau
+  eval_freq_in_training:          1      # run eval every N checkpoint saves (1 = every checkpoint)
+  eval_dataset_ref:               ~      # null → auto: registry-paired validation dataset, else train_dataset
+  log_images_to_wandb:            true   # upload heatmap PNGs to wandb
+
+  # ── Task-specific overrides ──────────────────────────────────────────
+  # Merged on top of configs_v2/eval/<task>.yaml at runtime.
+  latent_distance_heatmap:
+    selected_video_index:   0      # integer or "all" — open; "all" uploads one image per video
+    normalize_embeddings:   true
+    convert_to_similarity:  true
+    similarity_tau:         1.0     
+  kendalls_tau:
+    kendall_stride:   5             # down-sample stride before NN alignment; higher = faster
+    kendall_distance: sqeuclidean   # Options: sqeuclidean | euclidean | cosine

@@ -1,0 +1,51 @@
+# V2: Temporal InfoNCE Contrastive Loss Configuration
+# ═══════════════════════════════════════════════════════════════════════════════
+# Used by: algos/loss/contrastive/loss_temporal_infonce.py → TemporalInfoNCELoss
+# To activate: set in configs_v2/train.yaml:
+#   loss_name:   temporal_infonce
+#   loss_config: loss/loss_temporal_infonce.yaml
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── Temporal thresholds ───────────────────────────────────────────────────────
+# pos_threshold: fraction of per-video step range → frames within this fraction are POSITIVE
+# neg_threshold: fraction of per-video step range → frames beyond this fraction are NEGATIVE
+# Absolute thresholds = threshold * (max_step - min_step) per video, so bands scale
+# consistently across videos of different lengths.
+# Middle band (abs_pos < gap < abs_neg) is ignored.
+pos_threshold: 0.05
+neg_threshold: 0.25
+
+# ── Similarity ────────────────────────────────────────────────────────────────
+# temperature: scales logits before softmax/logsumexp (lower = sharper)
+temperature:  0.2
+
+# squared_l2: if true, logit = -||z_i - z_j||^2 / temperature
+#             if false, logit = -||z_i - z_j||   / temperature
+squared_l2:   true
+
+# eps: small constant for numerical stability when squared_l2=false
+eps: 1.0e-8
+
+# ── Embedding processing ──────────────────────────────────────────────────────
+# use_target_steps: if true, use batch["target_steps"] as real time indices;
+#                  if false (or key absent), fall back to clip position 0..T-1
+use_target_steps:     true
+
+# normalize_embeddings: L2-normalize embeddings before computing distances.
+# Recommended: false — this loss uses L2 distance to capture temporal geometry.
+normalize_embeddings: false
+
+# ── Anchor sampling ───────────────────────────────────────────────────────────
+# anchor_sampling: how to select anchor frames from each video each forward pass
+#   deterministic — use all T timesteps as anchors (A = T)
+#   stochastic    — randomly sample A < T anchors, reducing compute to O(B·A·T·D)
+anchor_sampling: deterministic
+
+# num_anchors: explicit number of anchors to sample per video (stochastic only).
+# If set, takes precedence over anchor_fraction.
+# Recommended range: 4..clip_len.  Set to null to use anchor_fraction instead.
+num_anchors: null
+
+# anchor_fraction: fraction of T to use as anchors when num_anchors is absent.
+# Effective only when anchor_sampling = stochastic and num_anchors is null.
+anchor_fraction: 0.5    # e.g. T=20 → A=10 anchors per video

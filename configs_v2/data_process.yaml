@@ -1,0 +1,25 @@
+# V2: Data Processing Stage Configuration
+# ═══════════════════════════════════════════════════════════════════════
+# Entrypoint: dataset_preparation/mp4vid_to_h5data.py
+#             (future: via ConfigV2.load_data_process())
+# ═══════════════════════════════════════════════════════════════════════
+
+# ── Dataset ───────────────────────────────────────────────────────────
+# Which output dataset entry to generate.  Key from configs_v2/datasets.yaml.
+# The resolver reads raw_dir, processed_h5, robomimic_hdf5, and mask_key
+# from the registry — no need to repeat them here.
+process_dataset: robomimic_can_mh_100vid_okay
+
+# ── Frame extraction ──────────────────────────────────────────────────
+frame_size:  224    # Output image size in pixels (square crop/resize)
+fps:         ~      # Downsample to this FPS.  null = no downsampling (all frames)
+compression: ~      # HDF5 compression codec.  null = uncompressed
+chunk_len:   8      # HDF5 chunk length along the time axis
+
+# ── Robomimic-specific ────────────────────────────────────────────────
+# Applies only when process_dataset has a robomimic_hdf5 field in the registry.
+# two_split: false  →  generate a SINGLE H5 from the dataset's mask_key directly
+#                      (e.g. mask_key=okay → reads /mask/okay)
+# two_split: true   →  generate TWO H5 files from {mask_key}_train + {mask_key}_valid
+#                      (e.g. mask_key=20_percent → reads /mask/20_percent_train + _valid)
+two_split: false

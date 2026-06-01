@@ -1,0 +1,167 @@
+# V2: Latent Distance Heatmap Evaluation Configuration
+# ═══════════════════════════════════════════════════════════════════════
+# Entrypoint: evaluate.py --task latent_distance_heatmap
+#
+# Computes the symmetric T×T pairwise Euclidean L2 distance matrix for
+# a selected embedding trajectory, prints compact summary statistics, and
+# saves one or both of:
+#   - a PNG heatmap of the full T×T matrix
+#   - an anchor distance curve plot (each frame as anchor, all curves overlaid)
+# Controlled by the plot_mode key below.
+#
+# Config V2 only. All paths are resolved through registry refs and project templates.
+# ═══════════════════════════════════════════════════════════════════════
+
+# ── Embedding source ─────────────────────────────────────────────────
+# Key from configs_v2/registry/runs.yaml :: embeddings
+# The resolver will derive:
+#   embedding_h5_path → absolute path to the embedding H5 file
+#   run_name          → used to construct the default output directory
+#   h5_stem           → used to construct the default output directory
+embedding_ref: comp_tt_can_ph_36_ep50k_train
+
+# ── Trajectory selector ──────────────────────────────────────────────
+# Controls which trajectory (or trajectories) to process:
+#
+#   <int>   0-based index into the sorted video_id list of the H5.
+#           Bounds are checked at runtime; out-of-range raises ValueError.
+#           Example: selected_video_index: 0
+#
+#   "all"   Process every video in the H5 and save one PNG per video.
+#           The returned metric_value is the mean across all videos.
+#           Example: selected_video_index: all
+selected_video_index: all
+
+# ── Distance metric ──────────────────────────────────────────────────
+# Currently only euclidean_l2 is implemented.  Reserved for future
+# extension to cosine or other metrics.
+distance_metric: euclidean_l2
+
+# ── Embedding preprocessing (optional) ───────────────────────────────
+# When true, each frame embedding is L2-normalized before pairwise
+# distances are computed:
+#   z_hat_t = z_t / max(||z_t||_2, normalization_eps)
+# This changes the geometry from raw latent-space Euclidean distance to
+# Euclidean distance on the unit sphere.
+normalize_embeddings: true
+
+# Small constant used only when normalize_embeddings=true.
+normalization_eps: 1.0e-12
+
+# ── Visualization options ─────────────────────────────────────────────
+# colormap: any matplotlib sequential colormap name.
+#   Recommended: "viridis" (perceptually uniform), "magma", "plasma"
+colormap: viridis
+
+# figsize: [width_inches, height_inches]
+figsize: [8, 7]
+
+# dpi: output resolution of the saved PNG
+dpi: 300
+
+# show_colorbar: whether to attach a colorbar to the heatmap
+show_colorbar: true
+
+# ── Summary statistics logged to terminal ────────────────────────────
+# Percentiles to include in the terminal summary (off-diagonal values).
+# Set to [] to skip percentile logging.
+log_percentiles: [25, 75, 95]
+
+# ── Output directory override (optional) ─────────────────────────────
+# If set, overrides the auto-derived parent directory:
+#   outputs/latent_distance_heatmap/<run_name>/<h5_stem>/
+# Each evaluate() call then creates one session subdirectory under it:
+#   <output_dir>/tau<similarity_tau>_<YYYYMMDD_HHMMSS>/
+# All figures from that single run are saved into the same session directory.
+# Leave as ~ (null) to use the derived parent directory.
+output_dir: ~
+
+# ── Similarity conversion (optional) ─────────────────────────────────
+# When true, the L2 distance matrix is converted to a similarity matrix
+# before plotting and logging:
+#   S[i,j] = exp(-M[i,j] / tau),  range (0, 1],  diagonal = 1
+# tau controls bandwidth: at d=tau, similarity = exp(-1) ≈ 0.368.
+# Smaller tau → sharper discrimination between close vs distant frames.
+# Practical guidance:
+#   - raw embeddings (normalize_embeddings=false): try tau around 5..15
+#   - L2-normalized embeddings: try tau around 0.1..0.4
+# The raw L2 matrix is still used internally; only the visualised values
+# and logged stats reflect the converted similarity.
+convert_to_similarity: false
+similarity_tau: 1.0
+
+# ── VOC (Velocity Ordering Consistency) metric ───────────────────────
+# The task always computes a VOC scalar in addition to visualizations.
+# VOC is the primary metric_value returned by this task.
+#
+# Algorithm (per video):
+#   1. For each anchor frame a ∈ {0, ..., T-1}:
+#      - future side  (t > a):  Spearman( d[a,t],   t )
+#      - past side    (t < a):  Spearman( -d[a,t],  t )
+#        (negating distances so closer-in-time = higher value = positive corr)
+#      - VOC_anchor(a) = mean of available (non-None) sides
+#        (side is skipped when it has < 2 frames or distance is constant)
+#   2. VOC_video = mean over valid anchors
+#   3. VOC_dataset = mean over valid videos  [only for selected_video_index: all]
+#
+# Distances used for VOC are always raw L2 (not similarity-converted).
+# The 'convert_to_similarity' option affects only the heatmap/curve plots
+# and the legacy mean_offdiag_* auxiliary field.
+#
+# Rank correlation function: Spearman (only option in V1).
+# Distance function: euclidean_l2 (only option in V1).
+#
+# A VOC near +1.0 means that for any anchor, temporally farther frames
+# consistently have larger latent-space distance — a strong temporal
+# distance structure.
+# A VOC near 0 means the latent space has no rank-level temporal ordering.
+# VOC is not equivalent to progress prediction; it only captures
+# rank-level correlation between distance and temporal offset.
+#
+# The result dict also contains these auxiliary / diagnostic fields:
+#   voc_n_valid_anchors   int    (single-video mode)
+#   voc_n_total_anchors   int    (single-video mode)
+#   voc_n_valid_videos    int    (all-videos mode)
+#   voc_skipped_video_ids list   (all-videos mode)
+#   mean_offdiag_l2_distance | mean_offdiag_similarity  float  (legacy)
+
+# ── Plot mode ────────────────────────────────────────────────────────
+# Controls which figures are saved for each processed video:
+#
+#   heatmap               (default) — T×T distance/similarity heatmap PNG only.
+#   anchor_distance_curves          — overlaid anchor curve PNG only.
+#                                     For each anchor frame a, one curve is drawn
+#                                     with y = M[a, :] over the full trajectory.
+#                                     Curves are coloured by anchor position.
+#   both                            — both PNGs saved to the same session dir.
+#
+# The returned result dict always contains output_heatmap_path and
+# output_curve_path fields; they are None when not generated.
+plot_mode: heatmap
+
+# ── Anchor distance curve options ────────────────────────────────────
+# These apply only when plot_mode is anchor_distance_curves or both.
+
+# curve_colormap: matplotlib colormap for colouring curves by anchor position.
+#   Recommended: "viridis", "plasma", "cool", "RdYlGn_r"
+curve_colormap: viridis
+
+# curve_alpha: opacity of individual curves (0-1).
+#   Lower values reduce clutter for long trajectories.
+curve_alpha: 0.35
+
+# curve_linewidth: line width in points.
+curve_linewidth: 0.9
+
+# curve_figsize: [width_inches, height_inches] for the curve plot.
+curve_figsize: [10, 5]
+
+# curve_anchor_fraction: fraction of anchor frames to include in the plot.
+#   Range: (0, 1].  1.0 (default) draws a curve for every frame in the
+#   trajectory.  Smaller values reduce visual clutter for long sequences by
+#   evenly subsampling anchor positions.
+#   Examples:
+#     1.0   → all T anchors plotted   (default, full coverage)
+#     0.5   → ~50% of frames, evenly spaced
+#     0.1   → ~10% of frames, evenly spaced
+curve_anchor_fraction: 0.05

@@ -1,0 +1,32 @@
+# V2: Composite (Weighted-Sum) Encoder Loss Configuration
+# ═══════════════════════════════════════════════════════════════════════════════
+# Used by: algos/loss/composite/loss_composite.py → CompositeEncoderLoss
+# To activate: set in configs_v2/train.yaml:
+#   loss_name:   composite
+#   loss_config: loss/loss_composite_tcc_infonce.yaml
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Each component entry:
+#   alias       — unique identifier; used as metric prefix in wandb (e.g. "tcc/loss_tcc")
+#   name        — loss_name dispatched by build_loss()
+#   weight      — static scalar multiplier; final loss = Σ weight_i * child_loss_i
+#   config_file — child hyperparameter YAML, relative to this file's directory
+
+components:
+  - alias:       tcc
+    name:        tcc
+    weight:      1.0
+    config_file: loss_tcc.yaml
+
+  - alias:       temporal_infonce
+    name:        temporal_infonce
+    weight:      0.5
+    config_file: loss_temporal_infonce.yaml
+
+# ── Notes ────────────────────────────────────────────────────────────────────
+# weight tuning guidance:
+#   - TCC loss magnitude is typically 0.1–1.0 range (depends on num_cycles/temperature)
+#   - TemporalInfoNCE loss magnitude depends on clip_len and threshold choice
+#   - Recommend logging component_raw_loss/tcc vs component_raw_loss/temporal_infonce
+#     in early runs to calibrate weights so neither term dominates.
+# nested composite: not supported; "name: composite" is rejected in __init__.

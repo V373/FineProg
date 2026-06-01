@@ -1,0 +1,24 @@
+# V2: Phase Classification Evaluation Configuration
+# ═══════════════════════════════════════════════════════════════════════
+# Entrypoint: evaluate.py --task classification
+#             (future: via ConfigV2.load_eval("classification"))
+#
+# Requires labeled embeddings (variant: labeled) in runs.yaml.
+# Generate labeled embeddings first with:
+#   python dataset_preparation/add_phase_labels.py --embd_h5 ... --keyframes_csv ...
+# Then add entries to configs_v2/runs.yaml under "embeddings:" with variant: labeled.
+# ═══════════════════════════════════════════════════════════════════════
+
+# ── Embedding sources ─────────────────────────────────────────────────
+# Both must be labeled embeddings (variant: labeled in runs.yaml).
+# Keys from configs_v2/runs.yaml :: embeddings
+train_embedding_ref: pouring_train56_labeled_ep50k
+val_embedding_ref:   pouring_val14_labeled_ep50k
+# TODO: add these entries to runs.yaml after running add_phase_labels.py
+
+# ── SVM hyperparameters ───────────────────────────────────────────────
+svm_c:    1.0
+max_iter: 10000
+
+# ── Output ────────────────────────────────────────────────────────────
+gen_tsne_phase_label: true    # also generate t-SNE phase-label H5 for visualization

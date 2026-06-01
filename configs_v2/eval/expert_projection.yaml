@@ -1,0 +1,88 @@
+# V2: Expert Projection Evaluation Configuration
+# ═══════════════════════════════════════════════════════════════════════
+# Entrypoint: evaluate.py --task expert_projection
+# Dataset identity lives in registry/datasets.yaml; this file keeps only
+# short aliases and task-specific hyperparameters.
+# ═══════════════════════════════════════════════════════════════════════
+
+# ── Expert trajectory ─────────────────────────────────────────────────
+# Must be a mean-path embedding (variant: mean_path in runs.yaml).
+# Key from configs_v2/runs.yaml :: embeddings
+expert_embedding_ref: comp_tt_can_ph_36_r1_train_mean_path
+# square_ph_180vid_train_mean_path_50k
+# can_ph_train_mean_path_ep50k
+# → datasets/embeddings/{run_name}/robomimic_can_ph-180vid_train-embd-mean_path.h5
+
+# ── Non-expert trajectories ───────────────────────────────────────────
+# Key from configs_v2/runs.yaml :: embeddings
+nonexpert_embedding_ref: comp_tt_can_ph_36_r1_can_mh_worse
+# can_mh_worse_ep50k
+# → datasets/embeddings/{run_name}/robomimic_can_mh-100vid_worse-embd.h5
+
+# Dataset ref used to look up robomimic_hdf5_path and mask_key automatically.
+# Key from configs_v2/datasets.yaml
+nonexpert_dataset_ref: robomimic_can_mh_100vid_worse
+# resolver fills: nonexpert_raw_hdf5_path, nonexpert_mask_key
+
+# ── SNN matching ──────────────────────────────────────────────────────
+projection_temperature: 0.1
+
+# ── Output options ────────────────────────────────────────────────────
+save_alpha:         true    # save full alpha matrix [T_q, T_e] per video
+save_entropy:       true    # save per-frame entropy of the alpha distribution
+save_visualization: true    # save alignment-curve PNG plots per video
+
+# Which non-expert videos to include in the alignment-curve PNG:
+#   ~          →  randomly pick 4 videos
+#   "all"      →  plot every video
+#   [0, 1, 5]  →  plot videos at these 0-based sorted indices
+visualization_video_ids: all
+
+# Path to directory of raw MP4 files for non-expert demos.
+# When set, generates an animated MP4 showing soft-NN plot + synchronised video frames.
+# Requires nonexpert_dataset_ref to be set (for demo_name lookup via mask_key).
+# Auto-resolved from nonexpert_dataset_ref → raw_dir_path if left as ~ (null).
+# Set to "" (empty string) to explicitly disable animation even when dataset has a raw_dir.
+nonexpert_video_raw_dir: ~
+
+# Save a t-SNE scatter showing expert embeddings (by progress), selected
+# non-expert embeddings (circles), SNN-projected counterparts (triangles),
+# and thin lines connecting each matched pair.
+save_tsne_visualization: true
+
+# ── t-SNE visualization hyperparameters ──────────────────────────────
+# These parameters are owned entirely by this file and consumed via self.config in
+# task_expert_projection.py :: _save_tsne_visualization().
+tsne_viz:
+  max_frames_expert:      200   # max expert frames subsampled for t-SNE
+  max_frames_nonexpert:   500   # max frames per non-expert video
+  random_seed:             42
+
+  preprocessing:
+    standardize:          true
+    use_pca_before_tsne:  true
+    pca_dim:              50
+
+  tsne:
+    n_components:     2
+    perplexity_mode:  "config_clamped"   # shared dataset-level fit uses min(config, max(5, (n_total - 1) / 3))
+    perplexity:       500               # used by config/config_clamped modes
+    learning_rate:    "auto"
+    init:             "pca"
+    max_iter:         2000
+
+  plot:
+    figsize:              [10, 8]
+    point_size:           20
+    alpha:                0.75
+    dpi:                  300
+    cmap_progress_group1: "Blues"
+    cmap_ne_list:
+      - "Reds"
+      - "Greens"
+      - "Oranges"
+      - "Purples"
+      - "YlOrBr"
+      - "PuBu"
+      - "RdPu"
+      - "YlGn"

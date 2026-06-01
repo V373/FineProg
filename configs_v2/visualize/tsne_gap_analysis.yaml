@@ -1,0 +1,46 @@
+# V2 config for visualize_embeddings_tsne_gap_analysis.py
+# --------------------------------------------------------
+# Merged on top of configs_v2/visualize/base.yaml by ConfigV2.load_visualize().
+
+# ── Embedding sources ─────────────────────────────────────────────────────────
+embedding_ref: can_ph_train_ep50k
+embedding_ref_group2: can_ph_valid_ep50k
+
+# Optional explicit output directory override
+output_dir: ~
+
+# ── Group labels ─────────────────────────────────────────────────────────────
+group1_label: "Training"
+group2_label: "Validation"
+
+# ── Task / raw video folder ───────────────────────────────────────────────────
+# Subfolder under datasets/raw/ containing the raw MP4 files.
+task_name: "robomimic_can_ph"
+
+# ── 4 selected videos ────────────────────────────────────────────────────────
+# Raw video names (without .mp4) to highlight and display in the 2×2 grid.
+# Set to null to randomly pick 4 videos from the combined pool.
+selected_videos: ~
+
+# ── t-SNE override (higher perplexity for larger combined datasets) ───────────
+tsne:
+  perplexity: 500
+
+# ── Gap analysis video parameters ────────────────────────────────────────────
+gap_video:
+  fps: 20
+  dpi: 300
+  n_frames: ~
+  max_n_frames: 500
+  progress_sigma: 0.03
+  background_alpha: 0.06
+  highlight_alpha_max: 0.95
+  figsize: [8, 6]
+  point_size: 5
+  sel_marker_size_scale: 5
+  draw_cell_border: true
+  cell_border_px: 6
+  cell_label_fontsize: 14
+
+# ── Misc ──────────────────────────────────────────────────────────────────────
+normalize_latent_dist: true

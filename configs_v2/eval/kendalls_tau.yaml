@@ -1,0 +1,17 @@
+# V2: Kendall's Tau Evaluation Configuration
+# ═══════════════════════════════════════════════════════════════════════
+# Entrypoint: evaluate.py --task kendalls_tau  (future: via ConfigV2.load_eval())
+# ═══════════════════════════════════════════════════════════════════════
+
+# ── Embedding source ──────────────────────────────────────────────────
+# Key from configs_v2/runs.yaml :: embeddings
+# The resolver fills in: embedding_h5_path, run_name, h5_stem (for output dir)
+embedding_ref: can_ph_valid_ep50k
+
+# Other examples:
+# embedding_ref: square_ph_valid_20_from_180_ep50k
+# embedding_ref: can_ph_train_ep50k
+
+# ── Metric settings ───────────────────────────────────────────────────
+kendall_stride:   5               # Down-sample stride before NN alignment; 1 = all frames
+kendall_distance: sqeuclidean     # Options: sqeuclidean | cosine | euclidean

@@ -1,0 +1,98 @@
+# V2: Temporal Triplet Loss Configuration
+# ═══════════════════════════════════════════════════════════════════════════════
+# Used by: algos/loss/contrastive/loss_temporal_triplet.py → TemporalTripletLoss
+# To activate: set in configs_v2/train.yaml:
+#   loss_name:   temporal_triplet
+#   loss_config: loss/loss_temporal_triplet.yaml
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── Triplet margin ────────────────────────────────────────────────────────────
+# margin: hinge loss margin m.
+#   L = max(0, d_ap - d_an + margin)
+# where d_ap = ||z_a - z_p||^2 (anchor-positive squared L2)
+#   and d_an = ||z_a - z_n||^2 (anchor-negative squared L2).
+# A larger margin pushes positives and negatives further apart in embedding space.
+# Typical range for unnormalized embeddings (D=128): 0.5 – 2.0.
+# Typical range when normalize_embeddings=true: 0.05 – 0.5.
+margin: 5.0
+
+# ── Triplet sampling ──────────────────────────────────────────────────────────
+# num_triplets_fraction: fraction of valid triplets to keep per clip, in (0, 1].
+# Valid triplets are enumerated exhaustively; a random subset is then drawn.
+# With clip_len=20 there are at most ~3420 valid triplets per clip.
+# Setting to 1.0 uses all valid triplets (default, no subsampling).
+# Reducing to e.g. 0.1 can speed up training when clip_len is large.
+num_triplets_fraction: 1.0
+
+# max_resample_attempts: reserved for forward compatibility with future
+# random-resampling implementations. Not used by the current vectorized path.
+max_resample_attempts: 16
+
+# ── Reduction ─────────────────────────────────────────────────────────────────
+# reduction: how to aggregate per-triplet losses into a scalar.
+# Currently only "mean" is supported.
+reduction: mean
+
+# ── Embedding processing ──────────────────────────────────────────────────────
+# normalize_embeddings: L2-normalize embeddings before computing distances.
+# Recommended: false for raw encoder outputs (D=128, ~unit norm after training).
+# If true, all squared L2 distances will be in [0, 4], so set a proportionally
+# smaller margin (e.g. 0.1 – 0.5).
+normalize_embeddings: false
+
+# squared_l2: use squared L2 distance (||z_a - z_p||^2).
+# Only true is supported in this version; leave this as true.
+squared_l2: true
+
+# ── Capped negative distance ──────────────────────────────────────────────────
+# capped: if true, apply an upper bound to the anchor-negative distance before
+# computing the hinge loss.  This prevents the model from collapsing to a solution
+# where it simply pushes all negatives to infinity.
+#   d_an_eff = min(d_an, negative_distance_cap)
+#   L = max(0, d_ap - d_an_eff + margin)
+# When capped=false, d_an_eff = d_an and behaviour is identical to the original loss.
+# Note: triplet_accuracy_margin always uses raw (uncapped) d_an.
+capped: false
+
+# negative_distance_cap: the upper bound c_neg on the anchor-negative distance.
+# Required (and must be > 0) when capped=true; ignored when capped=false.
+# Typical starting point for unnormalized D=128 embeddings: 5.0 – 20.0.
+# If you observe mean_d_an >> negative_distance_cap in logs, the cap is active.
+negative_distance_cap: 100.0
+
+# ── Dynamic margin plugin ─────────────────────────────────────────────────────
+# When dynamic_margin_enabled=true the scalar margin above is replaced by a
+# per-triplet margin computed from the normalized temporal-gap surplus:
+#
+#   time_gap = Delta_an - Delta_ap          (always > 0 for valid triplets)
+#   norm_gap = time_gap / seq_len_b         (lies in (0, 1] when steps < seq_len)
+#   m_dyn    = clamp(alpha * norm_gap, margin_min, margin_max)
+#   L        = max(0, d_ap - d_an_eff + m_dyn)
+#
+# seq_len MUST be present and valid in every batch when this is enabled.
+# No fallback denominator is used; the loss raises an explicit error otherwise.
+# normalize_embeddings must be false when this plugin is active.
+#
+# To activate: set dynamic_margin_enabled: true and fill in the three parameters.
+dynamic_margin_enabled: false
+
+# dynamic_margin_alpha: scaling coefficient applied to norm_gap.
+# Determines how aggressively the margin grows with temporal separation.
+# A value of alpha=1.0 means a triplet whose negative is a full seq_len away
+# from the anchor (and positive at step 0) would get margin_max margin.
+# Typical starting range: 0.5 – 2.0.
+# Required when dynamic_margin_enabled=true; ignored when false.
+dynamic_margin_alpha: 10
+
+# dynamic_margin_min: lower clamp on the dynamic margin (>= 0 recommended).
+# Ensures the loss always enforces at least this separation, even for
+# temporally close negatives.  Set to 0.0 to allow very small margins.
+# Required when dynamic_margin_enabled=true; ignored when false.
+dynamic_margin_min: 0.1
+
+# dynamic_margin_max: upper clamp on the dynamic margin.
+# Prevents the margin from growing unboundedly for large temporal gaps.
+# Must satisfy dynamic_margin_max >= dynamic_margin_min.
+# Typical starting range for unnormalized D=128 embeddings: 1.0 – 3.0.
+# Required when dynamic_margin_enabled=true; ignored when false.
+dynamic_margin_max: 100

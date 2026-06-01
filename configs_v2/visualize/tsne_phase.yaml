@@ -1,0 +1,50 @@
+# V2 config for visualize_embeddings_tsne_phase.py
+# -------------------------------------------------
+# Merged on top of configs_v2/visualize/base.yaml by ConfigV2.load_visualize().
+
+# ── Embedding source ──────────────────────────────────────────────────────────
+# The phase-labeled embedding H5 file (contains a "phase_labels" dataset).
+embedding_ref: can_ph_train_ep50k
+
+# Optional explicit output directory override (null = auto-derived as
+# outputs/tsne/<run_name>/<h5_stem>/tsne_phase/).
+output_dir: ~
+
+# Optional val labeled embedding ref (for SVM vs GT comparison plot).
+# Set to null to skip the comparison plot.
+val_labeled_embedding_ref: ~
+
+# ── H5 schema additions ───────────────────────────────────────────────────────
+phase_labels_key: "phase_labels"
+
+# ── Phase labeling ────────────────────────────────────────────────────────────
+n_phases: 5
+
+# ── Plot additions ────────────────────────────────────────────────────────────
+plot:
+  figsize: [9, 6]
+  alpha: 0.80
+
+  # One colormap per phase (5 distinct color families).
+  # Within each phase family, group shading: train_gt=lightest → val=darkest.
+  cmap_phases:
+    - "Blues"
+    - "Greens"
+    - "Wistia"
+    - "Reds"
+    - "Purples"
+
+  # Cmap lookup values per group
+  shade_train_gt:   0.30
+  shade_train_nogt: 0.55
+  shade_val:        0.82
+
+  # Human-readable group labels for legend / title
+  label_train_gt:   "Train (GT)"
+  label_train_nogt: "Train (SVM)"
+  label_val:        "Val"
+
+  # Marker styles per group
+  marker_train_gt:   "o"
+  marker_train_nogt: "s"
+  marker_val:        "^"

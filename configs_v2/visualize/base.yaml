@@ -1,0 +1,35 @@
+# V2 Shared Visualization Base Config
+# ------------------------------------
+# All per-flow visualize YAMLs inherit these defaults via ConfigV2._deep_merge().
+# Per-flow values override base values at the same key path (deep merge for nested dicts).
+# Keys are intentionally flat to match existing script access patterns.
+
+# ── H5 schema ────────────────────────────────────────────────────────────────
+h5_video_root:    "videos"
+embedding_key:    "embeddings"
+target_steps_key: "target_steps"
+
+# ── Sampling ─────────────────────────────────────────────────────────────────
+max_frames_per_video: 300
+max_total_frames:     10000
+random_seed:          42
+
+# ── Preprocessing ────────────────────────────────────────────────────────────
+standardize:          true
+use_pca_before_tsne:  true
+pca_dim:              50
+
+# ── t-SNE ────────────────────────────────────────────────────────────────────
+tsne:
+  n_components:  2
+  perplexity:    1000
+  learning_rate: "auto"
+  init:          "pca"
+  max_iter:      5000
+
+# ── Plot ─────────────────────────────────────────────────────────────────────
+plot:
+  figsize:     [8, 6]
+  dpi:         300
+  point_size:  5
+  alpha:       0.75

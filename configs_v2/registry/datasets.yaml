@@ -1,0 +1,199 @@
+# V2: Dataset Registry
+# ═══════════════════════════════════════════════════════════════════════
+# Single source of truth for every dataset used in the project.
+# Stage configs reference datasets by their key (e.g. robomimic_can_ph_180vid_train).
+# The ConfigV2 resolver translates keys into concrete absolute paths at runtime.
+#
+# Required fields per entry:
+#   processed_h5:     Filename under datasets/processed/ (no directory prefix)
+#
+# Optional fields:
+#   display_name:            Human-readable label
+#   raw_dir:                 Subdirectory under datasets/raw/ for the source videos
+#   robomimic_hdf5:          Path to the source robomimic HDF5 (relative to project_root)
+#   mask_key:                Mask name used when generating this H5 via mp4vid_to_h5data.py
+#                              e.g. "20_percent"    → /mask/20_percent_{train,valid}  (--two_split)
+#                              e.g. "okay"/"worse"  → /mask/okay  (single split, no two_split)
+#                              e.g. "train"/"valid" → /mask/train  (full split)
+#   phase_labels_csv:        Path to keyframe annotation CSV (relative to project_root)
+#   validation_dataset_ref:  (training datasets only) Registry key of the curated validation
+#                              partner. Set only when there is exactly one intended validation
+#                              split (e.g. PH train→valid pairs). Leave unset for mixed-quality
+#                              datasets (MH) or when multiple valid sizes exist without a
+#                              single preferred choice.
+# ═══════════════════════════════════════════════════════════════════════
+
+datasets:
+
+  # ── Pouring ────────────────────────────────────────────────────────
+  pouring_2vid:
+    display_name: Pouring debug (2 videos)
+    processed_h5: pouring-2vid.h5
+    raw_dir: pouring
+
+  pouring_4vid:
+    display_name: Pouring debug (4 videos)
+    processed_h5: pouring-4vid.h5
+    raw_dir: pouring
+
+  pouring_all_70vid_train:
+    display_name: Pouring All training (70 videos)
+    processed_h5: pouring_all_training-70vid.h5
+    raw_dir: pouring_all
+    validation_dataset_ref: pouring_all_14vid_val
+
+  pouring_all_14vid_val:
+    display_name: Pouring All val (14 videos, MOV source)
+    processed_h5: pouring_all_val-14vid.h5
+    raw_dir: pouring_all_val
+
+  pouring_train56:
+    display_name: Pouring Train-56 (56 videos, fullframe)
+    processed_h5: pouring_train56-56vid_fullframe.h5
+    raw_dir: pouring_train56
+    phase_labels_csv: datasets/phase_labels/pouring_train56_phase_labels.csv
+    validation_dataset_ref: pouring_val14
+
+  pouring_val14:
+    display_name: Pouring Val-14 (14 videos, fullframe)
+    processed_h5: pouring_val14-14vid_fullframe.h5
+    raw_dir: pouring_val14
+    phase_labels_csv: datasets/phase_labels/pouring_val14_phase_labels.csv
+
+  # ── Robomimic Can PH (professional human) ──────────────────────────
+  robomimic_can_ph_180vid_train:
+    display_name: Robomimic Can PH Train (180 videos)
+    processed_h5: robomimic_can_ph-180vid_train.h5
+    raw_dir: robomimic_can_ph
+    robomimic_hdf5: datasets/raw/robomimic_can_ph/demo_v15.hdf5
+    mask_key: train    # generated with --two_split (train half)
+    validation_dataset_ref: robomimic_can_ph_20vid_valid
+
+  robomimic_can_ph_20vid_valid:
+    display_name: Robomimic Can PH Valid (20 videos)
+    processed_h5: robomimic_can_ph-20vid_valid.h5
+    raw_dir: robomimic_can_ph
+    robomimic_hdf5: datasets/raw/robomimic_can_ph/demo_v15.hdf5
+    mask_key: valid    # generated with --two_split (valid half)
+
+  robomimic_can_ph_36vid_train:
+    display_name: robomimic_can_ph (robomimic_can_ph-36vid_train.h5)
+    processed_h5: robomimic_can_ph-36vid_train.h5
+    raw_dir: robomimic_can_ph
+    robomimic_hdf5: datasets/raw/robomimic_can_ph/demo_v15.hdf5
+    mask_key: 20_percent_train
+    validation_dataset_ref: robomimic_can_ph_4vid_valid
+
+  robomimic_can_ph_4vid_valid:
+    display_name: robomimic_can_ph (robomimic_can_ph-4vid_valid.h5)
+    processed_h5: robomimic_can_ph-4vid_valid.h5
+    raw_dir: robomimic_can_ph
+    robomimic_hdf5: datasets/raw/robomimic_can_ph/demo_v15.hdf5
+    mask_key: 20_percent_valid
+
+  # ── Robomimic Can MH (mixed-quality) ───────────────────────────────
+  robomimic_can_mh_100vid_okay:
+    display_name: Robomimic Can MH Okay (100 videos)
+    processed_h5: robomimic_can_mh-100vid_okay.h5
+    raw_dir: robomimic_can_mh
+    robomimic_hdf5: datasets/raw/robomimic_can_mh/demo_v15.hdf5
+    mask_key: okay          # single-split (no --two_split)
+
+  robomimic_can_mh_100vid_worse:
+    display_name: Robomimic Can MH Worse (100 videos)
+    processed_h5: robomimic_can_mh-100vid_worse.h5
+    raw_dir: robomimic_can_mh
+    robomimic_hdf5: datasets/raw/robomimic_can_mh/demo_v15.hdf5
+    mask_key: worse         # single-split (no --two_split)
+
+  # ── Robomimic Square PH ────────────────────────────────────────────
+  robomimic_square_ph_36vid_train:
+    display_name: Robomimic Square PH Train (36 videos)
+    processed_h5: robomimic_square_ph-36vid_train.h5
+    raw_dir: robomimic_square_ph
+    robomimic_hdf5: datasets/raw/robomimic_square_ph/demo_v15.hdf5
+    mask_key: 20_percent
+    validation_dataset_ref: robomimic_square_ph_4vid_valid
+
+  robomimic_square_ph_90vid_train:
+    display_name: Robomimic Square PH Train (90 videos)
+    processed_h5: robomimic_square_ph-90vid_train.h5
+    raw_dir: robomimic_square_ph
+    robomimic_hdf5: datasets/raw/robomimic_square_ph/demo_v15.hdf5
+    mask_key: 50_percent
+    validation_dataset_ref: robomimic_square_ph_10vid_valid
+
+  robomimic_square_ph_180vid_train:
+    display_name: Robomimic Square PH Train (180 videos)
+    processed_h5: robomimic_square_ph-180vid_train.h5
+    raw_dir: robomimic_square_ph
+    robomimic_hdf5: datasets/raw/robomimic_square_ph/demo_v15.hdf5
+    mask_key: train         # full training split
+    validation_dataset_ref: robomimic_square_ph_20vid_valid
+
+  robomimic_square_ph_4vid_valid:
+    display_name: Robomimic Square PH Valid (4 videos)
+    processed_h5: robomimic_square_ph-4vid_valid.h5
+    raw_dir: robomimic_square_ph
+    robomimic_hdf5: datasets/raw/robomimic_square_ph/demo_v15.hdf5
+    mask_key: 20_percent
+
+  robomimic_square_ph_10vid_valid:
+    display_name: Robomimic Square PH Valid (10 videos)
+    processed_h5: robomimic_square_ph-10vid_valid.h5
+    raw_dir: robomimic_square_ph
+    robomimic_hdf5: datasets/raw/robomimic_square_ph/demo_v15.hdf5
+    mask_key: 50_percent
+
+  robomimic_square_ph_20vid_valid:
+    display_name: Robomimic Square PH Valid (20 videos)
+    processed_h5: robomimic_square_ph-20vid_valid.h5
+    raw_dir: robomimic_square_ph
+    robomimic_hdf5: datasets/raw/robomimic_square_ph/demo_v15.hdf5
+    mask_key: train
+
+  # ── Robomimic Lift PH ──────────────────────────────────────────────
+  robomimic_lift_ph_36vid_train:
+    display_name: Robomimic Lift PH Train (36 videos)
+    processed_h5: robomimic_lift_ph-36vid_train.h5
+    raw_dir: robomimic_lift_ph
+    robomimic_hdf5: datasets/raw/robomimic_lift_ph/demo_v15.hdf5
+    mask_key: 20_percent
+    validation_dataset_ref: robomimic_lift_ph_4vid_valid
+
+  robomimic_lift_ph_180vid_train:
+    display_name: Robomimic Lift PH Train (180 videos)
+    processed_h5: robomimic_lift_ph-180vid_train.h5
+    raw_dir: robomimic_lift_ph
+    robomimic_hdf5: datasets/raw/robomimic_lift_ph/demo_v15.hdf5
+    mask_key: train
+    validation_dataset_ref: robomimic_lift_ph_20vid_valid
+
+  robomimic_lift_ph_4vid_valid:
+    display_name: Robomimic Lift PH Valid (4 videos)
+    processed_h5: robomimic_lift_ph-4vid_valid.h5
+    raw_dir: robomimic_lift_ph
+    robomimic_hdf5: datasets/raw/robomimic_lift_ph/demo_v15.hdf5
+    mask_key: 20_percent
+
+  robomimic_lift_ph_20vid_valid:
+    display_name: Robomimic Lift PH Valid (20 videos)
+    processed_h5: robomimic_lift_ph-20vid_valid.h5
+    raw_dir: robomimic_lift_ph
+    robomimic_hdf5: datasets/raw/robomimic_lift_ph/demo_v15.hdf5
+    mask_key: train
+
+  robomimic_lift_mh_100vid_worse:
+    display_name: robomimic_lift_mh (robomimic_lift_mh-100vid_worse.h5)
+    processed_h5: robomimic_lift_mh-100vid_worse.h5
+    raw_dir: robomimic_lift_mh
+    robomimic_hdf5: datasets/raw/robomimic_lift_mh/demo_v15.hdf5
+    mask_key: worse
+
+  robomimic_square_mh_100vid_worse:
+    display_name: robomimic_square_mh (robomimic_square_mh-100vid_worse.h5)
+    processed_h5: robomimic_square_mh-100vid_worse.h5
+    raw_dir: robomimic_square_mh
+    robomimic_hdf5: datasets/raw/robomimic_square_mh/demo_v15.hdf5
+    mask_key: worse
+

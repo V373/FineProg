@@ -1,0 +1,25 @@
+# V2: Project-level paths and naming conventions
+# ═══════════════════════════════════════════════════════════════════════
+# Defines the project root and the directory layout shared by all stages.
+# This file normally never needs to change.
+# ═══════════════════════════════════════════════════════════════════════
+
+project_root: /home/user/zhangzk/projects/fineprog
+
+# Directory layout (all relative to project_root).
+dirs:
+  raw:         datasets/raw
+  processed:   datasets/processed
+  embeddings:  datasets/embeddings
+  checkpoints: checkpoint
+  outputs:     outputs
+
+# Filename templates used by the ConfigV2 resolver.
+#   {run_name} → full wandb run name (TCC-...-timestamp)
+#   {epoch}    → checkpoint epoch, zero-padded to 6 digits
+#   {stem}     → processed-H5 filename stem, e.g. robomimic_can_ph-180vid_train
+templates:
+  checkpoint:        "{run_name}/encoder_epoch{epoch:06d}.pt"
+  embedding:         "{stem}-embd.h5"
+  mean_path:         "{stem}-embd-mean_path.h5"
+  labeled_embedding: "{stem}-embd-labeled.h5"

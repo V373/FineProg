@@ -1,0 +1,32 @@
+# V2: TCC Loss Configuration
+# ═══════════════════════════════════════════════════════════════════════
+# Canonical TCC loss config for the current V2 workflow.
+# Grouped by category for clarity.
+# ═══════════════════════════════════════════════════════════════════════
+
+# ── Alignment ─────────────────────────────────────────────────────────
+stochastic_matching:  false    # true = randomly sub-sample cycles (memory-efficient)
+normalize_embeddings: false    # true = L2-normalize embeddings before similarity
+
+# ── Loss type ─────────────────────────────────────────────────────────
+# Options: classification | regression_mse | regression_mse_var | regression_huber
+loss_type:       regression_mse_var
+
+# Similarity metric for nearest-neighbor matching.
+# Options: l2 | cosine
+similarity_type: l2
+
+# ── Cycle sampling  (active when stochastic_matching = true) ──────────
+# num_cycles:   20    # Number of cycles to sample per batch
+num_cycles_fraction: 0.25 # Alternative to num_cycles: fraction of total possible cycles (0.0 to 1.0)
+cycle_length:  2    # Hops per cycle; 2 = A→B→A (most common)
+
+# ── Loss hyperparameters ──────────────────────────────────────────────
+softmax_temperature: 0.1     # For classification loss type
+label_smoothing:     0.1     # For classification loss type (0 = no smoothing)
+variance_lambda:     0.001   # For regression_mse_var loss type
+huber_delta:         0.1     # For regression_huber loss type
+normalize_indices:   true    # Normalize frame indices to [0, 1] range
+
+# ── Debug ─────────────────────────────────────────────────────────────
+debug: false

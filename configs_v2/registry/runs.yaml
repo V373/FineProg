@@ -1,0 +1,470 @@
+# V2: Artifact Registry
+# ═══════════════════════════════════════════════════════════════════════
+# Manually maintained registry of training runs and embedding artifacts.
+# This file is NEVER auto-updated — add entries yourself after each run.
+#
+# HOW TO ADD A NEW RUN:
+#   1. After training completes, copy the run_name from the wandb dashboard
+#      or terminal output.
+#   2. Add an entry under "runs:" with a short, meaningful alias.
+#   3. After extracting embeddings for a dataset, add entries under "embeddings:".
+#   4. Reference entries by alias in extract.yaml and eval configs.
+#
+# WHY NOT AUTO-UPDATE:
+#   You often run multiple experiments in parallel and want to control which
+#   checkpoint each extraction/evaluation uses.  Explicit entries make this
+#   dependency visible and auditable.
+#
+# SWITCHING CHECKPOINT FOR EVALUATION:
+#   Change only the "checkpoint_ref:" line in extract.yaml (or the relevant
+#   embedding_ref in the eval config).  No other file needs to change.
+# ═══════════════════════════════════════════════════════════════════════
+
+
+# ── Training runs ──────────────────────────────────────────────────────
+runs:
+
+  # ── Robomimic Can PH ─────────────────────────────────────────────────
+  can_ph_180_ep50k:
+    description: "Can PH 180-vid, epoch 50000  [current default]"
+    run_name:         TCC-robomimic_can_ph-180vid_train-resnet50_conv4c-only_bn-20260508-234455
+    train_dataset:    robomimic_can_ph_180vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 50000
+    # resolved checkpoint: checkpoint/{run_name}/encoder_epoch050000.pt
+
+  # ── Robomimic Square PH ──────────────────────────────────────────────
+  square_ph_180_ep50k:
+    description: "Square PH 180-vid, epoch 50000"
+    run_name:         TCC-robomimic_square_ph-180vid_train-resnet50_conv4c-only_bn-20260508-233230
+    train_dataset:    robomimic_square_ph_180vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 50000
+
+  square_ph_90_ep50k:
+    description: "Square PH 90-vid, epoch 50000"
+    run_name:         TCC-robomimic_square_ph-90vid_train-resnet50_conv4c-only_bn-20260511-233013
+    train_dataset:    robomimic_square_ph_90vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 50000
+
+  square_ph_36_ep50k:
+    description: "Square PH 36-vid, epoch 50000"
+    run_name:         TCC-robomimic_square_ph-36vid_train-resnet50_conv4c-only_bn-20260508-000032
+    train_dataset:    robomimic_square_ph_36vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 50000
+
+  # ── Robomimic Lift PH ────────────────────────────────────────────────
+  lift_ph_36_ep50k:
+    description: "Lift PH 36-vid, epoch 50000"
+    run_name:         TCC-robomimic_lift_ph-36vid_train-resnet50_conv4c-only_bn-20260511-150211
+    train_dataset:    robomimic_lift_ph_36vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 50000
+
+  lift_ph_180vid_train_ep50k:
+    description: robomimic_lift_ph-180vid_train, epoch 50000 [auto-discovered]
+    run_name: TCC-robomimic_lift_ph-180vid_train-resnet50_conv4c-only_bn-20260511-233040
+    train_dataset: robomimic_lift_ph_180vid_train
+    backbone: resnet50_conv4c
+    train_base: only_bn
+    checkpoint_epoch: 50000
+
+  tcc_can_no_train_test_ep10:
+    description: "Can PH 180-vid TCC, no train/test split, epoch 10"
+    run_name:         TCC-robomimic_can_180vid_train-no_train_test
+    train_dataset:    robomimic_can_ph_180vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 10
+
+  triplet_can_small_train_test_ep1000:
+    description: "Can PH 180-vid Triplet loss, small train/test split, epoch 1000"
+    run_name:         Triplet-robomimic_can_180vid_train-small_train_test
+    train_dataset:    robomimic_can_ph_180vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 1000
+
+  temporal_triplet_can_180_ep20k:
+    description: "Can PH 180-vid TemporalTriplet loss, epoch 20000"
+    run_name:         TEMPORAL-TRIPLET-robomimic_can_ph-180vid_train-resnet50_conv4c-only_bn-20260520-144946
+    train_dataset:    robomimic_can_ph_180vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 20000
+
+  composite_can_180_ep30k:
+    description: "Can PH 180-vid Composite (TCC+Triplet) loss, epoch 30000"
+    run_name:         COMPOSITE-robomimic_can_ph-180vid_train-resnet50_conv4c-only_bn-20260520-233325
+    train_dataset:    robomimic_can_ph_180vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 30000
+
+  # ── Can PH 36-vid · Composite(TCC+TemporalTriplet) × 3 seeds · epoch 40k ─
+  comp_tt_can_ph_36_ep40k_r1:
+    description: "Can PH 36-vid Composite(TCC+TT) seed1, epoch 40000"
+    run_name:         COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_can_ph-36vid_train-resnet50_conv4c-only_bn-20260521-193510
+    train_dataset:    robomimic_can_ph_36vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 40000
+
+  comp_tt_can_ph_36_ep40k_r2:
+    description: "Can PH 36-vid Composite(TCC+TT) seed2, epoch 40000"
+    run_name:         COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_can_ph-36vid_train-resnet50_conv4c-only_bn-20260521-193537
+    train_dataset:    robomimic_can_ph_36vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 40000
+
+  comp_tt_can_ph_36_ep40k_r3:
+    description: "Can PH 36-vid Composite(TCC+TT) seed3, epoch 40000"
+    run_name:         COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_can_ph-36vid_train-resnet50_conv4c-only_bn-20260521-193550
+    train_dataset:    robomimic_can_ph_36vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 40000
+
+  # ── Can PH 36-vid · Composite(TCC+TemporalTriplet) · epoch 50k ──────
+  comp_tt_can_ph_36_ep50k:
+    description: "Can PH 36-vid Composite(TCC+TT), epoch 50000"
+    run_name:         COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_can_ph-36vid_train-resnet50_conv4c-only_bn-20260524-221609
+    train_dataset:    robomimic_can_ph_36vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 50000
+
+  # ── Can PH 36-vid · TemporalTriplet · epoch 50k ────────────────────────
+  temporal_triplet_can_ph_36_ep50k:
+    description: "Can PH 36-vid TemporalTriplet, epoch 50000"
+    run_name:         TEMPORAL-TRIPLET-robomimic_can_ph-36vid_train-resnet50_conv4c-only_bn-20260524-221759
+    train_dataset:    robomimic_can_ph_36vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 50000
+
+  # ── Can PH 36-vid · TCC · epoch 40k ──────────────────────────────────
+  tcc_can_ph_36_ep40k:
+    description: "Can PH 36-vid TCC, epoch 40000"
+    run_name:         TCC-robomimic_can_ph-36vid_train-resnet50_conv4c-only_bn-20260521-164424
+    train_dataset:    robomimic_can_ph_36vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 40000
+
+  # ── Template for new runs ─────────────────────────────────────────────
+  # new_run_alias:
+  #   description: "..."
+  #   run_name:         TCC-{dataset_stem}-resnet50_conv4c-only_bn-{timestamp}
+  #   train_dataset:    <key from datasets.yaml>
+  #   backbone:         resnet50_conv4c
+  #   train_base:       only_bn
+  #   checkpoint_epoch: 50000
+
+
+# ── Embedding artifacts ────────────────────────────────────────────────
+# Each entry maps an alias to (run_ref, dataset_ref, variant).
+# variant: standard | mean_path | labeled
+#
+# Resolved path formula:
+#   standard → datasets/embeddings/{run_name}/{dataset_h5_stem}-embd.h5
+#   mean_path→ datasets/embeddings/{run_name}/{dataset_h5_stem}-embd-mean_path.h5
+#   labeled  → datasets/embeddings/{run_name}/{dataset_h5_stem}-embd-labeled.h5
+#
+# You can also set embedding_h5_path directly to bypass auto-derivation.
+# ──────────────────────────────────────────────────────────────────────
+embeddings:
+
+  # ── Can PH 180 · epoch 50k ───────────────────────────────────────────
+  can_ph_train_ep50k:
+    description: "Can PH train embeddings (180 vids)"
+    run_ref:     can_ph_180_ep50k
+    dataset_ref: robomimic_can_ph_180vid_train
+    variant:     standard
+    # → datasets/embeddings/{run_name}/robomimic_can_ph-180vid_train-embd.h5
+
+  can_ph_train_mean_path_ep50k:
+    description: "Can PH mean-path embedding — expert trajectory"
+    run_ref:     can_ph_180_ep50k
+    dataset_ref: robomimic_can_ph_180vid_train
+    variant:     mean_path
+    # → datasets/embeddings/{run_name}/robomimic_can_ph-180vid_train-embd-mean_path.h5
+
+  can_ph_valid_ep50k:
+    description: "Can PH valid embeddings (20 vids)"
+    run_ref:     can_ph_180_ep50k
+    dataset_ref: robomimic_can_ph_20vid_valid
+    variant:     standard
+
+  can_mh_okay_ep50k:
+    description: "Can MH okay embeddings (100 vids) — non-expert"
+    run_ref:     can_ph_180_ep50k
+    dataset_ref: robomimic_can_mh_100vid_okay
+    variant:     standard
+    # → datasets/embeddings/{run_name}/robomimic_can_mh-100vid_okay-embd.h5
+
+  can_mh_worse_ep50k:
+    description: "Can MH worse embeddings (100 vids)"
+    run_ref:     can_ph_180_ep50k
+    dataset_ref: robomimic_can_mh_100vid_worse
+    variant:     standard
+
+  # ── Square PH 180 · epoch 50k ─────────────────────────────────────────
+  square_ph_train_180_ep50k:
+    description: "Square PH train embeddings (180 vids)"
+    run_ref:     square_ph_180_ep50k
+    dataset_ref: robomimic_square_ph_180vid_train
+    variant:     standard
+
+  square_ph_train_mean_path_180_ep50k:
+    description: "Square PH mean-path embedding — expert trajectory"
+    run_ref:     square_ph_180_ep50k
+    dataset_ref: robomimic_square_ph_180vid_train
+    variant:     mean_path
+
+  square_ph_valid_20_from_180_ep50k:
+    description: "Square PH valid embeddings, 180-vid model (20 vids)"
+    run_ref:     square_ph_180_ep50k
+    dataset_ref: robomimic_square_ph_20vid_valid
+    variant:     standard
+
+  # ── Square PH 36 · epoch 50k ──────────────────────────────────────────
+  square_ph_train_36_ep50k:
+    description: "Square PH train embeddings (36 vids)"
+    run_ref:     square_ph_36_ep50k
+    dataset_ref: robomimic_square_ph_36vid_train
+    variant:     standard
+
+  square_ph_valid_4_ep50k:
+    description: "Square PH valid embeddings, 36-vid model (4 vids)"
+    run_ref:     square_ph_36_ep50k
+    dataset_ref: robomimic_square_ph_4vid_valid
+    variant:     standard
+
+  square_ph_valid_20_from_36_ep50k:
+    description: "Square PH valid embeddings, 36-vid model (20 vids)"
+    run_ref:     square_ph_36_ep50k
+    dataset_ref: robomimic_square_ph_20vid_valid
+    variant:     standard
+
+  # ── Square PH 90 · epoch 50k ──────────────────────────────────────────
+  square_ph_valid_20_from_90_ep50k:
+    description: "Square PH valid embeddings, 90-vid model (20 vids)"
+    run_ref:     square_ph_90_ep50k
+    dataset_ref: robomimic_square_ph_20vid_valid
+    variant:     standard
+
+  # ── Template for new embedding entries ────────────────────────────────
+  # new_emb_alias:
+  #   description: "..."
+  #   run_ref:     <key from runs above>
+  #   dataset_ref: <key from datasets.yaml>
+  #   variant:     standard   # or: mean_path | labeled
+  #
+  # Override with explicit path (skips auto-derivation):
+  # custom_emb:
+  #   embedding_h5_path: /abs/path/to/custom-embd.h5
+
+  square_ph_180vid_train_mean_path_50k:
+    description: robomimic_square_ph_180vid_train mean_path embedding
+    run_ref: square_ph_180_ep50k
+    dataset_ref: robomimic_square_ph_180vid_train
+    variant: mean_path
+
+  square_mh_100vid_worse_50k:
+    description: robomimic_square_mh_100vid_worse embeddings (standard)
+    run_ref: square_ph_180_ep50k
+    dataset_ref: robomimic_square_mh_100vid_worse
+    variant: standard
+
+  lift_mh_100vid_worse_50k:
+    description: robomimic_lift_mh_100vid_worse embeddings (standard)
+    run_ref: lift_ph_180vid_train_ep50k
+    dataset_ref: robomimic_lift_mh_100vid_worse
+    variant: standard
+
+  lift_ph_180vid_train_50k:
+    description: robomimic_lift_ph_180vid_train embeddings (standard)
+    run_ref: lift_ph_180vid_train_ep50k
+    dataset_ref: robomimic_lift_ph_180vid_train
+    variant: standard
+
+  lift_ph_20vid_valid_50k:
+    description: robomimic_lift_ph_20vid_valid embeddings (standard)
+    run_ref: lift_ph_180vid_train_ep50k
+    dataset_ref: robomimic_lift_ph_20vid_valid
+    variant: standard
+
+  lift_ph_180vid_train_mean_path_50k:
+    description: robomimic_lift_ph_180vid_train mean_path embedding
+    run_ref: lift_ph_180vid_train_ep50k
+    dataset_ref: robomimic_lift_ph_180vid_train
+    variant: mean_path
+
+  can_ph_20vid_valid_50k:
+    description: robomimic_can_ph_20vid_valid embeddings (standard)
+    run_ref: can_ph_180_ep50k
+    dataset_ref: robomimic_can_ph_20vid_valid
+    variant: standard
+
+  # ── TCC no_train_test run · epoch 10 ──────────────────────────────────
+  tcc_can_no_train_test_valid_ep10:
+    description: "Can PH valid (20 vids) from TCC-robomimic_can_180vid_train-no_train_test ep10"
+    run_ref:     tcc_can_no_train_test_ep10
+    dataset_ref: robomimic_can_ph_20vid_valid
+    variant:     standard
+
+  # ── Triplet small_train_test run · epoch 1000 ─────────────────────────
+  triplet_can_small_train_test_valid_ep1000:
+    description: "Can PH valid (20 vids) from Triplet-robomimic_can_180vid_train-small_train_test ep1000"
+    run_ref:     triplet_can_small_train_test_ep1000
+    dataset_ref: robomimic_can_ph_20vid_valid
+    variant:     standard
+
+  # ── TemporalTriplet 180-vid · epoch 20k ──────────────────────────────
+  temporal_triplet_can_180_valid_ep20k:
+    description: "Can PH valid (20 vids) from TemporalTriplet 180-vid ep20000"
+    run_ref:     temporal_triplet_can_180_ep20k
+    dataset_ref: robomimic_can_ph_20vid_valid
+    variant:     standard
+
+  # ── Composite TCC+InfoNCE 180-vid · epoch 30k ──────────────────────────
+  composite_can_180_valid_ep30k:
+    description: "Can PH valid (20 vids) from Composite (TCC+InfoNCE) 180-vid ep30000"
+    run_ref:     composite_can_180_ep30k
+    dataset_ref: robomimic_can_ph_20vid_valid
+    variant:     standard
+
+  # ── Can PH 36-vid · Composite(TCC+TT) seed1 · epoch 40k ──────────────
+  comp_tt_can_ph_36_r1_train:
+    description: "Can PH 36-vid train embeddings, Composite(TCC+TT) seed1 ep40k"
+    run_ref:     comp_tt_can_ph_36_ep40k_r1
+    dataset_ref: robomimic_can_ph_36vid_train
+    variant:     standard
+
+  comp_tt_can_ph_36_r1_valid:
+    description: "Can PH 4-vid valid embeddings, Composite(TCC+TT) seed1 ep40k"
+    run_ref:     comp_tt_can_ph_36_ep40k_r1
+    dataset_ref: robomimic_can_ph_4vid_valid
+    variant:     standard
+
+  comp_tt_can_ph_36_r1_can_mh_worse:
+    description: "Can MH 100-vid worse embeddings, Composite(TCC+TT) seed1 ep40k"
+    run_ref:     comp_tt_can_ph_36_ep40k_r1
+    dataset_ref: robomimic_can_mh_100vid_worse
+    variant:     standard
+
+  comp_tt_can_ph_36_r1_train_mean_path:
+    description: "Can PH 36-vid train mean-path, Composite(TCC+TT) seed1 ep40k"
+    run_ref:     comp_tt_can_ph_36_ep40k_r1
+    dataset_ref: robomimic_can_ph_36vid_train
+    variant:     mean_path
+
+  # ── Can PH 36-vid · Composite(TCC+TT) seed2 · epoch 40k ──────────────
+  comp_tt_can_ph_36_r2_train:
+    description: "Can PH 36-vid train embeddings, Composite(TCC+TT) seed2 ep40k"
+    run_ref:     comp_tt_can_ph_36_ep40k_r2
+    dataset_ref: robomimic_can_ph_36vid_train
+    variant:     standard
+
+  comp_tt_can_ph_36_r2_valid:
+    description: "Can PH 4-vid valid embeddings, Composite(TCC+TT) seed2 ep40k"
+    run_ref:     comp_tt_can_ph_36_ep40k_r2
+    dataset_ref: robomimic_can_ph_4vid_valid
+    variant:     standard
+
+  comp_tt_can_ph_36_r2_can_mh_worse:
+    description: "Can MH 100-vid worse embeddings, Composite(TCC+TT) seed2 ep40k"
+    run_ref:     comp_tt_can_ph_36_ep40k_r2
+    dataset_ref: robomimic_can_mh_100vid_worse
+    variant:     standard
+
+  comp_tt_can_ph_36_r2_train_mean_path:
+    description: "Can PH 36-vid train mean-path, Composite(TCC+TT) seed2 ep40k"
+    run_ref:     comp_tt_can_ph_36_ep40k_r2
+    dataset_ref: robomimic_can_ph_36vid_train
+    variant:     mean_path
+
+  # ── Can PH 36-vid · Composite(TCC+TT) seed3 · epoch 40k ──────────────
+  comp_tt_can_ph_36_r3_train:
+    description: "Can PH 36-vid train embeddings, Composite(TCC+TT) seed3 ep40k"
+    run_ref:     comp_tt_can_ph_36_ep40k_r3
+    dataset_ref: robomimic_can_ph_36vid_train
+    variant:     standard
+
+  comp_tt_can_ph_36_r3_valid:
+    description: "Can PH 4-vid valid embeddings, Composite(TCC+TT) seed3 ep40k"
+    run_ref:     comp_tt_can_ph_36_ep40k_r3
+    dataset_ref: robomimic_can_ph_4vid_valid
+    variant:     standard
+
+  comp_tt_can_ph_36_r3_can_mh_worse:
+    description: "Can MH 100-vid worse embeddings, Composite(TCC+TT) seed3 ep40k"
+    run_ref:     comp_tt_can_ph_36_ep40k_r3
+    dataset_ref: robomimic_can_mh_100vid_worse
+    variant:     standard
+
+  comp_tt_can_ph_36_r3_train_mean_path:
+    description: "Can PH 36-vid train mean-path, Composite(TCC+TT) seed3 ep40k"
+    run_ref:     comp_tt_can_ph_36_ep40k_r3
+    dataset_ref: robomimic_can_ph_36vid_train
+    variant:     mean_path
+
+  # ── Can PH 36-vid · TCC · epoch 40k ──────────────────────────────────
+  tcc_can_ph_36_train:
+    description: "Can PH 36-vid train embeddings, TCC ep40k"
+    run_ref:     tcc_can_ph_36_ep40k
+    dataset_ref: robomimic_can_ph_36vid_train
+    variant:     standard
+
+  tcc_can_ph_36_valid:
+    description: "Can PH 4-vid valid embeddings, TCC ep40k"
+    run_ref:     tcc_can_ph_36_ep40k
+    dataset_ref: robomimic_can_ph_4vid_valid
+    variant:     standard
+
+  tcc_can_ph_36_can_mh_worse:
+    description: "Can MH 100-vid worse embeddings, TCC ep40k"
+    run_ref:     tcc_can_ph_36_ep40k
+    dataset_ref: robomimic_can_mh_100vid_worse
+    variant:     standard
+
+  tcc_can_ph_36_train_mean_path:
+    description: "Can PH 36-vid train mean-path, TCC ep40k"
+    run_ref:     tcc_can_ph_36_ep40k
+    dataset_ref: robomimic_can_ph_36vid_train
+    variant:     mean_path
+
+  # ── Can PH 36-vid · Composite(TCC+TT) · epoch 50k ────────────────────
+  comp_tt_can_ph_36_ep50k_train:
+    description: "Can PH 36-vid train embeddings, Composite(TCC+TT) ep50k"
+    run_ref:     comp_tt_can_ph_36_ep50k
+    dataset_ref: robomimic_can_ph_36vid_train
+    variant:     standard
+
+  can_ph_4vid_valid_50k_260525:
+    description: robomimic_can_ph_4vid_valid embeddings (standard)
+    run_ref: comp_tt_can_ph_36_ep50k
+    dataset_ref: robomimic_can_ph_4vid_valid
+    variant: standard
+
+  # ── Can PH 36-vid · TemporalTriplet · epoch 50k ──────────────────────
+  temporal_triplet_can_ph_36_ep50k_train:
+    description: "Can PH 36-vid train embeddings, TemporalTriplet ep50k"
+    run_ref:     temporal_triplet_can_ph_36_ep50k
+    dataset_ref: robomimic_can_ph_36vid_train
+    variant:     standard
+
+  can_mh_100vid_worse_50k:
+    description: robomimic_can_mh_100vid_worse embeddings (standard)
+    run_ref: comp_tt_can_ph_36_ep50k
+    dataset_ref: robomimic_can_mh_100vid_worse
+    variant: standard

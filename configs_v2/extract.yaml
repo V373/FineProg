@@ -1,0 +1,34 @@
+# V2: Embedding Extraction Stage Configuration
+# ═══════════════════════════════════════════════════════════════════════
+# Entrypoint: extract_embeddings.py  (future: via ConfigV2.load_extract())
+# ═══════════════════════════════════════════════════════════════════════
+
+# ── Dataset ───────────────────────────────────────────────────────────
+# Which dataset to extract embeddings from.
+# Key from configs_v2/datasets.yaml  →  resolved to processed_h5_path at runtime.
+extract_dataset: robomimic_can_mh_100vid_worse
+
+# ── Checkpoint ────────────────────────────────────────────────────────
+# Option A (recommended): reference a run alias from configs_v2/runs.yaml.
+# Resolver derives: checkpoint/{run_name}/encoder_epoch{epoch:06d}.pt
+checkpoint_ref: comp_tt_can_ph_36_ep50k
+
+# Option B: explicit path override — comment out checkpoint_ref and use this.
+# checkpoint_path: /home/user/zhangzk/projects/fineprog/checkpoint/TCC-.../encoder_epoch050000.pt
+
+# ── Sequence sampling ─────────────────────────────────────────────────
+# MUST match the values used when training the referenced checkpoint.
+clip_len:       20
+context_size:    2
+context_stride: 15
+
+# ── Extraction DataLoader ─────────────────────────────────────────────
+num_workers:       4
+sample_all_stride: 1    # 1 = every frame; 2 = every other frame
+
+# ── Output ────────────────────────────────────────────────────────────
+# Default (recommended): auto-derived from checkpoint_ref + extract_dataset.
+#   saves to: datasets/embeddings/{run_name}/{extract_dataset_h5_stem}-embd.h5
+#
+# Override: uncomment to force a specific path.
+# embedding_save_path: /abs/path/to/output-embd.h5

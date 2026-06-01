@@ -1,0 +1,38 @@
+# V2 config for visualize_embeddings_tsne_2groups.py
+# ---------------------------------------------------
+# Merged on top of configs_v2/visualize/base.yaml by ConfigV2.load_visualize().
+
+# ── Embedding sources ─────────────────────────────────────────────────────────
+# Group 1 (e.g. training set) — key in configs_v2/registry/runs.yaml :: embeddings
+embedding_ref: can_ph_train_ep50k
+
+# Group 2 (e.g. validation set)
+embedding_ref_group2: can_ph_valid_ep50k
+
+# Optional explicit output directory override
+output_dir: ~
+
+# ── Group labels ─────────────────────────────────────────────────────────────
+group1_label: "Training"
+group2_label: "Validation"
+
+# ── Plot additions ────────────────────────────────────────────────────────────
+plot:
+  figsize: [9, 6]
+  cmap_progress_group1: "Blues"
+  cmap_progress_group2: "Reds"
+
+# ── Animated video parameters ─────────────────────────────────────────────────
+tsne_video:
+  fps: 30
+  dpi: 300
+  progress_sigma: 0.01
+  background_alpha: 0.08
+  highlight_alpha_max: 0.95
+  video_only: false
+  # Which video IDs to animate per group:
+  #   "all"        → all videos in the group participate in the highlight sweep
+  #   null         → no videos highlighted (all points stay faint)
+  #   ["id1", ...] → only the listed video IDs participate
+  highlight_videos_group1: "all"
+  highlight_videos_group2: "all"
