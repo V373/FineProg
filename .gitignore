@@ -118,6 +118,29 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# ── Project-specific ────────────────────────────────────────────────────────
+
+# Datasets (raw videos, H5 files, processed splits)
+datasets/
+
+# Model checkpoints
+checkpoint/
+*.pt
+*.pth
+*.ckpt
+
+# W&B run logs
+wandb/
+
+# Extracted embeddings and eval outputs
+outputs/
+*.h5
+
+# Temporary / debug files
+tmp/
+*.log
+tea_debug.log
+
 # IDE
 .vscode/
 .idea/
