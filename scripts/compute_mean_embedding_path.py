@@ -1025,6 +1025,9 @@ def main():
         # [v2] Load mean_path visualize config
         _viz_cfg_v2 = None
         try:
+            import sys as _sys
+            if str(_PROJECT_ROOT) not in _sys.path:
+                _sys.path.insert(0, str(_PROJECT_ROOT))
             from utils.config_v2 import ConfigV2
             _v2_overrides = {}
             _emb_ref_v2 = getattr(args, "embedding_ref", None)

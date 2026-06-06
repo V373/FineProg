@@ -160,6 +160,15 @@ runs:
     train_base:       only_bn
     checkpoint_epoch: 40000
 
+  # ── Can PH 36-vid · Composite(TCC+TemporalTriplet) · frozen · epoch 15k ─
+  comp_tt_can_ph_36_frozen_ep15k:
+    description: "Can PH 36-vid Composite(TCC+TT) frozen backbone, epoch 15000"
+    run_name:         COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_can_ph-36vid_train-resnet50_conv4c-frozen-20260603-145310
+    train_dataset:    robomimic_can_ph_36vid_train
+    backbone:         resnet50_conv4c
+    train_base:       frozen
+    checkpoint_epoch: 15000
+
   # ── Template for new runs ─────────────────────────────────────────────
   # new_run_alias:
   #   description: "..."
@@ -467,4 +476,42 @@ embeddings:
     description: robomimic_can_mh_100vid_worse embeddings (standard)
     run_ref: comp_tt_can_ph_36_ep50k
     dataset_ref: robomimic_can_mh_100vid_worse
+    variant: standard
+
+  can_mh_300vid_40k_r1:
+    description: robomimic_can_mh_300vid embeddings (standard)
+    run_ref: comp_tt_can_ph_36_ep40k_r1
+    dataset_ref: robomimic_can_mh_300vid
+    variant: standard
+
+# new frozen embeddings
+
+  can_ph_36vid_train_mean_path_15k:
+    description: robomimic_can_ph_36vid_train mean_path embedding
+    run_ref: comp_tt_can_ph_36_frozen_ep15k
+    dataset_ref: robomimic_can_ph_36vid_train
+    variant: mean_path
+
+  can_ph_36vid_train_frozen_15k:
+    description: "Can PH 36-vid train embeddings, frozen backbone ep15k"
+    run_ref: comp_tt_can_ph_36_frozen_ep15k
+    dataset_ref: robomimic_can_ph_36vid_train
+    variant: standard
+
+  can_ph_4vid_valid_frozen_15k:
+    description: "Can PH 4-vid valid embeddings, frozen backbone ep15k"
+    run_ref: comp_tt_can_ph_36_frozen_ep15k
+    dataset_ref: robomimic_can_ph_4vid_valid
+    variant: standard
+
+  can_mh_100vid_worse_frozen_15k:
+    description: "Can MH 100-vid worse embeddings, frozen backbone ep15k"
+    run_ref: comp_tt_can_ph_36_frozen_ep15k
+    dataset_ref: robomimic_can_mh_100vid_worse
+    variant: standard
+
+  can_mh_300vid_all_frozen_15k:
+    description: "Can MH 300-vid-all embeddings, frozen backbone ep15k"
+    run_ref: comp_tt_can_ph_36_frozen_ep15k
+    dataset_ref: robomimic_can_mh_300vid_all
     variant: standard

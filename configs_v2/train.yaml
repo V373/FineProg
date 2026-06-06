@@ -10,18 +10,18 @@ train_dataset: robomimic_can_ph_36vid_train
 # ── Model ─────────────────────────────────────────────────────────────
 backbone_name:   resnet50_conv4c
 pretrained:      true
-train_base:      only_bn      # frozen | only_bn | train_all
+train_base:      frozen      # frozen | only_bn | train_all
 train_embedding: true
 
 # ── Reproducibility ───────────────────────────────────────────────────
 seed: 42
 
 # ── Training duration ─────────────────────────────────────────────────
-num_epochs: 100000
+num_epochs: 6000
 
 # ── DataLoader ────────────────────────────────────────────────────────
 # Training-specific DataLoader settings.  (Not shared with extract.)
-batch_size:  2
+batch_size:  18
 num_workers: 4
 limit_cpu_threads: false   # force OMP / MKL / OpenBLAS / NumExpr and torch CPU threads to 1
 
@@ -35,13 +35,13 @@ sampling_strategy:  offset_uniform
 random_offset:      1
 
 # ── Optimizer ─────────────────────────────────────────────────────────
-learning_rate: 1.0e-4
+learning_rate: 8.0e-4
 
 # ── Logging ───────────────────────────────────────────────────────────
 log_every: 10    # log loss to wandb every N epochs
 
 # ── Checkpoint ────────────────────────────────────────────────────────
-checkpoint_every: 5000   # save encoder .pt every N epochs
+checkpoint_every: 2000   # save encoder .pt every N epochs
 checkpoint_dir:   checkpoint   # relative to project_root
 
 # ── Backbone feature cache ────────────────────────────────────────────

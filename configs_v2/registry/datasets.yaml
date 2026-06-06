@@ -197,3 +197,14 @@ datasets:
     robomimic_hdf5: datasets/raw/robomimic_square_mh/demo_v15.hdf5
     mask_key: worse
 
+  robomimic_can_mh_300vid:
+    display_name: robomimic_can_mh (robomimic_can_mh-300vid.h5)
+    processed_h5: robomimic_can_mh-300vid.h5
+    raw_dir: robomimic_can_mh
+
+  robomimic_can_mh_300vid_all:
+    display_name: robomimic_can_mh (robomimic_can_mh-300vid_all.h5)
+    processed_h5: robomimic_can_mh-300vid_all.h5
+    raw_dir: robomimic_can_mh
+    robomimic_hdf5: datasets/raw/robomimic_can_mh/demo_v15.hdf5
+    mask_key: all

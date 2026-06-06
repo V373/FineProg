@@ -8,20 +8,20 @@
 # ── Expert trajectory ─────────────────────────────────────────────────
 # Must be a mean-path embedding (variant: mean_path in runs.yaml).
 # Key from configs_v2/runs.yaml :: embeddings
-expert_embedding_ref: comp_tt_can_ph_36_r1_train_mean_path
+expert_embedding_ref: can_ph_36vid_train_mean_path_15k
 # square_ph_180vid_train_mean_path_50k
 # can_ph_train_mean_path_ep50k
 # → datasets/embeddings/{run_name}/robomimic_can_ph-180vid_train-embd-mean_path.h5
 
 # ── Non-expert trajectories ───────────────────────────────────────────
 # Key from configs_v2/runs.yaml :: embeddings
-nonexpert_embedding_ref: comp_tt_can_ph_36_r1_can_mh_worse
+nonexpert_embedding_ref: can_mh_300vid_all_frozen_15k
 # can_mh_worse_ep50k
 # → datasets/embeddings/{run_name}/robomimic_can_mh-100vid_worse-embd.h5
 
 # Dataset ref used to look up robomimic_hdf5_path and mask_key automatically.
 # Key from configs_v2/datasets.yaml
-nonexpert_dataset_ref: robomimic_can_mh_100vid_worse
+nonexpert_dataset_ref: robomimic_can_mh_300vid_all
 # resolver fills: nonexpert_raw_hdf5_path, nonexpert_mask_key
 
 # ── SNN matching ──────────────────────────────────────────────────────
@@ -31,6 +31,14 @@ projection_temperature: 0.1
 save_alpha:         true    # save full alpha matrix [T_q, T_e] per video
 save_entropy:       true    # save per-frame entropy of the alpha distribution
 save_visualization: true    # save alignment-curve PNG plots per video
+
+# Progress label: normalised per-frame expert progress in [0, 1]
+save_progress_label:          true
+progress_label_source:        soft_expert_index   # or hard_nn_expert_index
+progress_label_dataset_name:  progress_label
+# label_only_mode: only save target_steps + progress_label per video;
+# disables projected_embeddings, diagnostics, alpha, entropy, and all visualisation.
+label_only_mode:              false
 
 # Which non-expert videos to include in the alignment-curve PNG:
 #   ~          →  randomly pick 4 videos

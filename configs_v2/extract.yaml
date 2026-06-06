@@ -6,12 +6,12 @@
 # ── Dataset ───────────────────────────────────────────────────────────
 # Which dataset to extract embeddings from.
 # Key from configs_v2/datasets.yaml  →  resolved to processed_h5_path at runtime.
-extract_dataset: robomimic_can_mh_100vid_worse
+extract_dataset: robomimic_can_mh_300vid_all
 
 # ── Checkpoint ────────────────────────────────────────────────────────
 # Option A (recommended): reference a run alias from configs_v2/runs.yaml.
 # Resolver derives: checkpoint/{run_name}/encoder_epoch{epoch:06d}.pt
-checkpoint_ref: comp_tt_can_ph_36_ep50k
+checkpoint_ref: comp_tt_can_ph_36_frozen_ep15k
 
 # Option B: explicit path override — comment out checkpoint_ref and use this.
 # checkpoint_path: /home/user/zhangzk/projects/fineprog/checkpoint/TCC-.../encoder_epoch050000.pt

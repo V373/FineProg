@@ -38,7 +38,7 @@ for _p in (str(_PROJ_ROOT), str(_PROJECTS_ROOT)):
         sys.path.insert(0, _p)
 
 # ── mytcc imports ─────────────────────────────────────────────────────────────
-from evaluate import run_eval_task                        # noqa: E402
+from fineprog.evaluate_encoder import run_eval_task                        # noqa: E402
 from extract_embeddings import load_checkpoint            # noqa: E402
 from models.encoder import TCCEncoder                     # noqa: E402
 from utils.config_v2 import ConfigV2                      # noqa: E402

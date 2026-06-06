@@ -18,6 +18,7 @@ Robomimic mode (--robomimic):
 import os
 import re
 import glob
+import csv
 import h5py
 import cv2
 import numpy as np
@@ -30,6 +31,7 @@ IMAGE_SIZE = 224
 TARGET_FPS = None  # None = no downsampling; set to an int (e.g. 10) to downsample
 COMPRESSION = None  # Can be None, "lzf", or "gzip"
 CHUNK_LEN = 8
+IDX_MAPPING_DIR = Path("datasets/processed/idx_mapping")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -353,7 +355,7 @@ class MP4ToH5Converter:
         h5file: h5py.File,
         video_paths: List[Path],
         base_idx_offset: int = 0,
-    ) -> int:
+    ) -> Tuple[int, List[dict]]:
         """
         Write a list of video paths into an already-open H5 file.
 
@@ -365,10 +367,13 @@ class MP4ToH5Converter:
             base_idx_offset: Unused; kept for API clarity (groups always start at 1).
 
         Returns:
-            Number of videos successfully written.
+            Tuple of (number of videos successfully written, mapping_records).
+            mapping_records is a list of dicts with keys: video_idx,
+            source_video_name, source_video_path.
         """
         videos_group = h5file.require_group("videos")
         written = 0
+        mapping_records: List[dict] = []
 
         for local_idx, video_path in enumerate(video_paths, 1):
             try:
@@ -409,12 +414,35 @@ class MP4ToH5Converter:
 
                 logger.info(f"    Saved: {video_group_name} - {frames.shape[0]} frames")
                 written += 1
+                mapping_records.append({
+                    "video_idx": video_group_name,
+                    "source_video_name": video_path.name,
+                    "source_video_path": str(video_path),
+                })
 
             except Exception as e:
                 logger.error(f"    Error processing {video_path.name}: {e}", exc_info=True)
                 continue
 
-        return written
+        return written, mapping_records
+
+    def _save_idx_mapping(self, mapping_records: List[dict], final_h5_path: Path) -> None:
+        """Save a CSV mapping of video_idx to source video info for a given H5 file."""
+        mapping_dir = IDX_MAPPING_DIR
+        mapping_dir.mkdir(parents=True, exist_ok=True)
+        csv_path = mapping_dir / f"{final_h5_path.stem}_idx_mapping.csv"
+        fieldnames = ["processed_h5_name", "video_idx", "source_video_name", "source_video_path"]
+        with open(str(csv_path), "w", newline="") as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            for rec in mapping_records:
+                writer.writerow({
+                    "processed_h5_name": final_h5_path.name,
+                    "video_idx": rec["video_idx"],
+                    "source_video_name": rec["source_video_name"],
+                    "source_video_path": rec["source_video_path"],
+                })
+        logger.info(f"Saved idx mapping: {csv_path} ({len(mapping_records)} rows)")
 
     def _finalize_h5(self, tmp_path: Path, suffix: str, n_videos: int) -> Path:
         """
@@ -460,10 +488,11 @@ class MP4ToH5Converter:
             tmp_h5_path.unlink()
 
         with h5py.File(str(tmp_h5_path), "w", libver="earliest") as h5file:
-            written = self._write_videos_to_h5(h5file, self.mp4_files)
+            written, mapping_records = self._write_videos_to_h5(h5file, self.mp4_files)
             h5file.flush()
 
         self.output_h5_path = self._finalize_h5(tmp_h5_path, "", written)
+        self._save_idx_mapping(mapping_records, self.output_h5_path)
 
     def _build_demo_id_map(self) -> Dict[int, Path]:
         """
@@ -482,11 +511,35 @@ class MP4ToH5Converter:
         return demo_map
 
     def _process_videos_robomimic(self) -> None:
-        """Dispatch to two-split or single-mask processing based on self.two_split."""
-        if self.two_split:
+        """Dispatch to two-split, single-mask, or all-videos processing."""
+        if self.robomimic_percent == "all":
+            self._process_videos_robomimic_all()
+        elif self.two_split:
             self._process_videos_robomimic_two_split()
         else:
             self._process_videos_robomimic_single()
+
+    def _process_videos_robomimic_all(self) -> None:
+        """
+        Robomimic 'all' mode: process every video in the directory, sorted by
+        the numeric ID extracted from the filename (demo_N → N) in ascending
+        order.  No mask file is required.
+
+        Output filename: {folder_name}-{n}vid_all.h5
+        """
+        logger.info("Robomimic 'all' mode: processing all videos sorted by numeric demo ID.")
+        demo_id_map = self._build_demo_id_map()
+        sorted_paths = [demo_id_map[k] for k in sorted(demo_id_map.keys())]
+        logger.info(f"  {len(sorted_paths)} videos found, sorted by numeric ID.")
+
+        tmp_path = self.output_dir / f"{self.folder_name}_tmp_single.h5"
+        if tmp_path.exists():
+            tmp_path.unlink()
+        with h5py.File(str(tmp_path), "w", libver="earliest") as h5file:
+            written, mapping_records = self._write_videos_to_h5(h5file, sorted_paths)
+            h5file.flush()
+        self.output_h5_single_path = self._finalize_h5(tmp_path, "_all", written)
+        self._save_idx_mapping(mapping_records, self.output_h5_single_path)
 
     def _process_videos_robomimic_two_split(self) -> None:
         """
@@ -532,18 +585,20 @@ class MP4ToH5Converter:
         if tmp_train.exists():
             tmp_train.unlink()
         with h5py.File(str(tmp_train), "w", libver="earliest") as h5file:
-            written_train = self._write_videos_to_h5(h5file, train_paths)
+            written_train, mapping_records_train = self._write_videos_to_h5(h5file, train_paths)
             h5file.flush()
         self.output_h5_train_path = self._finalize_h5(tmp_train, "_train", written_train)
+        self._save_idx_mapping(mapping_records_train, self.output_h5_train_path)
 
         # --- Write valid H5 ---
         tmp_valid = self.output_dir / f"{self.folder_name}_tmp_valid.h5"
         if tmp_valid.exists():
             tmp_valid.unlink()
         with h5py.File(str(tmp_valid), "w", libver="earliest") as h5file:
-            written_valid = self._write_videos_to_h5(h5file, valid_paths)
+            written_valid, mapping_records_valid = self._write_videos_to_h5(h5file, valid_paths)
             h5file.flush()
         self.output_h5_valid_path = self._finalize_h5(tmp_valid, "_valid", written_valid)
+        self._save_idx_mapping(mapping_records_valid, self.output_h5_valid_path)
 
     def _process_videos_robomimic_single(self) -> None:
         """
@@ -582,9 +637,10 @@ class MP4ToH5Converter:
         if tmp_path.exists():
             tmp_path.unlink()
         with h5py.File(str(tmp_path), "w", libver="earliest") as h5file:
-            written = self._write_videos_to_h5(h5file, paths)
+            written, mapping_records = self._write_videos_to_h5(h5file, paths)
             h5file.flush()
         self.output_h5_single_path = self._finalize_h5(tmp_path, suffix, written)
+        self._save_idx_mapping(mapping_records, self.output_h5_single_path)
 
     def run(self) -> None:
         logger.info(f"Starting conversion: {self.raw_root} -> {self.output_dir}")

@@ -32,6 +32,33 @@ _VIZ_BASE_DIR = os.path.join(_PROJ_ROOT, "outputs", "expert_projection")
 # Helper: numerically stable softmax along an axis
 # ---------------------------------------------------------------------------
 
+def _build_demo_name_map_from_csv(idx_mapping_csv: str) -> dict:
+    """Build {video_idx: source_video_stem} from an idx_mapping CSV.
+
+    CSV fields: processed_h5_name, video_idx, source_video_name, source_video_path
+    Maps video_idx (e.g. '000298') -> source file stem (e.g. 'demo_298').
+    Returns an empty dict on any failure.
+    """
+    import csv as _csv
+    result = {}
+    try:
+        with open(idx_mapping_csv, newline="") as fh:
+            for row in _csv.DictReader(fh):
+                vid_idx = row["video_idx"]
+                stem = Path(row["source_video_name"]).stem
+                result[vid_idx] = stem
+        print(
+            f"[expert_projection] demo_name_map: loaded {len(result)} entries "
+            f"from idx_mapping CSV ({Path(idx_mapping_csv).name})"
+        )
+    except Exception as exc:
+        print(
+            f"[expert_projection] demo_name_map: idx_mapping CSV failed ({exc}) "
+            "– using video_ids as labels"
+        )
+    return result
+
+
 def _build_demo_name_map(raw_hdf5_path: str, mask_key: str) -> dict:
     """Return {video_id_str: demo_name_str} for a Robomimic mask.
 
@@ -229,6 +256,34 @@ def _project_one_video(
         result["alpha"] = alpha                                 # [T_q, T_e]
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# Helper: build normalised progress label from projection result
+# ---------------------------------------------------------------------------
+
+def _make_progress_label(
+    res: dict,
+    T_e: int,
+    source: str = "soft_expert_index",
+) -> np.ndarray:
+    """Return per-frame progress label in [0, 1] as float32 [T_q].
+
+    *source* must be one of:
+        'soft_expert_index'   – uses soft expected expert index (default)
+        'hard_nn_expert_index' – uses hard nearest-neighbour index
+    """
+    if source == "soft_expert_index":
+        idx = res["soft_expert_index"].astype(np.float64)
+    elif source == "hard_nn_expert_index":
+        idx = res["nn_indices"].astype(np.float64)
+    else:
+        raise ValueError(f"Unsupported progress_label_source: {source!r}")
+
+    denom = max(float(T_e - 1), 1.0)
+    label = idx / denom
+    label = np.clip(label, 0.0, 1.0)
+    return label.astype(np.float32)
 
 
 # ---------------------------------------------------------------------------
@@ -539,6 +594,19 @@ class ExpertProjectionTask(BaseTask):
         save_entropy = bool(cfg.get("save_entropy", True))
         save_visualization = bool(cfg.get("save_visualization", False))
 
+        # --- progress label options ---
+        save_progress_label = bool(cfg.get("save_progress_label", False))
+        progress_label_source = str(cfg.get("progress_label_source", "soft_expert_index"))
+        progress_label_dataset_name = str(cfg.get("progress_label_dataset_name", "progress_label"))
+        label_only_mode = bool(cfg.get("label_only_mode", False))
+
+        # label_only_mode overrides
+        if label_only_mode:
+            save_visualization = False
+            save_alpha = False
+            save_entropy = False
+            save_progress_label = True
+
         print()
         print("[expert_projection] expert_h5_path   :", expert_h5_path)
         print("[expert_projection] nonexpert_h5_path:", nonexpert_h5_path)
@@ -591,6 +659,11 @@ class ExpertProjectionTask(BaseTask):
             f_out.attrs["nonexpert_h5_path"] = str(nonexpert_h5_path)
             f_out.attrs["projection_temperature"] = temperature
             f_out.attrs["num_nonexpert_videos"] = n_videos
+            f_out.attrs["save_progress_label"] = save_progress_label
+            f_out.attrs["progress_label_source"] = progress_label_source
+            f_out.attrs["progress_label_dataset_name"] = progress_label_dataset_name
+            f_out.attrs["label_only_mode"] = label_only_mode
+            f_out.attrs["progress_label_normalization"] = "expert_index_div_Te_minus_1"
 
             # /expert group
             expert_grp = f_out.create_group("expert")
@@ -644,27 +717,49 @@ class ExpertProjectionTask(BaseTask):
 
                 # write video group
                 vid_grp = ne_grp.create_group(video_id)
-                vid_grp.create_dataset("projected_embeddings", data=res["projected_embs"].astype(np.float32), compression="gzip")
-                vid_grp.create_dataset("target_steps", data=ne_steps)
-                vid_grp.create_dataset("hard_nn_expert_index", data=res["nn_indices"].astype(np.int64))
-                vid_grp.create_dataset("hard_nn_expert_step", data=res["nn_expert_steps"])
-                vid_grp.create_dataset("hard_nn_distance", data=res["nn_distances"].astype(np.float32))
-                vid_grp.create_dataset("soft_expert_index", data=res["soft_expert_index"].astype(np.float32))
-                vid_grp.create_dataset("soft_expert_step", data=res["soft_expert_step"].astype(np.float32))
 
-                if save_entropy:
-                    vid_grp.create_dataset("entropy", data=res["entropy"].astype(np.float32))
-                    vid_grp.create_dataset("normalized_entropy", data=res["normalized_entropy"].astype(np.float32))
+                if label_only_mode:
+                    # label-only: only target_steps + progress label
+                    vid_grp.create_dataset("target_steps", data=ne_steps)
+                else:
+                    vid_grp.create_dataset("projected_embeddings", data=res["projected_embs"].astype(np.float32), compression="gzip")
+                    vid_grp.create_dataset("target_steps", data=ne_steps)
+                    vid_grp.create_dataset("hard_nn_expert_index", data=res["nn_indices"].astype(np.int64))
+                    vid_grp.create_dataset("hard_nn_expert_step", data=res["nn_expert_steps"])
+                    vid_grp.create_dataset("hard_nn_distance", data=res["nn_distances"].astype(np.float32))
+                    vid_grp.create_dataset("soft_expert_index", data=res["soft_expert_index"].astype(np.float32))
+                    vid_grp.create_dataset("soft_expert_step", data=res["soft_expert_step"].astype(np.float32))
 
-                if save_alpha:
-                    vid_grp.create_dataset("alpha", data=res["alpha"].astype(np.float32), compression="gzip")
+                    if save_entropy:
+                        vid_grp.create_dataset("entropy", data=res["entropy"].astype(np.float32))
+                        vid_grp.create_dataset("normalized_entropy", data=res["normalized_entropy"].astype(np.float32))
+
+                    if save_alpha:
+                        vid_grp.create_dataset("alpha", data=res["alpha"].astype(np.float32), compression="gzip")
+
+                # progress label
+                if save_progress_label:
+                    progress_label = _make_progress_label(res, T_e, source=progress_label_source)
+                    assert progress_label.shape == (T_q,), (
+                        f"progress_label shape mismatch: expected ({T_q},), got {progress_label.shape}"
+                    )
+                    vid_grp.create_dataset(progress_label_dataset_name, data=progress_label)
+                    print(
+                        f"  [video {video_id}] progress_label range="
+                        f"[{float(progress_label.min()):.4f}, {float(progress_label.max()):.4f}],"
+                        f" source={progress_label_source}"
+                    )
 
                 # video group attrs
                 vid_grp.attrs["mean_hard_nn_distance"] = res["mean_hard_nn_distance"]
                 vid_grp.attrs["mean_soft_expert_step"] = res["mean_soft_expert_step"]
-                if save_entropy:
+                if save_entropy and not label_only_mode:
                     vid_grp.attrs["mean_entropy"] = res["mean_entropy"]
                     vid_grp.attrs["mean_normalized_entropy"] = res["mean_normalized_entropy"]
+                if save_progress_label:
+                    vid_grp.attrs["progress_label_source"] = progress_label_source
+                    vid_grp.attrs["progress_label_min"] = float(progress_label.min())
+                    vid_grp.attrs["progress_label_max"] = float(progress_label.max())
 
         # --- global summary ---
         global_mean_hard_nn = float(np.mean(per_video_mean_hard_nn)) if per_video_mean_hard_nn else float("nan")
@@ -706,6 +801,11 @@ class ExpertProjectionTask(BaseTask):
                 )
             else:
                 demo_name_map = {}
+            # Fallback: build from idx_mapping CSV for non-robomimic (standard mode) datasets
+            if not demo_name_map:
+                _idx_csv = cfg.get("nonexpert_idx_mapping_csv", "") or ""
+                if _idx_csv and Path(_idx_csv).exists():
+                    demo_name_map = _build_demo_name_map_from_csv(_idx_csv)
 
             _video_raw_dir = cfg.get("nonexpert_video_raw_dir", "") or ""
             _save_tsne = bool(cfg.get("save_tsne_visualization", False))

@@ -18,7 +18,7 @@
 #   embedding_h5_path → absolute path to the embedding H5 file
 #   run_name          → used to construct the default output directory
 #   h5_stem           → used to construct the default output directory
-embedding_ref: comp_tt_can_ph_36_ep50k_train
+embedding_ref: can_mh_300vid_all_frozen_15k
 
 # ── Trajectory selector ──────────────────────────────────────────────
 # Controls which trajectory (or trajectories) to process:
@@ -87,7 +87,7 @@ output_dir: ~
 #   - L2-normalized embeddings: try tau around 0.1..0.4
 # The raw L2 matrix is still used internally; only the visualised values
 # and logged stats reflect the converted similarity.
-convert_to_similarity: false
+convert_to_similarity: true
 similarity_tau: 1.0
 
 # ── VOC (Velocity Ordering Consistency) metric ───────────────────────

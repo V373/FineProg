@@ -166,7 +166,7 @@ def run_in_training_eval(
 
         # ── 2. Run each task against the same embedding H5 ─────────────────
         from utils.config_v2 import ConfigV2  # noqa: PLC0415
-        from evaluate import run_eval_task  # noqa: PLC0415
+        from evaluate_encoder import run_eval_task  # noqa: PLC0415
         for task_name in valid_tasks:
             # Per-task output sub-directory keeps artifacts organised.
             task_output_dir = os.path.join(eval_output_dir, task_name)
