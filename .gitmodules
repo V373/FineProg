@@ -1,3 +1,3 @@
 [submodule "third_party/robomimic"]
 	path = third_party/robomimic
-	url = https://github.com/ARISE-Initiative/robomimic.git
+	url = git@github.com:V373/robomimic.git
