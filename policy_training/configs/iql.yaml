@@ -1,0 +1,116 @@
+algo_name: iql
+
+# Run metadata is dataset-driven (auto-inferred from dataset.h5_path / HDF5 attrs):
+#   ckpt_dir    = {save_dir_root}/{env_name}/{task_name}/{algo}_{mask}_seed{seed}_{YYYYMMDD_HHMMSS}/
+#   wandb.group = {env_name}/{task_name}
+#   wandb.name  = {env_name}/{task_name}/{algo}_{mask}_seed{seed}
+# mask_name is still auto-derived from dataset.filter_key (strip algo_name prefix) if omitted.
+# mask_name: expert        # optional override
+
+iql:
+  policy_type: MlpPolicy
+  features_extractor_type: resnet18conv
+  features_extractor_kwargs:
+    low_dim_keys:
+      - robot0_eef_pos       # dim  3
+      - robot0_eef_quat      # dim  4
+      - robot0_gripper_qpos  # dim  2
+                             # low_dim_total = 9
+    visual_specs:
+      agentview_image:
+        input_shape: [512, 3, 3]   # [C, H', W'] of precomputed ResNet18Conv feat
+        num_kp: 32                  # SpatialSoftmax keypoints  ->  [B, 32, 2]
+        temperature: 1.0
+        feature_dimension: 64      # Linear(64, 64)             ->  [B, 64]
+      robot0_eye_in_hand_image:
+        input_shape: [512, 3, 3]
+        num_kp: 32
+        temperature: 1.0
+        feature_dimension: 64
+    # features_dim = 9 + 64 + 64 = 137
+    normalize_images: false
+  # [actor_lr, critic_lr, v_lr]
+  learning_rates: [1.0e-4, 2.0e-4, 2.0e-4]
+  tau: 0.005
+  gamma: 0.99
+  n_critics: 5
+  n_critics_to_sample: 2
+  policy_extraction: awr
+  advantage_temp: 5.0 # used to be beta in the original IQL paper
+  expectile: 0.7
+  clip_score: 100.0
+  ddpg_bc_weight: 0.1
+  offline_critic_update_ratio: 1
+  target_update_interval: 1
+  actor_debug: true  # if true, log actor_diag/* diagnostics to wandb each train step
+  pi_net_arch: [512, 400, 256] # [1024, 768, 512]
+  qf_net_arch: [512, 512, 256] # [1024, 1024, 512]
+  policy_layer_norm: true
+  critic_layer_norm: true
+  actor_squash_output: true  # set false to disable tanh squashing on actor output
+
+train:
+  batch_size: 128
+  n_steps: 500000
+  log_every: 100
+  save_every: 10000
+  # Root directory for ckpt saves. The per-run subdirectory is auto-built as
+  #   {save_dir_root}/{env_name}/{task_name}/{algo}_{mask}_seed{seed}_{YYYYMMDD_HHMMSS}/
+  save_dir_root: checkpoint
+  # save_dir: <absolute-or-relative-path>   # optional literal override (skip auto-naming)
+
+eval:
+  enabled: true
+  num_workers: 16
+  worker_device: cuda
+  every_n_steps: 10000
+  warmstart_steps: 0
+  n_rollouts: 48
+  horizon: 400
+  stochastic: false
+  terminate_on_success: true
+  env_name_override: null
+  video:
+    enabled: false
+    max_episodes: 1
+    dir: null
+    skip: 5
+    fps: 20
+    frame_height: 512
+    frame_width: 512
+    camera_names: [agentview]
+  output:
+    json_dir: null
+  value:
+    enabled: true
+    masks: [better, worse]
+    batch_size: 4096
+    histogram_bins: 80
+    output_dir: null
+
+dataset:
+  # Path to the HDF5 that contains precomputed ResNet18Conv feature maps.
+  h5_path: datasets/robomimic/can/mh/reward_labeled/resnet18feats/image_2view_v15_reward_labeled_PBRS_resnet18feats.hdf5
+  obs_keys:
+    - robot0_eef_pos
+    - robot0_eef_quat
+    - robot0_gripper_qpos
+    - agentview_image           # stored as [T, 512, 3, 3] in the precomputed HDF5
+    - robot0_eye_in_hand_image  # stored as [T, 512, 3, 3] in the precomputed HDF5
+  filter_key: IQL_expert_worse
+  action_keys: null
+  strict_next_obs: true
+  normalize_obs: false   # in resnet18conv features, the visual obs are already normalized
+  normalize_actions: false
+  normalization_epsilon: 1.0e-3
+  normalization_clip: null
+
+device: cuda
+seed: 42
+
+wandb:
+  enabled: true
+  project: fineprog-policy-training
+  # group/name are auto-generated from dataset metadata; no manual edit needed.
+  # group: robomimic/can_mh
+  # name: robomimic/can_mh/iql_expert_seed42

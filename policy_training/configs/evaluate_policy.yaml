@@ -1,0 +1,21 @@
+agent: /home/user/zhangzk/projects/fineprog/policy_training/checkpoint/robomimic/can_mh/iql_expert_seed1_20260613_042513/step_100000.pt
+device: auto
+seed: 0
+policy:
+  stochastic: false
+rollout:
+  n_rollouts: 20
+  horizon: 400
+env:
+  name_override: null
+video:
+  enabled: true
+  path: null
+  skip: 5
+  fps: 20
+  frame_height: 512
+  frame_width: 512
+  camera_names: [agentview]
+output:
+  dir: outputs/eval
+  json_path: null

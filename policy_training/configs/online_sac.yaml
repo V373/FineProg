@@ -1,0 +1,124 @@
+algo_name: online_sac
+
+online_sac:
+  policy_type: MlpPolicy
+  features_extractor_type: resnet18conv
+  features_extractor_kwargs:
+    low_dim_keys:
+      - robot0_eef_pos
+      - robot0_eef_quat
+      - robot0_gripper_qpos
+    visual_specs:
+      agentview_image:
+        input_shape: [512, 3, 3]
+        num_kp: 32
+        temperature: 1.0
+        feature_dimension: 64
+      robot0_eye_in_hand_image:
+        input_shape: [512, 3, 3]
+        num_kp: 32
+        temperature: 1.0
+        feature_dimension: 64
+    normalize_images: false
+  learning_rates: [1.0e-4, 2.0e-4, 1.0e-4]
+  gamma: 0.99
+  tau: 0.005
+  n_critics: 5
+  n_critics_to_sample: 2
+  target_update_interval: 1
+  target_critic_reduction: min
+  train_critic_with_entropy: true
+  ent_coef: auto
+  target_entropy: auto
+  pi_net_arch: [512, 400, 256]
+  qf_net_arch: [512, 512, 256]
+  policy_layer_norm: true
+  critic_layer_norm: true
+  actor_squash_output: true
+
+online:
+  buffer_size: 200000
+  learning_starts: 1000 # in the first 1000 steps, only add to buffer without policy training
+  train_freq: 1
+  gradient_steps: 1
+  action_chunk_size: 1
+  horizon: 400
+  terminate_on_done: true
+  reward:
+    type: sparse_done
+    sparse_scale: 1.0
+    pbrs_gamma: 0.99
+  reward_model:
+    enabled: true
+    kind: tcc_expert_projection
+    checkpoint_path: ../checkpoint/COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_can_ph-36vid_train-resnet50_conv4c-frozen-20260603-145310/encoder_epoch050000.pt
+    expert_path_h5: ../datasets/embeddings/COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_can_ph-36vid_train-resnet50_conv4c-frozen-20260603-145310/robomimic_can_ph-36vid_train-embd-mean_path.h5
+    expert_group: videos/mean
+    projection_temperature: 0.1
+    clip_len: 20
+    context_size: 2
+    context_stride: 15
+    pretrained: true
+    train_config_path: ../wandb/run-20260603_145310-4ttyq0kl/files/train.yaml
+    image_key: agentview_image
+    image_height: 224
+    image_width: 224
+  offline_warmstart:
+    enabled: false
+  mixed_buffer:
+    enabled: false
+
+train:
+  batch_size: 128
+  n_steps: 300000
+  log_every: 100
+  save_every: 10000
+  save_dir_root: checkpoint
+
+eval:
+  enabled: true
+  num_workers: 16
+  worker_device: cuda
+  every_n_steps: 10000
+  warmstart_steps: 0
+  n_rollouts: 48
+  horizon: 400
+  stochastic: false
+  terminate_on_success: true
+  env_name_override: null
+  video:
+    enabled: true
+    max_episodes: 1
+    dir: null
+    skip: 5
+    fps: 20
+    frame_height: 512
+    frame_width: 512
+    camera_names: [agentview]
+  output:
+    json_dir: null
+  value:
+    enabled: false
+
+dataset:
+  h5_path: datasets/robomimic/can/mh/reward_labeled/resnet18feats/image_2view_v15_reward_labeled_PBRS_resnet18feats.hdf5
+  obs_keys:
+    - robot0_eef_pos
+    - robot0_eef_quat
+    - robot0_gripper_qpos
+    - agentview_image
+    - robot0_eye_in_hand_image
+  filter_key: IQL_expert_worse
+  action_keys: null
+  strict_next_obs: true
+  normalize_obs: false
+  normalize_actions: false
+  normalization_epsilon: 1.0e-3
+  normalization_clip: null
+
+device: cuda
+seed: 42
+
+wandb:
+  enabled: true
+  project: fineprog-policy-training
