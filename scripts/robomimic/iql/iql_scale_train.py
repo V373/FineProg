@@ -58,20 +58,22 @@ DATASET_LABELS = {
 
 MASKS = [
     # "IQL_expert_half",
-    "IQL_expert",
+    # "IQL_expert",
     # "IQL_epxert_okay_halfmix",
-    "IQL_expert_worse_halfmix",
+    # "IQL_expert_worse_halfmix",
     "IQL_expert_worse",
-    "IQL_okay_worse",
+    # "IQL_okay_worse",
     # "IQL_expert_okay_worse_halfmix",
 ]
+# MASKS = ["better_train"]
 
 # SEEDS = [1, 2, 3, 4, 5]
 SEEDS = [1, 2, 3]
+# SEEDS = [1]
 # Smoke test: temporarily set MASKS = MASKS[:1], DATASETS = DATASETS[:1], SEEDS = [1, 2]
 # to verify that 2 seed runs land in the same W&B group before launching the full experiment.
 
-MAX_PARALLEL  = 1 # Set to 1 if only have single GPU
+MAX_PARALLEL  = 2 # Set to 1 if only have single GPU
 STATUS_INTERVAL = 15  # seconds between status prints
 
 # ── Global state (protected by _lock) ────────────────────────────────────────

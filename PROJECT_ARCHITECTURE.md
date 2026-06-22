@@ -8,9 +8,9 @@
 
 ```
 mytcc/
-├── train.py                    # 训练入口（当前默认走 ConfigV2）
+├── train_encoder.py            # 训练入口（当前默认走 ConfigV2）
 ├── extract_embeddings.py       # 嵌入提取入口（当前默认走 ConfigV2）
-├── evaluate.py                 # 评估入口（当前默认走 ConfigV2）
+├── evaluate_encoder.py         # 评估入口（当前默认走 ConfigV2）
 ├── _smoke_test_in_training_eval.py   # in-training eval 烟测脚本
 ├── tmp_rerun_expert_projection_visuals.py  # 已有 expert projection 结果的可视化重跑工具
 ├── models/                     # 神经网络模型定义
@@ -92,7 +92,7 @@ mytcc/
 
 ```
 [阶段1: 训练]           [阶段2: 提取嵌入]           [阶段3: 评估/可视化]
-train.py          →   extract_embeddings.py   →   evaluate.py
+train_encoder.py  →   extract_embeddings.py   →   evaluate_encoder.py
     ↓                         ↓                        ↓
 datasets/processed/   datasets/embeddings/      Kendall's Tau
    (训练集 H5)           (嵌入向量 H5)             (标量指标)
@@ -118,12 +118,12 @@ datasets/embeddings/{run_name}/{dataset_stem}-embd-labeled.h5
 ```
 
 **当前入口状态补充**：
-- `train.py`、`extract_embeddings.py`、`evaluate.py` 当前统一通过 `ConfigV2` 读取 `configs_v2/`。
+- `train_encoder.py`、`extract_embeddings.py`、`evaluate_encoder.py` 当前统一通过 `ConfigV2` 读取 `configs_v2/`。
 - 旧版 `configs/` 与 `current_run.yaml` 已移除，主流程不再保留 v1 fallback。
-- `dataset_preparation/mp4vid_to_h5data.py`、`train.py`、`extract_embeddings.py`、`scripts/compute_mean_embedding_path.py` 均支持通过 `--register` 调用 `RegistryV2`，把数据集 / run / embedding 工件追加登记到 `configs_v2/registry/`。
-- `train.py` 新增可选 backbone feature cache 分支，适用于 `train_base in {only_bn, frozen}` 且 `extract_backbone_cache=true` 的训练路径。
-- `train.py` 还支持 `in_training_eval` 配置块：在 checkpoint 保存后复用一份临时 embedding 执行训练中评估，当前落地任务为 `latent_distance_heatmap` 与 `kendalls_tau`。
-- `evaluate.py` 暴露 `run_eval_task()` 供 `utils/in_training_eval.py` 和批处理脚本复用，因此部分评估既可命令行运行，也可被程序化调用。
+- `dataset_preparation/mp4vid_to_h5data.py`、`train_encoder.py`、`extract_embeddings.py`、`scripts/compute_mean_embedding_path.py` 均支持通过 `--register` 调用 `RegistryV2`，把数据集 / run / embedding 工件追加登记到 `configs_v2/registry/`。
+- `train_encoder.py` 新增可选 backbone feature cache 分支，适用于 `train_base in {only_bn, frozen}` 且 `extract_backbone_cache=true` 的训练路径。
+- `train_encoder.py` 还支持 `in_training_eval` 配置块：在 checkpoint 保存后复用一份临时 embedding 执行训练中评估，当前落地任务为 `latent_distance_heatmap` 与 `kendalls_tau`。
+- `evaluate_encoder.py` 暴露 `run_eval_task()` 供 `utils/in_training_eval.py` 和批处理脚本复用，因此部分评估既可命令行运行，也可被程序化调用。
 
 ---
 
@@ -190,18 +190,18 @@ TCCTemporalEmbedder
 
 ---
 
-## 四-B、评估系统详细框架（`evaluate.py` + `algos/eval_task/`）
+## 四-B、评估系统详细框架（`evaluate_encoder.py` + `algos/eval_task/`）
 
 ### 总体架构
 
-评估当前以 **V2 配置 + 离线 embedding 工件** 为主：`evaluate.py` 不重跑 encoder，而是从 `configs_v2/eval/{task}.yaml` 读取任务配置，再由 `ConfigV2` 把 `embedding_ref` / `dataset_ref` 解析为具体路径。
+评估当前以 **V2 配置 + 离线 embedding 工件** 为主：`evaluate_encoder.py` 不重跑 encoder，而是从 `configs_v2/eval/{task}.yaml` 读取任务配置，再由 `ConfigV2` 把 `embedding_ref` / `dataset_ref` 解析为具体路径。
 
 ```
 configs_v2/
     project.yaml + registry/*.yaml   → dataset / run / embedding 别名解析
     eval/{task_name}.yaml            → 任务超参数与输入 ref
           ↓
-evaluate.py  main(--task)
+evaluate_encoder.py  main(--task)
     ① ConfigV2.load_eval(task_name)
     ② resolve *_embedding_ref / *_dataset_ref → absolute paths
     ③ 单 H5 任务: load_embeddings_h5()
@@ -446,10 +446,10 @@ python dataset_preparation/add_phase_labels.py \
 | `registry/datasets.yaml` | dataset alias → `processed_h5`、`raw_dir`、`robomimic_hdf5`、`mask_key`、`phase_labels_csv` |
 | `registry/runs.yaml` | run alias → `run_name`、`checkpoint_epoch`；embedding alias → `run_ref`、`dataset_ref`、`variant` |
 | `data_process.yaml` | `mp4vid_to_h5data.py` 的处理阶段配置 |
-| `train.yaml` | `train.py` 的训练阶段配置；含采样参数、backbone cache、`loss_name` / `loss_config`、`in_training_eval` |
+| `train.yaml` | `train_encoder.py` 的训练阶段配置；含采样参数、backbone cache、`loss_name` / `loss_config`、`in_training_eval` |
 | `extract.yaml` | `extract_embeddings.py` 的提取阶段配置；解析 `checkpoint_ref` / `extract_dataset` |
 | `loss/*.yaml` | `loss_tcc.yaml` / `loss_temporal_infonce.yaml` / `loss_temporal_triplet.yaml` / `loss_composite_*.yaml` 等损失超参数 |
-| `eval/*.yaml` | `evaluate.py --task ...` 的任务配置 |
+| `eval/*.yaml` | `evaluate_encoder.py --task ...` 的任务配置 |
 | `visualize/base.yaml` + `visualize/*.yaml` | t-SNE / phase / gap-analysis / mean-path 等可视化配置 |
 
 **运行时角色**：
@@ -515,7 +515,7 @@ with h5py.File("pouring-2vid-embd-labeled.h5") as f:
             kf = grp["keyframe_labels"][:]   # [T_out] int64
 ```
 
-**t-SNE phase-label H5 格式**（`datasets/embeddings/{run_name}/embd_tsne_phase_label.h5`，由 `evaluate.py` 分类任务 `gen_tsne_phase_label: true` 时生成）：
+**t-SNE phase-label H5 格式**（`datasets/embeddings/{run_name}/embd_tsne_phase_label.h5`，由 `evaluate_encoder.py` 分类任务 `gen_tsne_phase_label: true` 时生成）：
 ```
 /videos/<video_id>/          # train 视频在前；val 视频在后，ID 冲突时键名加 "val_" 前缀
     embeddings   [T, 128]  float32
@@ -603,12 +603,12 @@ processed/{dataset}-{N}vid.h5
     ↓  H5VideoDataset (h5vid_dataset.py)
     ↓  操作: 随机采样 clip_len 帧 + 构建因果上下文窗口
     ↓  (DataLoader, batch_size=2)
-train.py → TCCEncoder → build_loss(loss_name) → checkpoint/
+train_encoder.py → TCCEncoder → build_loss(loss_name) → checkpoint/
     ↓  extract_embeddings.py (sample_all=True, batch_size=1)
 embeddings/{run_name}/{dataset}-embd.h5
     ↓  add_phase_labels.py  --embd_h5 ...  --keyframes_csv ...
 embeddings/{run_name}/{dataset}-embd-labeled.h5   （含 phase/keyframe 标注）
-    ↓  evaluate.py / visualize_embeddings_tsne*.py
+    ↓  evaluate_encoder.py / visualize_embeddings_tsne*.py
 Kendall / Classification / Expert Projection / Latent Distance Heatmap(VOC) / t-SNE
 ```
 
@@ -645,3 +645,11 @@ CSV 列说明：
 - `name`：视频文件名（去扩展名），与 `processed H5` 中的 `video_id` 对应
 - `id`：零填充六位数字 ID，与 `pouring_train56-56vid.h5` 中按字母序分配的 key 对应
 - `key_frame_idx`：该关键事件帧在原始视频中的帧编号（10fps 下采样后）
+
+---
+
+## 十、third_party/robomimic（仅 IQL training recipe）
+
+- IQL 模板配置位于 `third_party/robomimic/robomimic/exps/templates/iql.json`，训练侧默认 `amp_enabled=true`、`pin_memory=true`、`hdf5_filter_key="IQL_expert_worse"`、`batch_size=256`、`num_epochs=2000`。
+- IQL 算法实现位于 `third_party/robomimic/robomimic/algo/iql.py`：双 Q critic + target critic、独立 V 网络（expectile 回归）、actor 使用 advantage-weighted regression（权重 `exp(adv / beta)`）。
+- IQL 基础超参数定义位于 `third_party/robomimic/robomimic/config/iql_config.py`，模板常用组合为 `adv.beta=3.0`、`vf_quantile=0.8`（其余参数按模板与实验配置覆盖）。
