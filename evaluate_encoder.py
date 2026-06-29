@@ -155,9 +155,14 @@ def run_eval_task(task_name: str, resolved: dict) -> dict:
         task.configure(resolved)
         return task.evaluate(embeddings_dataset)
 
+    if task_name == "activation_map":
+        task = build_task("activation_map")
+        task.configure(resolved)
+        return task.evaluate(None)
+
     raise NotImplementedError(
         f"[run_eval_task] Task '{task_name}' is not supported for programmatic calls. "
-        "Supported: latent_distance_heatmap, kendalls_tau."
+        "Supported: latent_distance_heatmap, kendalls_tau, activation_map."
     )
 
 
@@ -187,7 +192,7 @@ def main(task_name: str | None = None) -> None:
     # Load embeddings (for tasks that need a single embedding H5)
     # -----------------------------------------------------------------------
     embeddings_dataset = None
-    if task_name not in ("classification", "expert_projection", "latent_distance_heatmap"):
+    if task_name not in ("classification", "expert_projection", "latent_distance_heatmap", "activation_map"):
         embedding_save_path = resolved.get("embedding_h5_path")
         if not embedding_save_path:
             raise ValueError(
@@ -218,6 +223,15 @@ def main(task_name: str | None = None) -> None:
         print(f"[evaluate] output_dir           : {resolved['output_dir']}")
 
         task = build_task("latent_distance_heatmap")
+        task.configure(resolved)
+        result = task.evaluate(None)
+
+    elif task_name == "activation_map":
+        print(f"[evaluate] dataset_h5_path      : {resolved['dataset_h5_path']}")
+        print(f"[evaluate] checkpoint_path      : {resolved['checkpoint_path']}")
+        print(f"[evaluate] output_dir           : {resolved['output_dir']}")
+
+        task = build_task("activation_map")
         task.configure(resolved)
         result = task.evaluate(None)
 
@@ -255,7 +269,7 @@ def main(task_name: str | None = None) -> None:
     else:
         raise NotImplementedError(
             f"Task '{task_name}' is not supported. "
-            "Supported tasks: kendalls_tau, classification, expert_projection, latent_distance_heatmap."
+            "Supported tasks: kendalls_tau, classification, expert_projection, latent_distance_heatmap, activation_map."
         )
 
     # --- print results ---
@@ -275,7 +289,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Evaluate TCC embeddings on downstream tasks")
     parser.add_argument(
         "--task", type=str, default="kendalls_tau",
-        choices=["kendalls_tau", "expert_projection", "classification", "latent_distance_heatmap"],
+        choices=["kendalls_tau", "expert_projection", "classification", "latent_distance_heatmap", "activation_map"],
         help="[v2] Evaluation task (default: kendalls_tau). "
              "Config is read from configs_v2/eval/<task>.yaml.",
     )

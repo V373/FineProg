@@ -34,7 +34,8 @@ class H5VideoDataset(Dataset):
         sampling_strategy: str = "offset_uniform",
         random_offset: int = 0,
         sample_all: bool = False,
-        sample_all_stride: int = 1
+        sample_all_stride: int = 1,
+        transport_frames_as_uint8: bool = False,
     ):
         """
         Initialize H5 Video Dataset.
@@ -69,6 +70,7 @@ class H5VideoDataset(Dataset):
             self.random_offset = config.get('random_offset', random_offset)
             self.sample_all = config.get('sample_all', sample_all)
             self.sample_all_stride = config.get('sample_all_stride', sample_all_stride)
+            self.transport_frames_as_uint8 = config.get('transport_frames_as_uint8', transport_frames_as_uint8)
             print(f"[H5VideoDataset] Loaded config from {config_path}")
         else:
             self.clip_len = clip_len
@@ -78,6 +80,7 @@ class H5VideoDataset(Dataset):
             self.random_offset = random_offset
             self.sample_all = sample_all
             self.sample_all_stride = sample_all_stride
+            self.transport_frames_as_uint8 = transport_frames_as_uint8
         
         assert self.sampling_strategy in ["stride", "offset_uniform"], \
             f"Unknown sampling strategy: {self.sampling_strategy}"
@@ -103,6 +106,7 @@ class H5VideoDataset(Dataset):
             print(f"  - context_stride: {self.context_stride}")
             print(f"  - sampling_strategy: {self.sampling_strategy}")
             print(f"  - random_offset: {self.random_offset}")
+        print(f"  - transport_frames_as_uint8: {self.transport_frames_as_uint8}")
     
     def __len__(self) -> int:
         """Return number of videos in dataset."""
@@ -266,11 +270,14 @@ class H5VideoDataset(Dataset):
         # Result: [T_out, context_size, 224, 224, 3]
         # Clamp all indices at once, then use numpy fancy indexing (vectorized)
         idx_clamped = np.minimum(context_indices, seq_len - 1)  # [T_out, context_size]
-        output_frames = frames_np[idx_clamped].astype(np.float32) / 255.0  # [T_out, context_size, 224, 224, 3]
+        output_frames = frames_np[idx_clamped]  # [T_out, context_size, 224, 224, 3] uint8
         
         # Step 4: Convert to torch tensor and transpose to [T_out, context_size, 3, 224, 224]
         # From [T_out, context_size, 224, 224, 3] to [T_out, context_size, 3, 224, 224]
-        output_tensor = torch.from_numpy(output_frames)  # [T_out, context_size, 224, 224, 3]
+        if self.transport_frames_as_uint8:
+            output_tensor = torch.from_numpy(output_frames)
+        else:
+            output_tensor = torch.from_numpy(output_frames.astype(np.float32) / 255.0)
         output_tensor = output_tensor.permute(0, 1, 4, 2, 3)  # [T_out, context_size, 3, 224, 224]
         
         return {
@@ -341,7 +348,8 @@ def build_dataloader(
     shuffle: bool = True,
     split: str = "train",
     sample_all: bool = False,
-    sample_all_stride: int = 1
+    sample_all_stride: int = 1,
+    transport_frames_as_uint8: bool = False,
 ) -> torch.utils.data.DataLoader:
     """
     Build PyTorch DataLoader for H5 video dataset.
@@ -374,6 +382,7 @@ def build_dataloader(
     config_shuffle = shuffle
     config_sample_all = sample_all
     config_sample_all_stride = sample_all_stride
+    config_transport_frames_as_uint8 = transport_frames_as_uint8
     
     if config_path is not None and Path(config_path).exists():
         with open(config_path, 'r') as f:
@@ -388,6 +397,7 @@ def build_dataloader(
         config_shuffle = config.get('shuffle', shuffle)
         config_sample_all = config.get('sample_all', sample_all)
         config_sample_all_stride = config.get('sample_all_stride', sample_all_stride)
+        config_transport_frames_as_uint8 = config.get('transport_frames_as_uint8', transport_frames_as_uint8)
         print(f"[build_dataloader] Loaded config from {config_path}")
     
     # h5_path_override always wins (e.g. from CLI --h5_path argument)
@@ -408,7 +418,8 @@ def build_dataloader(
         h5_path=config_h5_path,
         config_path=config_path,
         sample_all=config_sample_all,
-        sample_all_stride=config_sample_all_stride
+        sample_all_stride=config_sample_all_stride,
+        transport_frames_as_uint8=config_transport_frames_as_uint8,
     )
     
     # Create dataloader with custom collate_fn
@@ -428,6 +439,7 @@ def build_dataloader(
     print(f"  - num_workers: {config_num_workers}")
     print(f"  - shuffle: {config_shuffle}")
     print(f"  - sample_all: {config_sample_all}")
+    print(f"  - transport_frames_as_uint8: {config_transport_frames_as_uint8}")
     if config_sample_all:
         print(f"  - sample_all_stride: {config_sample_all_stride}")
     

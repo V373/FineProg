@@ -89,6 +89,11 @@ if str(_project_root) not in sys.path:
 from algos.loss.encoder_loss import BaseEncoderLoss
 
 
+def _to_metric_tensor(value: float, *, device: torch.device) -> torch.Tensor:
+    """Create a detached float32 tensor for epoch-level metric aggregation."""
+    return torch.tensor(value, device=device, dtype=torch.float32)
+
+
 # ---------------------------------------------------------------------------
 # Default configuration
 # ---------------------------------------------------------------------------
@@ -539,22 +544,23 @@ class TemporalTripletLoss(BaseEncoderLoss):
         # ── Safe zero-loss fallback ─────────────────────────────────────
         if not all_hinge:
             safe_loss = embeddings.sum() * 0.0
+            nan_metric = _to_metric_tensor(float("nan"), device=device)
             return {
                 "loss": safe_loss,
                 "metrics": {
-                    "loss_total":                    float("nan"),
-                    "loss_temporal_triplet":         float("nan"),
-                    "num_valid_triplets":            0,
-                    "num_sampled_triplets":          0,
-                    "num_clips_with_valid_triplets": 0,
-                    "mean_d_ap":                     float("nan"),
-                    "mean_d_an":                     float("nan"),
-                    "mean_d_an_capped":              float("nan"),
-                    "triplet_accuracy_margin":       float("nan"),
-                    "active_triplet_fraction":       float("nan"),
-                    "mean_emb_l2norm":               mean_emb_l2norm,
-                    "mean_dynamic_margin":           float("nan"),
-                    "mean_time_gap":                 float("nan"),
+                    "loss_total":                    nan_metric,
+                    "loss_temporal_triplet":         nan_metric,
+                    "num_valid_triplets":            _to_metric_tensor(0.0, device=device),
+                    "num_sampled_triplets":          _to_metric_tensor(0.0, device=device),
+                    "num_clips_with_valid_triplets": _to_metric_tensor(0.0, device=device),
+                    "mean_d_ap":                     nan_metric,
+                    "mean_d_an":                     nan_metric,
+                    "mean_d_an_capped":              nan_metric,
+                    "triplet_accuracy_margin":       nan_metric,
+                    "active_triplet_fraction":       nan_metric,
+                    "mean_emb_l2norm":               _to_metric_tensor(mean_emb_l2norm, device=device),
+                    "mean_dynamic_margin":           nan_metric,
+                    "mean_time_gap":                 nan_metric,
                 },
             }
 
@@ -591,18 +597,18 @@ class TemporalTripletLoss(BaseEncoderLoss):
         return {
             "loss": batch_loss,
             "metrics": {
-                "loss_total":                    batch_loss.detach().item(),
-                "loss_temporal_triplet":         batch_loss.detach().item(),
-                "num_valid_triplets":            total_valid_triplets,
-                "num_sampled_triplets":          N_sampled,
-                "num_clips_with_valid_triplets": n_clips_with_valid,
-                "mean_d_ap":                     mean_d_ap_val,
-                "mean_d_an":                     mean_d_an_val,
-                "mean_d_an_capped":              mean_d_an_capped_val,
-                "triplet_accuracy_margin":       acc_margin,
-                "active_triplet_fraction":       active_frac,
-                "mean_emb_l2norm":               mean_emb_l2norm,
-                "mean_dynamic_margin":           mean_dyn_margin_val,
-                "mean_time_gap":                 mean_time_gap_val,
+                "loss_total":                    batch_loss.detach(),
+                "loss_temporal_triplet":         batch_loss.detach(),
+                "num_valid_triplets":            _to_metric_tensor(float(total_valid_triplets), device=device),
+                "num_sampled_triplets":          _to_metric_tensor(float(N_sampled), device=device),
+                "num_clips_with_valid_triplets": _to_metric_tensor(float(n_clips_with_valid), device=device),
+                "mean_d_ap":                     _to_metric_tensor(mean_d_ap_val, device=device),
+                "mean_d_an":                     _to_metric_tensor(mean_d_an_val, device=device),
+                "mean_d_an_capped":              _to_metric_tensor(mean_d_an_capped_val, device=device),
+                "triplet_accuracy_margin":       _to_metric_tensor(acc_margin, device=device),
+                "active_triplet_fraction":       _to_metric_tensor(active_frac, device=device),
+                "mean_emb_l2norm":               _to_metric_tensor(mean_emb_l2norm, device=device),
+                "mean_dynamic_margin":           _to_metric_tensor(mean_dyn_margin_val, device=device),
+                "mean_time_gap":                 _to_metric_tensor(mean_time_gap_val, device=device),
             },
         }

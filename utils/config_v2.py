@@ -327,6 +327,7 @@ class ConfigV2:
             "expert_projection":         self._resolve_expert_projection,
             "classification":            self._resolve_classification,
             "latent_distance_heatmap":   self._resolve_latent_distance_heatmap,
+            "activation_map":            self._resolve_activation_map,
         }
         if task_name not in _resolvers:
             raise ValueError(
@@ -426,6 +427,39 @@ class ConfigV2:
                     / run_name
                     / stem
                 )
+        return cfg
+
+    def _resolve_activation_map(self, cfg: dict) -> dict:
+        """Resolve ``activation_map`` eval config.
+
+        Resolved keys added
+        -------------------
+        dataset_h5_path   Absolute path to the processed dataset H5.
+        checkpoint_path   Absolute path to the encoder checkpoint.
+        output_dir        Derived as outputs/activation_map/<run_name>/<h5_stem>/
+                          unless explicitly overridden in the YAML.
+        """
+        cfg = dict(cfg)
+
+        ds_ref = cfg.get("dataset_ref")
+        if ds_ref and not cfg.get("dataset_h5_path"):
+            ds = self.resolve_dataset(ds_ref)
+            cfg["dataset_h5_path"] = ds["processed_h5_path"]
+            cfg["dataset_h5_stem"] = ds["h5_stem"]
+
+        ckpt_ref = cfg.get("checkpoint_ref")
+        if ckpt_ref and not cfg.get("checkpoint_path"):
+            run_entry = self.resolve_run(ckpt_ref)
+            cfg["checkpoint_path"] = run_entry["checkpoint_path"]
+            cfg["run_name"] = run_entry["run_name"]
+
+        if not cfg.get("output_dir"):
+            run_name = cfg.get("run_name", "activation_map")
+            dataset_stem = cfg.get("dataset_h5_stem") or Path(cfg.get("dataset_h5_path", "dataset")).stem
+            cfg["output_dir"] = str(
+                Path(self._dirs["outputs"]) / "activation_map" / run_name / dataset_stem
+            )
+
         return cfg
 
     # ------------------------------------------------------------------ #

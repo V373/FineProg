@@ -59,6 +59,14 @@ runs:
     train_base:       only_bn
     checkpoint_epoch: 50000
 
+  comp_tt_square_ph_36_ep20k:
+    description: "Square PH 36-vid Composite(TCC+TT), epoch 20000"
+    run_name:         COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_square_ph-36vid_train-resnet50_conv4c-only_bn-20260627-125332
+    train_dataset:    robomimic_square_ph_36vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 20000
+
   # ── Robomimic Lift PH ────────────────────────────────────────────────
   lift_ph_36_ep50k:
     description: "Lift PH 36-vid, epoch 50000"
@@ -132,6 +140,22 @@ runs:
     backbone:         resnet50_conv4c
     train_base:       only_bn
     checkpoint_epoch: 40000
+
+  comp_tt_can_ph_36_ep40k_r4:
+    description: "Can PH 36-vid Composite(TCC+TT), epoch 40000, with batchsize 12 trained"
+    run_name:         COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_can_ph-36vid_train-resnet50_conv4c-only_bn-20260622-160437
+    train_dataset:    robomimic_can_ph_36vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 40000
+
+  comp_tt_can_ph_36_ep20k_r4:
+    description: "Can PH 36-vid Composite(TCC+TT), epoch 20000, with batchsize 12 trained"
+    run_name:         COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_can_ph-36vid_train-resnet50_conv4c-only_bn-20260622-160437
+    train_dataset:    robomimic_can_ph_36vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 20000
 
   # ── Can PH 36-vid · Composite(TCC+TemporalTriplet) · epoch 50k ──────
   comp_tt_can_ph_36_ep50k:
@@ -263,6 +287,35 @@ embeddings:
     run_ref:     square_ph_36_ep50k
     dataset_ref: robomimic_square_ph_20vid_valid
     variant:     standard
+
+  # ── Square PH 36-vid · Composite(TCC+TT) · epoch 20k ────────────────
+  comp_tt_square_ph_36_train_ep20k:
+    description: "Square PH 36-vid train embeddings, Composite(TCC+TT) ep20k"
+    run_ref:     comp_tt_square_ph_36_ep20k
+    dataset_ref: robomimic_square_ph_36vid_train
+    variant:     standard
+    embedding_h5_path: datasets/embeddings/COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_square_ph-36vid_train-resnet50_conv4c-only_bn-20260627-125332/robomimic_square_ph-36vid_train-embd-ep020000.h5
+
+  comp_tt_square_ph_36_valid_ep20k:
+    description: "Square PH 4-vid valid embeddings, Composite(TCC+TT) ep20k"
+    run_ref:     comp_tt_square_ph_36_ep20k
+    dataset_ref: robomimic_square_ph_4vid_valid
+    variant:     standard
+    embedding_h5_path: datasets/embeddings/COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_square_ph-36vid_train-resnet50_conv4c-only_bn-20260627-125332/robomimic_square_ph-4vid_valid-embd-ep020000.h5
+
+  comp_tt_square_ph_36_square_mh_worse_ep20k:
+    description: "Square MH 100-vid worse embeddings, Composite(TCC+TT) ep20k"
+    run_ref:     comp_tt_square_ph_36_ep20k
+    dataset_ref: robomimic_square_mh_100vid_worse
+    variant:     standard
+    embedding_h5_path: datasets/embeddings/COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_square_ph-36vid_train-resnet50_conv4c-only_bn-20260627-125332/robomimic_square_mh-100vid_worse-embd-ep020000.h5
+
+  comp_tt_square_ph_36_train_mean_path_ep20k:
+    description: "Square PH 36-vid train mean-path, Composite(TCC+TT) ep20k"
+    run_ref:     comp_tt_square_ph_36_ep20k
+    dataset_ref: robomimic_square_ph_36vid_train
+    variant:     mean_path
+    embedding_h5_path: datasets/embeddings/COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_square_ph-36vid_train-resnet50_conv4c-only_bn-20260627-125332/robomimic_square_ph-36vid_train-embd-mean_path-ep020000.h5
 
   # ── Square PH 90 · epoch 50k ──────────────────────────────────────────
   square_ph_valid_20_from_90_ep50k:
@@ -426,6 +479,60 @@ embeddings:
     run_ref:     comp_tt_can_ph_36_ep40k_r3
     dataset_ref: robomimic_can_ph_36vid_train
     variant:     mean_path
+
+  # ── Can PH 36-vid · Composite(TCC+TT) seed4 · epoch 40k ──────────────
+  comp_tt_can_ph_36_r4_train:
+    description: "Can PH 36-vid train embeddings, Composite(TCC+TT) ep40k, latest trained with batchsize 12"
+    run_ref:     comp_tt_can_ph_36_ep40k_r4
+    dataset_ref: robomimic_can_ph_36vid_train
+    variant:     standard
+
+  comp_tt_can_ph_36_r4_valid:
+    description: "Can PH 4-vid valid embeddings, Composite(TCC+TT) ep40k, latest trained with batchsize 12"
+    run_ref:     comp_tt_can_ph_36_ep40k_r4
+    dataset_ref: robomimic_can_ph_4vid_valid
+    variant:     standard
+
+  comp_tt_can_ph_36_r4_can_mh_worse:
+    description: "Can MH 100-vid worse embeddings, Composite(TCC+TT) ep40k, latest trained with batchsize 12"
+    run_ref:     comp_tt_can_ph_36_ep40k_r4
+    dataset_ref: robomimic_can_mh_100vid_worse
+    variant:     standard
+
+  comp_tt_can_ph_36_r4_train_mean_path:
+    description: "Can PH 36-vid train mean-path, Composite(TCC+TT) ep40k, latest trained with batchsize 12"
+    run_ref:     comp_tt_can_ph_36_ep40k_r4
+    dataset_ref: robomimic_can_ph_36vid_train
+    variant:     mean_path
+
+  # ── Can PH 36-vid · Composite(TCC+TT) seed4 · epoch 20k ──────────────
+  comp_tt_can_ph_36_r4_train_ep20k:
+    description: "Can PH 36-vid train embeddings, Composite(TCC+TT) ep20k, latest trained with batchsize 12"
+    run_ref:     comp_tt_can_ph_36_ep20k_r4
+    dataset_ref: robomimic_can_ph_36vid_train
+    variant:     standard
+    embedding_h5_path: datasets/embeddings/COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_can_ph-36vid_train-resnet50_conv4c-only_bn-20260622-160437/robomimic_can_ph-36vid_train-embd-ep020000.h5
+
+  comp_tt_can_ph_36_r4_valid_ep20k:
+    description: "Can PH 4-vid valid embeddings, Composite(TCC+TT) ep20k, latest trained with batchsize 12"
+    run_ref:     comp_tt_can_ph_36_ep20k_r4
+    dataset_ref: robomimic_can_ph_4vid_valid
+    variant:     standard
+    embedding_h5_path: datasets/embeddings/COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_can_ph-36vid_train-resnet50_conv4c-only_bn-20260622-160437/robomimic_can_ph-4vid_valid-embd-ep020000.h5
+
+  comp_tt_can_ph_36_r4_can_mh_worse_ep20k:
+    description: "Can MH 100-vid worse embeddings, Composite(TCC+TT) ep20k, latest trained with batchsize 12"
+    run_ref:     comp_tt_can_ph_36_ep20k_r4
+    dataset_ref: robomimic_can_mh_100vid_worse
+    variant:     standard
+    embedding_h5_path: datasets/embeddings/COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_can_ph-36vid_train-resnet50_conv4c-only_bn-20260622-160437/robomimic_can_mh-100vid_worse-embd-ep020000.h5
+
+  comp_tt_can_ph_36_r4_train_mean_path_ep20k:
+    description: "Can PH 36-vid train mean-path, Composite(TCC+TT) ep20k, latest trained with batchsize 12"
+    run_ref:     comp_tt_can_ph_36_ep20k_r4
+    dataset_ref: robomimic_can_ph_36vid_train
+    variant:     mean_path
+    embedding_h5_path: datasets/embeddings/COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_can_ph-36vid_train-resnet50_conv4c-only_bn-20260622-160437/robomimic_can_ph-36vid_train-embd-mean_path-ep020000.h5
 
   # ── Can PH 36-vid · TCC · epoch 40k ──────────────────────────────────
   tcc_can_ph_36_train:

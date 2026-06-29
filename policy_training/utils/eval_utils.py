@@ -47,10 +47,11 @@ DEFAULT_EVAL_CONFIG = {
     "device": "auto",
     "seed": 0,
     "policy": {"stochastic": False},
-    "rollout": {"n_rollouts": 27, "horizon": 400, "num_workers": 1},
+    "rollout": {"n_rollouts": 27, "horizon": 400, "num_workers": 1, "worker_device": "auto"},
     "env": {"name_override": None},
     "video": {
         "enabled": False,
+        "max_episodes": 1,
         "path": None,
         "skip": 5,
         "fps": 20,
@@ -133,12 +134,18 @@ def _apply_cli_overrides(runtime_cfg: EvalRuntimeConfig, args: Any) -> dict[str,
         values["agent"] = args.agent
     if args.device is not None:
         values["device"] = args.device
-    if args.seed is not None:
+    if getattr(args, "seeds", None) is not None:
+        values["seed"] = list(args.seeds)
+    elif args.seed is not None:
         values["seed"] = args.seed
     if args.n_rollouts is not None:
         values["rollout"]["n_rollouts"] = args.n_rollouts
     if args.horizon is not None:
         values["rollout"]["horizon"] = args.horizon
+    if getattr(args, "num_workers", None) is not None:
+        values["rollout"]["num_workers"] = args.num_workers
+    if getattr(args, "worker_device", None) is not None:
+        values["rollout"]["worker_device"] = args.worker_device
     if args.env is not None:
         values["env"]["name_override"] = args.env
     if getattr(args, "no_video", False):
@@ -173,6 +180,13 @@ def _resolve_eval_output_path(path_value: str | None, config_dir: Path) -> str |
     if path_value is None:
         return None
     return _resolve_path(path_value, base_dir=config_dir)
+
+
+def _resolve_parallel_worker_device(num_workers: int, worker_device: str | None) -> str:
+    requested_device = "auto" if worker_device is None else str(worker_device)
+    if requested_device == "auto":
+        return "cuda" if num_workers > 1 and torch.cuda.is_available() else "cpu"
+    return requested_device
 
 
 # ---------------------------------------------------------------------------
@@ -995,7 +1009,7 @@ class TrainingRolloutEvaluator:
 
         # Parallel-worker settings.
         self.num_workers = max(1, int(self.eval_cfg.get("num_workers", 1)))
-        self.worker_device = str(self.eval_cfg.get("worker_device", "cpu"))
+        self.worker_device = str(self.eval_cfg.get("worker_device", "auto"))
 
         self._validate_cfg()
 
@@ -1177,7 +1191,7 @@ class TrainingRolloutEvaluator:
             "max_video_episodes": max_video_episodes,
             "global_step": global_step,
             "save_dir": str(self.save_dir),
-            "worker_device": self.worker_device,
+            "worker_device": _resolve_parallel_worker_device(self.num_workers, self.worker_device),
             "env_name_override": self.eval_cfg.get("env_name_override"),
         }
         ctx = multiprocessing.get_context("spawn")

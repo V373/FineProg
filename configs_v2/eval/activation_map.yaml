@@ -1,0 +1,31 @@
+# V2: Activation Map Evaluation Configuration
+# Minimal task-specific config for re-running a trained TCC encoder on a
+# processed H5 dataset and exporting per-target-frame activation overlays.
+
+task_name: activation_map
+
+# Resolve dataset_h5_path from registry/datasets.yaml
+dataset_ref: robomimic_can_mh_100vid_worse
+
+# Resolve checkpoint_path from registry/runs.yaml
+checkpoint_ref: comp_tt_can_ph_36_frozen_ep15k
+# comp_tt_can_ph_36_ep40k_r1 is the lastest TCC + triplet best ckpt, with backbone trained only_bn
+# comp_tt_can_ph_36_frozen_ep15k is the best ckpt with backbone frozen, but it has only 15k epochs and may be underfit
+
+output_dir: outputs/activation_map
+device: cuda
+context_size: 2
+batch_size: 1
+num_workers: 0
+max_videos: "all"   # int or "all"
+save_png: true
+save_mp4: true
+save_h5: true
+overlay_alpha: 0.45
+colormap: jet
+sample_all_stride: 1
+resize_to: 224
+
+activation_reduce:
+  backbone: mean_abs
+  temporal_conv2: mean_abs_channel_then_mean_temporal

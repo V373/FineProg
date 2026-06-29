@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from collections import deque
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 import sys
+import time
 from typing import Any, Optional
 
 import h5py
@@ -62,6 +64,39 @@ def project_embedding_to_progress(
 	return float(np.clip(soft_expert_index / denom, 0.0, 1.0))
 
 
+def project_embedding_to_progress_torch(
+	query_embedding: torch.Tensor,
+	expert_embeddings: torch.Tensor,
+	temperature: float,
+) -> torch.Tensor:
+	"""Torch version of project_embedding_to_progress.
+
+	Returns one progress value per query row and keeps the computation on the
+	query tensor's device.
+	"""
+	if float(temperature) <= 0.0:
+		raise ValueError("projection_temperature must be > 0.")
+	query = query_embedding.to(dtype=torch.float32)
+	if query.ndim == 1:
+		query = query.reshape(1, -1)
+	expert = expert_embeddings.to(device=query.device, dtype=torch.float32)
+	if expert.ndim != 2:
+		raise ValueError(f"expert_embeddings must be 2-D, got shape {tuple(expert.shape)}.")
+	if query.shape[1] != expert.shape[1]:
+		raise ValueError(
+			f"Embedding dim mismatch: query dim {query.shape[1]} vs expert dim {expert.shape[1]}."
+		)
+
+	q_sq = (query ** 2).sum(dim=1, keepdim=True)
+	e_sq = (expert ** 2).sum(dim=1, keepdim=True).transpose(0, 1)
+	dists = torch.clamp(q_sq + e_sq - 2.0 * query @ expert.transpose(0, 1), min=0.0)
+	alpha = torch.softmax(-dists / float(temperature), dim=1)
+	expert_indices = torch.arange(expert.shape[0], device=query.device, dtype=torch.float32)
+	soft_expert_index = alpha @ expert_indices
+	denom = max(float(expert.shape[0] - 1), 1.0)
+	return torch.clamp(soft_expert_index / denom, 0.0, 1.0)
+
+
 def load_expert_mean_embeddings(path: str | Path, expert_group: str = "videos/mean") -> np.ndarray:
 	with h5py.File(str(path), "r") as h5_file:
 		group_path = str(expert_group).strip("/")
@@ -113,6 +148,7 @@ class TCCExpertProjectionDenseRewardProvider:
 		encoder: Optional[torch.nn.Module] = None,
 		expert_embeddings: Optional[np.ndarray] = None,
 		load_model: bool = True,
+		use_torch_projection: bool = True,
 	):
 		self.device = torch.device(device)
 		self.checkpoint_path = str(checkpoint_path) if checkpoint_path else None
@@ -128,6 +164,9 @@ class TCCExpertProjectionDenseRewardProvider:
 		self.image_height = int(image_height)
 		self.image_width = int(image_width)
 		self.sparse_scale = float(sparse_scale)
+		self.use_torch_projection = bool(use_torch_projection)
+		self.timing_callback = None
+		self.profile_cuda = False
 		if self.clip_len <= 0 or self.context_size <= 0 or self.context_stride <= 0:
 			raise ValueError("clip_len, context_size, and context_stride must be positive.")
 
@@ -140,9 +179,33 @@ class TCCExpertProjectionDenseRewardProvider:
 			if expert_embeddings is not None
 			else load_expert_mean_embeddings(self.expert_path_h5, self.expert_group)
 		)
+		self.expert_embeddings_t: Optional[torch.Tensor] = None
+		if self.use_torch_projection:
+			self.expert_embeddings_t = torch.as_tensor(
+				self.expert_embeddings,
+				device=self.device,
+				dtype=torch.float32,
+			)
 		self.encoder = encoder if encoder is not None else None
 		if self.encoder is None and load_model:
 			self.encoder = self._build_encoder()
+
+	def _sync_for_profile(self) -> None:
+		if self.profile_cuda and self.device.type == "cuda" and torch.cuda.is_available():
+			torch.cuda.synchronize(self.device)
+
+	@contextmanager
+	def _profile_stage(self, name: str):
+		if self.timing_callback is None:
+			yield
+			return
+		self._sync_for_profile()
+		start = time.perf_counter()
+		try:
+			yield
+		finally:
+			self._sync_for_profile()
+			self.timing_callback(name, time.perf_counter() - start)
 
 	def _build_encoder(self) -> torch.nn.Module:
 		if not self.checkpoint_path:
@@ -162,25 +225,26 @@ class TCCExpertProjectionDenseRewardProvider:
 		return encoder
 
 	def _prepare_frame_array(self, frame: Any) -> np.ndarray:
-		frame = np.asarray(frame)
-		if frame.ndim == 3 and frame.shape[0] == 3 and frame.shape[-1] != 3:
-			frame = np.transpose(frame, (1, 2, 0))
-		if frame.ndim != 3 or frame.shape[-1] != 3:
-			raise ValueError(f"Expected RGB image for '{self.image_key}', got shape {frame.shape}.")
-		if frame.shape[0] != self.image_height or frame.shape[1] != self.image_width:
-			frame_t = torch.as_tensor(frame, dtype=torch.float32).permute(2, 0, 1).unsqueeze(0)
-			frame_t = F.interpolate(
-				frame_t,
-				size=(self.image_height, self.image_width),
-				mode="bilinear",
-				align_corners=False,
-			)
-			frame = frame_t.squeeze(0).permute(1, 2, 0).cpu().numpy()
-		if frame.dtype != np.float32:
-			frame = frame.astype(np.float32)
-		if frame.max(initial=0.0) > 1.5:
-			frame = frame / 255.0
-		return np.clip(frame, 0.0, 1.0).astype(np.float32)
+		with self._profile_stage("provider_prepare_frame"):
+			frame = np.asarray(frame)
+			if frame.ndim == 3 and frame.shape[0] == 3 and frame.shape[-1] != 3:
+				frame = np.transpose(frame, (1, 2, 0))
+			if frame.ndim != 3 or frame.shape[-1] != 3:
+				raise ValueError(f"Expected RGB image for '{self.image_key}', got shape {frame.shape}.")
+			if frame.shape[0] != self.image_height or frame.shape[1] != self.image_width:
+				frame_t = torch.as_tensor(frame, dtype=torch.float32).permute(2, 0, 1).unsqueeze(0)
+				frame_t = F.interpolate(
+					frame_t,
+					size=(self.image_height, self.image_width),
+					mode="bilinear",
+					align_corners=False,
+				)
+				frame = frame_t.squeeze(0).permute(1, 2, 0).cpu().numpy()
+			if frame.dtype != np.float32:
+				frame = frame.astype(np.float32)
+			if frame.max(initial=0.0) > 1.5:
+				frame = frame / 255.0
+			return np.clip(frame, 0.0, 1.0).astype(np.float32)
 
 	def _prepare_frame(self, obs_dict: dict[str, Any]) -> np.ndarray:
 		if self.image_key not in obs_dict:
@@ -194,36 +258,57 @@ class TCCExpertProjectionDenseRewardProvider:
 		return self.frame_history[idx]
 
 	def build_rolling_clip(self) -> torch.Tensor:
-		frames: list[np.ndarray] = []
-		current_index = len(self.frame_history) - 1
-		first_target_index = current_index - (self.clip_len - 1)
-		for target_offset in range(self.clip_len):
-			target_index = first_target_index + target_offset
-			for ctx_offset in range(self.context_size):
-				past_offset = (self.context_size - 1 - ctx_offset) * self.context_stride
-				frames.append(self._history_frame(target_index - past_offset))
-		array = np.stack(frames, axis=0).reshape(
-			self.clip_len,
-			self.context_size,
-			self.image_height,
-			self.image_width,
-			3,
+		with self._profile_stage("provider_build_clip"):
+			frames: list[np.ndarray] = []
+			current_index = len(self.frame_history) - 1
+			first_target_index = current_index - (self.clip_len - 1)
+			for target_offset in range(self.clip_len):
+				target_index = first_target_index + target_offset
+				for ctx_offset in range(self.context_size):
+					past_offset = (self.context_size - 1 - ctx_offset) * self.context_stride
+					frames.append(self._history_frame(target_index - past_offset))
+			array = np.stack(frames, axis=0).reshape(
+				self.clip_len,
+				self.context_size,
+				self.image_height,
+				self.image_width,
+				3,
+			)
+			tensor = torch.from_numpy(array).permute(0, 1, 4, 2, 3).unsqueeze(0)
+			return tensor.to(self.device, dtype=torch.float32)
+
+	def _project_embeddings_to_progress_torch(self, embeddings: torch.Tensor) -> torch.Tensor:
+		if self.expert_embeddings_t is None or self.expert_embeddings_t.device != embeddings.device:
+			self.expert_embeddings_t = torch.as_tensor(
+				self.expert_embeddings,
+				device=embeddings.device,
+				dtype=torch.float32,
+			)
+		return project_embedding_to_progress_torch(
+			embeddings,
+			self.expert_embeddings_t,
+			self.projection_temperature,
 		)
-		tensor = torch.from_numpy(array).permute(0, 1, 4, 2, 3).unsqueeze(0)
-		return tensor.to(self.device, dtype=torch.float32)
 
 	def infer_progress_current(self) -> float:
 		if self.encoder is None:
 			raise RuntimeError("Reward provider has no encoder.")
 		frames = self.build_rolling_clip()
 		with torch.inference_mode():
-			embeddings = self.encoder(frames)
-		current_embedding = embeddings[0, -1].detach().cpu().numpy().astype(np.float32)
-		return project_embedding_to_progress(
-			current_embedding,
-			self.expert_embeddings,
-			self.projection_temperature,
-		)
+			with self._profile_stage("provider_encoder_forward"):
+				embeddings = self.encoder(frames)
+			current_embedding = embeddings[0, -1]
+			if self.use_torch_projection:
+				with self._profile_stage("provider_projection_torch"):
+					progress_t = self._project_embeddings_to_progress_torch(current_embedding)
+				return float(progress_t.detach().cpu().item())
+			with self._profile_stage("provider_projection_numpy"):
+				current_embedding_np = current_embedding.detach().cpu().numpy().astype(np.float32)
+				return project_embedding_to_progress(
+					current_embedding_np,
+					self.expert_embeddings,
+					self.projection_temperature,
+				)
 
 	def infer_progress_trace_from_frames(self, frames: np.ndarray) -> np.ndarray:
 		if self.encoder is None:

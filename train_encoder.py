@@ -157,6 +157,30 @@ def train(
     register: bool = False,
     register_alias: str | None = None,
 ):
+    def _accumulate_metric(metric_sum: dict, key: str, value) -> None:
+        if isinstance(value, torch.Tensor):
+            metric_value = value.detach()
+            if metric_value.ndim != 0:
+                metric_value = metric_value.mean()
+        else:
+            metric_value = torch.tensor(float(value), device=device, dtype=torch.float32)
+        if key in metric_sum:
+            metric_sum[key] = metric_sum[key] + metric_value
+        else:
+            metric_sum[key] = metric_value
+
+    def _finalize_metric_averages(metric_sum: dict, num_steps: int) -> dict:
+        if num_steps <= 0:
+            return {}
+        metric_avg = {}
+        denom = float(num_steps)
+        for key, value in metric_sum.items():
+            if isinstance(value, torch.Tensor):
+                metric_avg[key] = (value / denom).cpu().item()
+            else:
+                metric_avg[key] = float(value) / denom
+        return metric_avg
+
     _train_cfg = _TRAIN_V2                              # [v2] resolved train config
     _maybe_limit_cpu_threads(bool(_train_cfg.get("limit_cpu_threads", False)))
 
@@ -292,6 +316,7 @@ def train(
     _use_amp = torch.cuda.is_available()
     scaler = torch.amp.GradScaler(device="cuda", enabled=_use_amp)
     _autocast_device = "cuda" if _use_amp else "cpu"
+    _transport_frames_as_uint8 = bool(_train_cfg.get("transport_frames_as_uint8", False))
 
     # ------------------------------------------------------------------
     # 5. Training loop
@@ -380,13 +405,13 @@ def train(
                 scaler.update()
 
                 global_step += 1
-                epoch_loss_sum += loss.item()
+                epoch_loss_sum += loss.detach()
                 epoch_steps += 1
                 for k, v in out.get("metrics", {}).items():
-                    epoch_metrics_sum[k] = epoch_metrics_sum.get(k, 0.0) + (v if isinstance(v, float) else float(v))
+                    _accumulate_metric(epoch_metrics_sum, k, v)
 
-            epoch_loss_avg = epoch_loss_sum / max(epoch_steps, 1)
-            epoch_metrics_avg = {k: v / max(epoch_steps, 1) for k, v in epoch_metrics_sum.items()}
+            epoch_loss_avg = (epoch_loss_sum / max(epoch_steps, 1)).cpu().item()
+            epoch_metrics_avg = _finalize_metric_averages(epoch_metrics_sum, epoch_steps)
             pbar.update(1)
             pbar.set_postfix(loss=f"{epoch_loss_avg:.4f}")
             if (epoch + 1) % log_every == 0:
@@ -428,6 +453,8 @@ def train(
             for batch in dataloader:
                 # Move tensors to device
                 frames = batch["frames"].to(device, non_blocking=True)  # [B, clip_len, ctx, 3, H, W]
+                if _transport_frames_as_uint8:
+                    frames = frames.float().div_(255.0)
                 loss_batch = {
                     "target_steps": batch["target_steps"].to(device, non_blocking=True),
                     "seq_len": batch["seq_len"].to(device, non_blocking=True),
@@ -446,14 +473,14 @@ def train(
                 scaler.update()
 
                 global_step += 1
-                epoch_loss_sum += loss.item()
+                epoch_loss_sum += loss.detach()
                 epoch_steps += 1
                 for k, v in out.get("metrics", {}).items():
-                    epoch_metrics_sum[k] = epoch_metrics_sum.get(k, 0.0) + (v if isinstance(v, float) else float(v))
+                    _accumulate_metric(epoch_metrics_sum, k, v)
 
             # Log mean epoch loss every log_every epochs
-            epoch_loss_avg = epoch_loss_sum / max(epoch_steps, 1)
-            epoch_metrics_avg = {k: v / max(epoch_steps, 1) for k, v in epoch_metrics_sum.items()}
+            epoch_loss_avg = (epoch_loss_sum / max(epoch_steps, 1)).cpu().item()
+            epoch_metrics_avg = _finalize_metric_averages(epoch_metrics_sum, epoch_steps)
             pbar.update(1)
             pbar.set_postfix(loss=f"{epoch_loss_avg:.4f}")
             if (epoch + 1) % log_every == 0:

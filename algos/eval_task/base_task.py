@@ -63,6 +63,7 @@ _SUPPORTED_TASKS = {
     "classification",
     "expert_projection",
     "latent_distance_heatmap",
+    "activation_map",
     # "event_completion",
     # "few_shot_classification",
 }
@@ -105,6 +106,10 @@ def build_task(task_name: str, config_path: str = None, **kwargs) -> BaseTask:
     elif task_name == "latent_distance_heatmap":
         from fineprog.algos.eval_task.tcc_eval_tasks.task_latent_distance_heatmap import LatentDistanceHeatmapTask  # noqa: PLC0415
         return LatentDistanceHeatmapTask()
+
+    elif task_name == "activation_map":
+        from fineprog.algos.eval_task.tcc_eval_tasks.task_activation_map import ActivationMapTask  # noqa: PLC0415
+        return ActivationMapTask()
 
     # ---- future tasks ----
     # elif task_name == "event_completion":

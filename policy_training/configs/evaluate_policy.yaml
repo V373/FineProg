@@ -1,15 +1,19 @@
-agent: /home/user/zhangzk/projects/fineprog/policy_training/checkpoint/robomimic/can_mh/iql_expert_seed1_20260613_042513/step_100000.pt
-device: auto
-seed: 0
+agent: /home/user/zhangzk/projects/fineprog/policy_training/checkpoint/robomimic/can/IQL__IQL_expert_worse/original/20260617_142313/seed42/ckpt/step_30000.pt
+device: cuda
+seed: [0, 1, 2, 3, 4]
 policy:
   stochastic: false
 rollout:
-  n_rollouts: 20
-  horizon: 400
+  n_rollouts: 50
+  horizon: 1000
+  num_workers: 16
+  worker_device: cuda
 env:
   name_override: null
 video:
   enabled: true
+  max_episodes: all
+  keep_rollout_videos: false
   path: null
   skip: 5
   fps: 20

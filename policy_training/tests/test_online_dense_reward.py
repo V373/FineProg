@@ -14,7 +14,11 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from datasets.robomimic.online_replay_buffer import RobomimicOnlineDataCollector, RobomimicOnlineReplayBuffer
-from reward_model.tcc_expert_proj_reward import TCCExpertProjectionDenseRewardProvider, project_embedding_to_progress
+from reward_model.tcc_expert_proj_reward import (
+    TCCExpertProjectionDenseRewardProvider,
+    project_embedding_to_progress,
+    project_embedding_to_progress_torch,
+)
 from train_policy import _validate_online_sac_config
 from utils.logger import derive_run_metadata
 
@@ -53,6 +57,22 @@ def test_project_embedding_to_progress_soft_nn():
     expert = np.asarray([[0.0], [1.0], [2.0]], dtype=np.float32)
     progress = project_embedding_to_progress(np.asarray([2.0], dtype=np.float32), expert, temperature=0.01)
     assert progress == pytest.approx(1.0, abs=1e-4)
+
+
+def test_project_embedding_to_progress_torch_matches_numpy():
+    expert = np.asarray([[0.0, 0.0], [1.0, 0.1], [2.0, 0.0]], dtype=np.float32)
+    queries = np.asarray([[0.2, 0.0], [1.8, 0.05]], dtype=np.float32)
+    expected = np.asarray([
+        project_embedding_to_progress(q, expert, temperature=0.25) for q in queries
+    ], dtype=np.float32)
+
+    actual = project_embedding_to_progress_torch(
+        torch.as_tensor(queries),
+        torch.as_tensor(expert),
+        temperature=0.25,
+    ).detach().cpu().numpy()
+
+    np.testing.assert_allclose(actual, expected, rtol=1e-5, atol=1e-5)
 
 
 def test_rolling_clip_shape_and_causal_indices():

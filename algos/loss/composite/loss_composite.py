@@ -194,8 +194,8 @@ class CompositeEncoderLoss(BaseEncoderLoss):
 
             # Summary metrics for this component
             combined_metrics[f"component_weight/{alias}"]        = weight
-            combined_metrics[f"component_raw_loss/{alias}"]      = child_loss.detach().item()
-            combined_metrics[f"component_weighted_loss/{alias}"] = weighted.detach().item()
+            combined_metrics[f"component_raw_loss/{alias}"]      = child_loss.detach()
+            combined_metrics[f"component_weighted_loss/{alias}"] = weighted.detach()
 
             # Prefix every child metric key with the alias
             for k, v in child_mets.items():
@@ -206,7 +206,7 @@ class CompositeEncoderLoss(BaseEncoderLoss):
             total_loss = embeddings.sum() * 0.0
 
         # Top-level summary
-        combined_metrics["loss_composite"] = total_loss.detach().item()
-        combined_metrics["loss_total"]     = total_loss.detach().item()
+        combined_metrics["loss_composite"] = total_loss.detach()
+        combined_metrics["loss_total"]     = total_loss.detach()
 
         return {"loss": total_loss, "metrics": combined_metrics}

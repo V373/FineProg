@@ -27,8 +27,8 @@ online_sac:
   n_critics_to_sample: 2
   target_update_interval: 1
   target_critic_reduction: min
-  train_critic_with_entropy: true
-  ent_coef: auto
+  train_critic_with_entropy: false
+  ent_coef: 0
   target_entropy: auto
   pi_net_arch: [512, 400, 256]
   qf_net_arch: [512, 512, 256]
@@ -45,21 +45,21 @@ online:
   horizon: 400
   terminate_on_done: true
   reward:
-    type: sparse_done
+    type: pbrs
     sparse_scale: 1.0
     pbrs_gamma: 0.99
   reward_model:
     enabled: true
     kind: tcc_expert_projection
-    checkpoint_path: ../checkpoint/COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_can_ph-36vid_train-resnet50_conv4c-frozen-20260603-145310/encoder_epoch050000.pt
-    expert_path_h5: ../datasets/embeddings/COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_can_ph-36vid_train-resnet50_conv4c-frozen-20260603-145310/robomimic_can_ph-36vid_train-embd-mean_path.h5
+    checkpoint_path: ../checkpoint/COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_can_ph-36vid_train-resnet50_conv4c-only_bn-20260622-160437/encoder_epoch020000.pt
+    expert_path_h5: ../datasets/embeddings/COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_can_ph-36vid_train-resnet50_conv4c-only_bn-20260622-160437/robomimic_can_ph-36vid_train-embd-mean_path-ep020000.h5
     expert_group: videos/mean
     projection_temperature: 0.1
     clip_len: 20
     context_size: 2
     context_stride: 15
     pretrained: true
-    train_config_path: ../wandb/run-20260603_145310-4ttyq0kl/files/train.yaml
+    train_config_path: ../wandb/run-20260622_160437-2k5qn17e/files/train.yaml
     image_key: agentview_image
     image_height: 224
     image_width: 224
@@ -70,7 +70,7 @@ online:
 
 train:
   batch_size: 128
-  n_steps: 300000
+  n_steps: 500000
   log_every: 100
   save_every: 10000
   save_dir_root: checkpoint

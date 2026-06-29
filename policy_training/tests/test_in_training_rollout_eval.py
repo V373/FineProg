@@ -540,7 +540,15 @@ def test_eval_config_has_num_workers_and_worker_device_defaults(tmp_path):
     cfg_path.write_text("seed: 1\n", encoding="utf-8")
     cfg = PolicyTrainingConfig.load(str(cfg_path))
     assert cfg.eval.num_workers == 1
-    assert cfg.eval.worker_device == "cpu"
+    assert cfg.eval.worker_device == "auto"
+
+
+def test_parallel_worker_device_defaults_to_cuda_when_auto_and_cuda_available(monkeypatch):
+    import utils.eval_utils as eval_utils
+
+    monkeypatch.setattr(eval_utils.torch.cuda, "is_available", lambda: True)
+
+    assert eval_utils._resolve_parallel_worker_device(4, "auto") == "cuda"
 
 
 def test_parallel_evaluator_dispatches_run_parallel_when_num_workers_gt_1(monkeypatch, tmp_path):

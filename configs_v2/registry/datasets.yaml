@@ -208,3 +208,24 @@ datasets:
     raw_dir: robomimic_can_mh
     robomimic_hdf5: datasets/raw/robomimic_can_mh/demo_v15.hdf5
     mask_key: all
+
+  robomimic_transport_ph_36vid_train:
+    display_name: robomimic_transport_ph (robomimic_transport_ph-36vid_train.h5)
+    processed_h5: robomimic_transport_ph-36vid_train.h5
+    raw_dir: robomimic_transport_ph
+    robomimic_hdf5: datasets/raw/robomimic_transport_ph/demo_v15.hdf5
+    mask_key: 20_percent_train
+
+  robomimic_transport_ph_4vid_valid:
+    display_name: robomimic_transport_ph (robomimic_transport_ph-4vid_valid.h5)
+    processed_h5: robomimic_transport_ph-4vid_valid.h5
+    raw_dir: robomimic_transport_ph
+    robomimic_hdf5: datasets/raw/robomimic_transport_ph/demo_v15.hdf5
+    mask_key: 20_percent_valid
+
+  robomimic_transport_mh_50vid_worse:
+    display_name: robomimic_transport_mh (robomimic_transport_mh-50vid_worse.h5)
+    processed_h5: robomimic_transport_mh-50vid_worse.h5
+    raw_dir: robomimic_transport_mh
+    robomimic_hdf5: datasets/raw/robomimic_transport_mh/demo_v15.hdf5
+    mask_key: worse

@@ -5,25 +5,26 @@
 
 # ── Dataset ───────────────────────────────────────────────────────────
 # Key from configs_v2/datasets.yaml  →  resolved to processed_h5_path at runtime
-train_dataset: robomimic_can_ph_36vid_train
+train_dataset: robomimic_transport_ph_36vid_train
 
 # ── Model ─────────────────────────────────────────────────────────────
 backbone_name:   resnet50_conv4c
 pretrained:      true
-train_base:      frozen      # frozen | only_bn | train_all
+train_base:      only_bn      # frozen | only_bn | train_all
 train_embedding: true
 
 # ── Reproducibility ───────────────────────────────────────────────────
 seed: 42
 
 # ── Training duration ─────────────────────────────────────────────────
-num_epochs: 6000
+num_epochs: 40000
 
 # ── DataLoader ────────────────────────────────────────────────────────
 # Training-specific DataLoader settings.  (Not shared with extract.)
-batch_size:  18
+batch_size:  12
 num_workers: 4
 limit_cpu_threads: false   # force OMP / MKL / OpenBLAS / NumExpr and torch CPU threads to 1
+transport_frames_as_uint8: false  # true = move uint8 frames to GPU, then cast/normalize on device
 
 # ── Sequence sampling ─────────────────────────────────────────────────
 # These values determine the encoder input shape.
@@ -35,19 +36,19 @@ sampling_strategy:  offset_uniform
 random_offset:      1
 
 # ── Optimizer ─────────────────────────────────────────────────────────
-learning_rate: 8.0e-4
+learning_rate: 4.5e-4
 
 # ── Logging ───────────────────────────────────────────────────────────
-log_every: 10    # log loss to wandb every N epochs
+log_every: 100    # log loss to wandb every N epochs
 
 # ── Checkpoint ────────────────────────────────────────────────────────
-checkpoint_every: 2000   # save encoder .pt every N epochs
+checkpoint_every: 5000   # save encoder .pt every N epochs
 checkpoint_dir:   checkpoint   # relative to project_root
 
 # ── Backbone feature cache ────────────────────────────────────────────
 # Only active when train_base = only_bn.
 # Caches backbone outputs to skip redundant forward passes.
-extract_backbone_cache: true
+extract_backbone_cache: false
 cache_refresh_every:    500    # re-run backbone every N epochs to refresh cache
 
 # ── Loss ─────────────────────────────────────────────────────────────

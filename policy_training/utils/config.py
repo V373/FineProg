@@ -23,7 +23,7 @@ class PolicyTrainingConfig:
             "terminate_on_success": True,
             "env_name_override": None,
             "num_workers": 1,
-            "worker_device": "cpu",
+            "worker_device": "auto",
             "video": {
                 "enabled": False,
                 "max_episodes": 1,

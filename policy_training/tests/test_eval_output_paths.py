@@ -409,3 +409,50 @@ def test_resolve_eval_output_path_relative(tmp_path):
     rel = "subdir/file.json"
     resolved = _resolve_eval_output_path(rel, tmp_path)
     assert Path(resolved) == (tmp_path / "subdir/file.json").resolve()
+
+
+def test_apply_cli_overrides_seed_list_precedence_over_single_seed():
+    runtime = SimpleNamespace(values={
+        "agent": "ckpt.pt",
+        "video": {"enabled": False, "path": None, "skip": 5, "fps": 20, "frame_height": 512, "frame_width": 512, "camera_names": ["agentview"]},
+        "rollout": {"n_rollouts": 5, "horizon": 100, "num_workers": 1, "worker_device": "cpu"},
+        "env": {"name_override": None},
+        "policy": {"stochastic": False},
+        "output": {"dir": "outputs/eval", "json_path": None},
+        "seed": 0,
+    })
+    args = SimpleNamespace(
+        agent=None, device=None, seed=999, seeds=[0, 1, 2],
+        n_rollouts=None, horizon=None, num_workers=None, worker_device=None,
+        env=None, video_path=None, no_video=False, video_skip=None, video_fps=None,
+        frame_height=None, frame_width=None, camera_names=None,
+        json_path=None, output_dir=None, stochastic=None,
+    )
+
+    overrides = _apply_cli_overrides(runtime, args)
+
+    assert overrides["seed"] == [0, 1, 2]
+
+
+def test_apply_cli_overrides_rollout_workers():
+    runtime = SimpleNamespace(values={
+        "agent": "ckpt.pt",
+        "video": {"enabled": False, "path": None, "skip": 5, "fps": 20, "frame_height": 512, "frame_width": 512, "camera_names": ["agentview"]},
+        "rollout": {"n_rollouts": 5, "horizon": 100, "num_workers": 1, "worker_device": "cpu"},
+        "env": {"name_override": None},
+        "policy": {"stochastic": False},
+        "output": {"dir": "outputs/eval", "json_path": None},
+        "seed": 0,
+    })
+    args = SimpleNamespace(
+        agent=None, device=None, seed=None, seeds=None,
+        n_rollouts=None, horizon=None, num_workers=4, worker_device="cuda",
+        env=None, video_path=None, no_video=False, video_skip=None, video_fps=None,
+        frame_height=None, frame_width=None, camera_names=None,
+        json_path=None, output_dir=None, stochastic=None,
+    )
+
+    overrides = _apply_cli_overrides(runtime, args)
+
+    assert overrides["rollout"]["num_workers"] == 4
+    assert overrides["rollout"]["worker_device"] == "cuda"
