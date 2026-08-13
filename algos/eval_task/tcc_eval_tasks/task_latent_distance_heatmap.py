@@ -62,6 +62,10 @@ if _PROJECTS_ROOT not in sys.path:
     sys.path.insert(0, _PROJECTS_ROOT)
 
 from fineprog.algos.eval_task.base_task import BaseTask  # noqa: E402
+from fineprog.utils.embedding_normalization import (  # noqa: E402
+    read_embedding_normalization,
+    validate_embeddings_for_normalization,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -92,6 +96,7 @@ def _read_trajectory_by_index(h5_path: str, index: int):
     tuple of (video_id, embeddings, target_steps, seq_len)
     """
     with h5py.File(h5_path, "r") as f:
+        embedding_normalization = read_embedding_normalization(f, h5_path)
         if "videos" not in f:
             raise ValueError(
                 f"[latent_distance_heatmap] H5 file has no /videos group: {h5_path}"
@@ -110,6 +115,11 @@ def _read_trajectory_by_index(h5_path: str, index: int):
         video_id = video_ids[index]
         grp = f["videos"][video_id]
         embeddings   = np.array(grp["embeddings"],   dtype=np.float32)    # [T, D]
+        validate_embeddings_for_normalization(
+            embeddings,
+            embedding_normalization,
+            f"{h5_path}:/videos/{video_id}/embeddings",
+        )
         target_steps = np.array(grp["target_steps"], dtype=np.float64)    # [T]
         seq_len      = int(grp.attrs.get("seq_len", len(embeddings)))
     return video_id, embeddings, target_steps, seq_len
@@ -136,6 +146,7 @@ def _read_all_trajectories(h5_path: str) -> list:
     """
     records = []
     with h5py.File(h5_path, "r") as f:
+        embedding_normalization = read_embedding_normalization(f, h5_path)
         if "videos" not in f:
             raise ValueError(
                 f"[latent_distance_heatmap] H5 file has no /videos group: {h5_path}"
@@ -148,6 +159,11 @@ def _read_all_trajectories(h5_path: str) -> list:
         for video_id in video_ids:
             grp = f["videos"][video_id]
             embeddings   = np.array(grp["embeddings"],   dtype=np.float32)
+            validate_embeddings_for_normalization(
+                embeddings,
+                embedding_normalization,
+                f"{h5_path}:/videos/{video_id}/embeddings",
+            )
             target_steps = np.array(grp["target_steps"], dtype=np.float64)
             seq_len      = int(grp.attrs.get("seq_len", len(embeddings)))
             records.append((video_id, embeddings, target_steps, seq_len))

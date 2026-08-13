@@ -43,6 +43,19 @@ class ActivationMapTask(BaseTask):
         num_workers = int(self.config.get("num_workers", 0))
         max_videos = self.config.get("max_videos")
         max_videos = None if max_videos in (None, "all") else int(max_videos)
+        raw_output_streams = self.config.get(
+            "output_streams", ["backbone", "temporal_conv2"]
+        )
+        if isinstance(raw_output_streams, str):
+            raw_output_streams = [raw_output_streams]
+        output_streams = tuple(dict.fromkeys(str(name) for name in raw_output_streams))
+        valid_output_streams = {"backbone", "temporal_conv2"}
+        invalid_output_streams = set(output_streams) - valid_output_streams
+        if not output_streams or invalid_output_streams:
+            raise ValueError(
+                "[activation_map] output_streams must be a non-empty subset of "
+                f"{sorted(valid_output_streams)}, got {list(output_streams)}"
+            )
         output_dir = Path(self.config.get("output_dir", "outputs/activation_map"))
         if not output_dir.is_absolute():
             output_dir = Path(__file__).resolve().parents[3] / output_dir
@@ -70,10 +83,15 @@ class ActivationMapTask(BaseTask):
         )
         print(f"[activation_map] number of videos: {len(dataset)}")
 
+        # train_config_path (optional) carries backbone_name / embedding_normalization,
+        # which the constructor cannot receive as plain arguments.
         encoder = TCCEncoder(
+            train_config_path=self.config.get("train_config_path"),
             clip_len=int(self.config.get("clip_len", 20)),
             context_size=context_size,
+            context_stride=int(self.config.get("context_stride", 15)),
             pretrained=False,
+            embedding_dim=int(self.config.get("embedding_dim", 128)),
             debug=False,
         )
         encoder = encoder.to(device)
@@ -104,6 +122,7 @@ class ActivationMapTask(BaseTask):
 
         total_processed_frames = 0
         total_processed_videos = 0
+        per_video_results: list[dict] = []
 
         try:
             with torch.no_grad():
@@ -154,20 +173,23 @@ class ActivationMapTask(BaseTask):
                     fps = self._read_video_fps(dataset_h5_path, video_id)
                     print(f"[activation_map] video_id={video_id} render_fps={fps:.4f}")
 
-                    backbone_overlays = self._save_outputs_for_stream(
-                        stream_name="backbone",
-                        heatmaps=backbone_heatmaps,
-                        rgb_frames=rgb_frames,
-                        target_steps=target_steps_np,
-                        output_root=output_root,
-                    )
-                    temporal_overlays = self._save_outputs_for_stream(
-                        stream_name="temporal_conv2",
-                        heatmaps=temporal_heatmaps,
-                        rgb_frames=rgb_frames,
-                        target_steps=target_steps_np,
-                        output_root=output_root,
-                    )
+                    overlays_by_stream: dict[str, list[np.ndarray]] = {}
+                    if "backbone" in output_streams:
+                        overlays_by_stream["backbone"] = self._save_outputs_for_stream(
+                            stream_name="backbone",
+                            heatmaps=backbone_heatmaps,
+                            rgb_frames=rgb_frames,
+                            target_steps=target_steps_np,
+                            output_root=output_root,
+                        )
+                    if "temporal_conv2" in output_streams:
+                        overlays_by_stream["temporal_conv2"] = self._save_outputs_for_stream(
+                            stream_name="temporal_conv2",
+                            heatmaps=temporal_heatmaps,
+                            rgb_frames=rgb_frames,
+                            target_steps=target_steps_np,
+                            output_root=output_root,
+                        )
 
                     if bool(self.config.get("save_h5", True)):
                         self._save_h5(
@@ -183,9 +205,28 @@ class ActivationMapTask(BaseTask):
                             context_size=context_size,
                         )
 
+                    video_record = {
+                        "video_id": video_id,
+                        "num_frames": int(backbone_heatmaps.shape[0]),
+                    }
                     if bool(self.config.get("save_mp4", True)):
-                        self._save_mp4(output_root / "videos" / "backbone_overlay.mp4", backbone_overlays, fps)
-                        self._save_mp4(output_root / "videos" / "temporal_conv2_overlay.mp4", temporal_overlays, fps)
+                        if "backbone" in overlays_by_stream:
+                            backbone_mp4 = self._save_mp4(
+                                output_root / "videos" / "backbone_overlay.mp4",
+                                overlays_by_stream["backbone"],
+                                fps,
+                            )
+                            if backbone_mp4 is not None:
+                                video_record["backbone_video_path"] = str(backbone_mp4)
+                        if "temporal_conv2" in overlays_by_stream:
+                            temporal_mp4 = self._save_mp4(
+                                output_root / "videos" / "temporal_conv2_overlay.mp4",
+                                overlays_by_stream["temporal_conv2"],
+                                fps,
+                            )
+                            if temporal_mp4 is not None:
+                                video_record["temporal_conv2_video_path"] = str(temporal_mp4)
+                    per_video_results.append(video_record)
 
                     total_processed_frames += int(backbone_heatmaps.shape[0])
                     total_processed_videos += 1
@@ -201,6 +242,7 @@ class ActivationMapTask(BaseTask):
             "metric_value": float(total_processed_frames),
             "num_processed_videos": total_processed_videos,
             "output_dir": str(output_dir),
+            "per_video_results": per_video_results,
         }
 
     def _run_encoder_chunked(
@@ -395,9 +437,9 @@ class ActivationMapTask(BaseTask):
             grp.attrs["dataset_h5_path"] = dataset_h5_path
             grp.attrs["context_size"] = context_size
 
-    def _save_mp4(self, output_path: Path, frames_bgr: list[np.ndarray], fps: float) -> None:
+    def _save_mp4(self, output_path: Path, frames_bgr: list[np.ndarray], fps: float) -> Path | None:
         if not frames_bgr:
-            return
+            return None
         output_path.parent.mkdir(parents=True, exist_ok=True)
         safe_fps = float(fps) if float(fps) > 1.0e-6 else 1.0
 
@@ -419,7 +461,7 @@ class ActivationMapTask(BaseTask):
                     writer.append_data(frame_rgb)
             finally:
                 writer.close()
-            return
+            return output_path
         except Exception as exc:
             print(f"[activation_map] imageio ffmpeg writer failed ({exc}); falling back to OpenCV mp4v")
 
@@ -437,6 +479,7 @@ class ActivationMapTask(BaseTask):
                 writer_cv2.write(frame)
         finally:
             writer_cv2.release()
+        return output_path
 
     def _build_video_output_root(
         self,

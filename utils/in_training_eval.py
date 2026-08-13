@@ -16,7 +16,7 @@ Pipeline for each eval call:
   5. Delete the temporary H5 (always — in the finally block).
   6. Restore encoder training mode.
 
-Supported tasks: latent_distance_heatmap, kendalls_tau
+Supported tasks: latent_distance_heatmap, kendalls_tau, activation_map
 Excluded:        classification, expert_projection
 """
 
@@ -34,12 +34,24 @@ if TYPE_CHECKING:
 
 # Project root (mytcc/)
 _PROJ_ROOT = Path(__file__).resolve().parent.parent
-# V2 train config path — used to carry clip_len / context_size / context_stride
+# Default V2 train config path — used to carry clip_len / context_size / context_stride
 # into the extraction DataLoader so it matches the encoder's expected input shape.
+# Callers that run against an isolated configs_v2 snapshot (e.g. sweep scripts)
+# must pass ``train_config_path`` so the eval shape matches the trained encoder.
 _V2_TRAIN_YAML = str(_PROJ_ROOT / "configs_v2" / "train.yaml")
 
 # Tasks fully implemented for in-training use.
-_IMPLEMENTED_TASKS = {"latent_distance_heatmap", "kendalls_tau"}
+_IMPLEMENTED_TASKS = {"latent_distance_heatmap", "kendalls_tau", "activation_map"}
+
+# activation_map re-runs the encoder over raw frames, so its standalone defaults
+# (all videos, PNG + H5 dumps) are far too heavy to repeat at every checkpoint.
+# The train.yaml per-task block still overrides these.
+_ACTIVATION_MAP_ITE_DEFAULTS = {
+    "max_videos": 1,
+    "save_mp4": True,
+    "save_png": False,
+    "save_h5": False,
+}
 
 
 # ---------------------------------------------------------------------------
@@ -79,6 +91,8 @@ def run_in_training_eval(
     epoch: int,
     checkpoint_count: int,
     device: "torch.device",
+    train_config_path: str | None = None,
+    checkpoint_path: str | None = None,
 ) -> None:
     """Run one in-training evaluation pass and log results to wandb.
 
@@ -94,11 +108,21 @@ def run_in_training_eval(
         epoch:              Current epoch index (0-based).
         checkpoint_count:   How many checkpoints have been saved so far (1-indexed).
         device:             Torch device.
+        train_config_path:  Path to the train.yaml actually driving this run.  Defaults
+                            to the repository's configs_v2/train.yaml.  Its parent
+                            directory is used as the configs_v2 root for every eval
+                            lookup, so isolated snapshots resolve correctly.
+        checkpoint_path:    Path to the checkpoint just written for this epoch.  Only
+                            needed by tasks that reload the encoder from disk
+                            (``activation_map``); those tasks are skipped when absent.
     """
     # Frequency gate: skip unless this checkpoint count is a multiple of eval_freq.
     freq = int(eval_cfg.get("eval_freq_in_training", 1))
     if freq < 1 or (checkpoint_count % freq) != 0:
         return
+
+    train_yaml_path = train_config_path or _V2_TRAIN_YAML
+    configs_root = str(Path(train_yaml_path).resolve().parent)
 
     # Resolve task list and filter to implemented tasks.
     requested_tasks = _resolve_task_list(eval_cfg)
@@ -129,7 +153,10 @@ def run_in_training_eval(
     else:
         train_ds_ref = train_cfg.get("train_dataset", "")
         from utils.config_v2 import ConfigV2  # lazy import (already loaded by training)
-        paired_valid = ConfigV2().resolve_validation_dataset(train_ds_ref) if train_ds_ref else None
+        paired_valid = (
+            ConfigV2(configs_root).resolve_validation_dataset(train_ds_ref)
+            if train_ds_ref else None
+        )
         if paired_valid:
             eval_dataset_ref = paired_valid
             print(f"[in_training_eval] eval dataset: {paired_valid} "
@@ -162,6 +189,8 @@ def run_in_training_eval(
             save_path=tmp_embd_h5,
             device=device,
             num_workers=int(train_cfg.get("num_workers", 0)),
+            train_config_path=train_yaml_path,
+            configs_root=configs_root,
         )
 
         # ── 2. Run each task against the same embedding H5 ─────────────────
@@ -173,12 +202,36 @@ def run_in_training_eval(
             os.makedirs(task_output_dir, exist_ok=True)
             try:
                 task_override_keys = dict(eval_cfg.get(task_name) or {})
-                runtime_overrides = {
-                    **task_override_keys,
-                    "embedding_h5_path": tmp_embd_h5,
-                    "output_dir": task_output_dir,
-                }
-                resolved = ConfigV2().load_eval(task_name, overrides=runtime_overrides)
+                if task_name == "activation_map":
+                    if not checkpoint_path or not os.path.isfile(checkpoint_path):
+                        print(
+                            "[in_training_eval] activation_map needs the checkpoint just saved "
+                            f"for this epoch, but it is unavailable ({checkpoint_path!r}); skipping."
+                        )
+                        continue
+                    eval_h5_path = ConfigV2(configs_root).resolve_dataset(
+                        eval_dataset_ref
+                    )["processed_h5_path"]
+                    runtime_overrides = {
+                        **_ACTIVATION_MAP_ITE_DEFAULTS,
+                        **task_override_keys,
+                        "dataset_h5_path": eval_h5_path,
+                        "checkpoint_path": checkpoint_path,
+                        "output_dir": task_output_dir,
+                        "device": str(device),
+                        "train_config_path": train_yaml_path,
+                        "clip_len": train_cfg.get("clip_len", 20),
+                        "context_size": train_cfg.get("context_size", 2),
+                        "context_stride": train_cfg.get("context_stride", 15),
+                        "embedding_dim": train_cfg.get("embedding_dim", 128),
+                    }
+                else:
+                    runtime_overrides = {
+                        **task_override_keys,
+                        "embedding_h5_path": tmp_embd_h5,
+                        "output_dir": task_output_dir,
+                    }
+                resolved = ConfigV2(configs_root).load_eval(task_name, overrides=runtime_overrides)
                 result = run_eval_task(task_name, resolved)
                 print(
                     f"[in_training_eval] {task_name}: "
@@ -225,26 +278,30 @@ def _extract_embeddings_for_eval(
     save_path: str,
     device: "torch.device",
     num_workers: int = 0,
+    train_config_path: str | None = None,
+    configs_root: str | None = None,
 ) -> None:
     """Extract embeddings from *eval_dataset_ref* and write to *save_path*.
 
     Uses the training-shape config (clip_len / context_size / context_stride
-    from configs_v2/train.yaml) and ``sample_all=True`` so every frame is covered.
+    from *train_config_path*) and ``sample_all=True`` so every frame is covered.
     The encoder should already be in eval mode when this is called.
     """
     from dataset_preparation.h5vid_dataset import build_dataloader  # noqa: PLC0415
     from extract_embeddings import extract_embeddings, save_embeddings_h5  # noqa: PLC0415
     from utils.config_v2 import ConfigV2  # noqa: PLC0415
 
+    train_yaml_path = train_config_path or _V2_TRAIN_YAML
+
     # Resolve H5 path for the eval dataset from the V2 registry.
-    ds_info = ConfigV2().resolve_dataset(eval_dataset_ref)
+    ds_info = ConfigV2(configs_root).resolve_dataset(eval_dataset_ref)
     h5_path = ds_info["processed_h5_path"]
 
     # Build extraction DataLoader.
     # config_path carries clip_len / context_size / context_stride;
     # h5_path_override pins the actual video H5 file.
     dataloader = build_dataloader(
-        config_path=_V2_TRAIN_YAML,
+        config_path=train_yaml_path,
         sample_all=True,
         sample_all_stride=1,
         shuffle=False,
@@ -259,7 +316,11 @@ def _extract_embeddings_for_eval(
     with torch.no_grad():
         results = extract_embeddings(encoder, dataloader, device)
 
-    save_embeddings_h5(results, save_path)
+    save_embeddings_h5(
+        results,
+        save_path,
+        embedding_normalization=encoder.embedding_normalization,
+    )
     print(f"[in_training_eval] Extraction done ({len(results)} videos).")
 
 
@@ -287,11 +348,13 @@ def _collect_image_payload(task_name: str, result: dict) -> dict:
     ──────────────────────
     - output_heatmap_path / output_heatmap_paths  → keys  heatmap_<suffix>
     - output_curve_path  / output_curve_paths     → keys  curve_<suffix>
+    - per_video_results[i].{backbone,temporal_conv2}_video_path
+      (activation_map overlays)                   → keys  video_<stream>_<suffix>
 
     For tasks that never emit curve paths (e.g. kendalls_tau) the curve
     branch is silently skipped.
 
-    Returns an empty dict when no valid image paths are found.
+    Returns an empty dict when no valid media paths are found.
     """
     try:
         import wandb  # noqa: PLC0415
@@ -333,6 +396,18 @@ def _collect_image_payload(task_name: str, result: dict) -> dict:
         if p and os.path.isfile(p):
             payload[f"eval/train/{task_name}/curve_{_key_suffix(i)}"] = wandb.Image(p)
 
+    # ── overlay video family (activation_map) ────────────────────────
+    for i, entry in enumerate(per_video):
+        vid_id = entry.get("video_id")
+        suffix = f"vid{vid_id}" if vid_id else str(i)
+        for stream, path_key in (("backbone", "backbone_video_path"),
+                                 ("temporal_conv2", "temporal_conv2_video_path")):
+            p = entry.get(path_key)
+            if p and os.path.isfile(p):
+                payload[f"eval/train/{task_name}/video_{stream}_{suffix}"] = wandb.Video(
+                    p, format="mp4"
+                )
+
     return payload
 
 
@@ -365,12 +440,15 @@ def _log_eval_to_wandb(
         log_payload.update(_collect_image_payload(task_name, result))
 
     wandb.log(log_payload, step=epoch + 1)
-    img_keys = [k for k in log_payload if "/heatmap_" in k or "/curve_" in k]
+    img_keys = [
+        k for k in log_payload
+        if "/heatmap_" in k or "/curve_" in k or "/video_" in k
+    ]
     n_imgs = len(img_keys)
     if img_keys:
-        print(f"[in_training_eval] Uploading {n_imgs} image(s): " +
+        print(f"[in_training_eval] Uploading {n_imgs} media item(s): " +
               ", ".join(k.rsplit("/", 1)[-1] for k in sorted(img_keys)))
     print(
         f"[in_training_eval] Logged to wandb: {metric_key}={result['metric_value']:.6f}"
-        + (f" + {n_imgs} image(s)" if n_imgs else "")
+        + (f" + {n_imgs} media item(s)" if n_imgs else "")
     )

@@ -48,6 +48,17 @@ _loss_cfg_file = _TRAIN_V2.get("loss_config", "loss/loss_tcc.yaml")
 _V2_LOSS_YAML  = str(_CFG_V2._root / _loss_cfg_file) # path to configs_v2/<loss_config>
 
 
+def _save_encoder_checkpoint(encoder: TCCEncoder, checkpoint_path: str) -> None:
+    """Save encoder weights together with the output-normalization mode."""
+    torch.save(
+        {
+            "model_state_dict": encoder.state_dict(),
+            "embedding_normalization": encoder.embedding_normalization,
+        },
+        checkpoint_path,
+    )
+
+
 def _maybe_limit_cpu_threads(enabled: bool) -> None:
     """Optionally force host-side thread pools to 1.
 
@@ -419,7 +430,7 @@ def train(
 
             if (epoch + 1) % checkpoint_every == 0:
                 ckpt_path = os.path.join(run_checkpoint_dir, f"encoder_epoch{epoch+1:06d}.pt")
-                torch.save(encoder.state_dict(), ckpt_path)
+                _save_encoder_checkpoint(encoder, ckpt_path)
                 tqdm.write(f"[train] Saved checkpoint: {ckpt_path}")
                 # [v2] In-training eval hook (lazy import; only active when enabled=true)
                 _ite_eval_cfg = _train_cfg_full.get("in_training_eval", {})
@@ -433,6 +444,8 @@ def train(
                         epoch=epoch,
                         checkpoint_count=(epoch + 1) // checkpoint_every,
                         device=device,
+                        train_config_path=_V2_TRAIN_YAML,
+                        checkpoint_path=ckpt_path,
                     )
 
     else:
@@ -489,7 +502,7 @@ def train(
             # Save checkpoint every checkpoint_every epochs
             if (epoch + 1) % checkpoint_every == 0:
                 ckpt_path = os.path.join(run_checkpoint_dir, f"encoder_epoch{epoch+1:06d}.pt")
-                torch.save(encoder.state_dict(), ckpt_path)
+                _save_encoder_checkpoint(encoder, ckpt_path)
                 tqdm.write(f"[train] Saved checkpoint: {ckpt_path}")
                 # [v2] In-training eval hook (lazy import; only active when enabled=true)
                 _ite_eval_cfg = _train_cfg_full.get("in_training_eval", {})
@@ -503,6 +516,8 @@ def train(
                         epoch=epoch,
                         checkpoint_count=(epoch + 1) // checkpoint_every,
                         device=device,
+                        train_config_path=_V2_TRAIN_YAML,
+                        checkpoint_path=ckpt_path,
                     )
 
     pbar.close()

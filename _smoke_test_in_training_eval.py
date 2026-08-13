@@ -1,4 +1,4 @@
-"""Smoke test for in-training eval pipeline (dual-task: latent_distance_heatmap + kendalls_tau).
+"""Smoke test for in-training eval pipeline (latent_distance_heatmap + kendalls_tau + activation_map).
 
 Run with:
     cd /home/user/zhangzk/projects
@@ -47,11 +47,26 @@ ite_cfg = dict(train_cfg["in_training_eval"])
 ite_cfg["enabled"] = True
 ite_cfg["eval_freq_in_training"] = 1
 ite_cfg["log_images_to_wandb"] = False  # no wandb run in this test
-# Ensure dual-task list is set explicitly regardless of what train.yaml says
-ite_cfg["selected_eval_tasks_in_training"] = ["latent_distance_heatmap", "kendalls_tau"]
+# Ensure the task list is set explicitly regardless of what train.yaml says
+ite_cfg["selected_eval_tasks_in_training"] = [
+    "latent_distance_heatmap",
+    "kendalls_tau",
+    "activation_map",
+]
+ite_cfg["activation_map"] = {**(ite_cfg.get("activation_map") or {}), "max_videos": 1}
 
 tmp_ckpt_dir = tempfile.mkdtemp(prefix="smoke_ckpt_")
 print(f"[smoke] tmp_ckpt_dir={tmp_ckpt_dir}")
+
+# activation_map reloads the checkpoint written for this epoch, so emulate that save.
+smoke_ckpt_path = os.path.join(tmp_ckpt_dir, "encoder_epoch000002.pt")
+torch.save(
+    {
+        "model_state_dict": encoder.state_dict(),
+        "embedding_normalization": encoder.embedding_normalization,
+    },
+    smoke_ckpt_path,
+)
 
 import time
 t0 = time.perf_counter()
@@ -66,9 +81,10 @@ try:
         epoch=1,
         checkpoint_count=1,
         device=device,
+        checkpoint_path=smoke_ckpt_path,
     )
     elapsed = time.perf_counter() - t0
-    print(f"[smoke] Wall-clock: {elapsed:.1f}s for dual-task eval")
+    print(f"[smoke] Wall-clock: {elapsed:.1f}s for 3-task eval")
 
     eval_out = os.path.join(tmp_ckpt_dir, "eval_epoch000002")
 
@@ -92,6 +108,15 @@ try:
             pngs.extend(f for f in filenames if f.endswith(".png"))
         assert pngs, f"No PNG heatmap found (recursively) in {task_dir}"
         print(f"[smoke] {task}: dir OK, PNG={pngs}")
+
+    # 7. Verify activation_map produced the two overlay MP4s for exactly one video
+    act_dir = os.path.join(eval_out, "activation_map")
+    assert os.path.isdir(act_dir), f"Task output dir missing: {act_dir}"
+    mp4s = []
+    for dirpath, _, filenames in os.walk(act_dir):
+        mp4s.extend(os.path.join(dirpath, f) for f in filenames if f.endswith(".mp4"))
+    assert len(mp4s) == 2, f"Expected 2 overlay MP4s for max_videos=1, got {mp4s}"
+    print(f"[smoke] activation_map: dir OK, MP4={[os.path.basename(p) for p in mp4s]}")
 
     print("\n[smoke] *** Smoke test PASSED ***")
 
