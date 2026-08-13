@@ -22,7 +22,7 @@ num_cycles_fraction: 0.25 # Alternative to num_cycles: fraction of total possibl
 cycle_length:  2    # Hops per cycle; 2 = A→B→A (most common)
 
 # ── Loss hyperparameters ──────────────────────────────────────────────
-softmax_temperature: 0.1     # For classification loss type
+softmax_temperature: 0.001     # For classification loss type
 label_smoothing:     0.1     # For classification loss type (0 = no smoothing)
 variance_lambda:     0.001   # For regression_mse_var loss type
 huber_delta:         0.1     # For regression_huber loss type

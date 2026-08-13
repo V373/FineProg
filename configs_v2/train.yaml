@@ -5,7 +5,7 @@
 
 # ── Dataset ───────────────────────────────────────────────────────────
 # Key from configs_v2/datasets.yaml  →  resolved to processed_h5_path at runtime
-train_dataset: robomimic_transport_ph_36vid_train
+train_dataset: robomimic_can_ph_36vid_train
 
 # ── Model ─────────────────────────────────────────────────────────────
 backbone_name:   resnet50_conv4c
@@ -13,15 +13,30 @@ pretrained:      true
 train_base:      only_bn      # frozen | only_bn | train_all
 train_embedding: true
 
+# Encoder output dimension.
+# With embedding_normalization=l2 and the current TCC similarity scaling:
+#   embedding_dim=128 → softmax_temperature≈0.001
+#   embedding_dim=64  → softmax_temperature≈0.002
+#   embedding_dim=32  → softmax_temperature≈0.004
+# The actual value is configured in configs_v2/loss/loss_tcc.yaml.
+embedding_dim: 128
+
+# Encoder output contract for the latent embeddings.
+#   none | l2
+# Applies to every encoder output path (regular forward, backbone-cache
+# forward_from_feats, and the return_backbone_feats dict).
+# l2 = unit-norm embeddings, computed and returned in FP32.
+embedding_normalization: l2
+
 # ── Reproducibility ───────────────────────────────────────────────────
 seed: 42
 
 # ── Training duration ─────────────────────────────────────────────────
-num_epochs: 40000
+num_epochs: 20000
 
 # ── DataLoader ────────────────────────────────────────────────────────
 # Training-specific DataLoader settings.  (Not shared with extract.)
-batch_size:  12
+batch_size:  12 # 12
 num_workers: 4
 limit_cpu_threads: false   # force OMP / MKL / OpenBLAS / NumExpr and torch CPU threads to 1
 transport_frames_as_uint8: false  # true = move uint8 frames to GPU, then cast/normalize on device
@@ -36,13 +51,13 @@ sampling_strategy:  offset_uniform
 random_offset:      1
 
 # ── Optimizer ─────────────────────────────────────────────────────────
-learning_rate: 4.5e-4
+learning_rate: 4.5e-4 # 4.5e-4
 
 # ── Logging ───────────────────────────────────────────────────────────
 log_every: 100    # log loss to wandb every N epochs
 
 # ── Checkpoint ────────────────────────────────────────────────────────
-checkpoint_every: 5000   # save encoder .pt every N epochs
+checkpoint_every: 2000   # save encoder .pt every N epochs
 checkpoint_dir:   checkpoint   # relative to project_root
 
 # ── Backbone feature cache ────────────────────────────────────────────
@@ -58,8 +73,10 @@ cache_refresh_every:    500    # re-run backbone every N epochs to refresh cache
 #   composite                   → CompositeEncoderLoss (weighted sum of multiple losses; see loss/loss_composite_tcc_infonce.yaml)
 #   temporal_triplet            → TemporalTripletLoss (intra-video triplet margin loss)
 # loss_config: YAML path relative to configs_v2/ for loss hyperparameters (supports subdirs)
-loss_name:   composite
-loss_config: loss/loss_composite_tcc_triplet.yaml
+# loss_name:   composite
+# loss_config: loss/loss_composite_tcc_triplet.yaml
+loss_name:   tcc
+loss_config: loss/loss_tcc.yaml
 
 # loss_composite_tcc_triplet
 
@@ -69,27 +86,40 @@ loss_config: loss/loss_composite_tcc_triplet.yaml
 # Results are logged to the active wandb run; the temporary H5 is removed
 # automatically after each eval.
 #
-# Supported tasks: latent_distance_heatmap, kendalls_tau
+# Supported tasks: latent_distance_heatmap, kendalls_tau, activation_map
 # Excluded: classification, expert_projection
 in_training_eval:
   enabled:                        true
   # Ordered list of eval tasks to run at each in-training checkpoint.
-  # Both tasks run against one shared embedding extraction per checkpoint.
-  # Backward-compat: selected_eval_task_in_training (single string) still accepted.
+  # latent_distance_heatmap / kendalls_tau share one embedding extraction per
+  # checkpoint.  activation_map instead reloads the checkpoint just written and
+  # re-runs the encoder over raw frames, so it is noticeably slower.
+  # Backward-compat: selected_eval_task_in_training (single string) still accepted./
   selected_eval_tasks_in_training:
     - latent_distance_heatmap
     - kendalls_tau
+    - activation_map
   eval_freq_in_training:          1      # run eval every N checkpoint saves (1 = every checkpoint)
   eval_dataset_ref:               ~      # null → auto: registry-paired validation dataset, else train_dataset
-  log_images_to_wandb:            true   # upload heatmap PNGs to wandb
+  log_images_to_wandb:            true   # upload heatmap PNGs / overlay MP4s to wandb
 
   # ── Task-specific overrides ──────────────────────────────────────────
   # Merged on top of configs_v2/eval/<task>.yaml at runtime.
   latent_distance_heatmap:
     selected_video_index:   0      # integer or "all" — open; "all" uploads one image per video
-    normalize_embeddings:   true
+    normalize_embeddings:   false
     convert_to_similarity:  true
     similarity_tau:         1.0     
   kendalls_tau:
     kendall_stride:   5             # down-sample stride before NN alignment; higher = faster
     kendall_distance: sqeuclidean   # Options: sqeuclidean | euclidean | cosine
+  activation_map:
+    # dataset / checkpoint / shape params are injected at runtime from this run.
+    max_videos:         1           # int or "all" — first N videos of the eval dataset
+    save_mp4:           true        # the two overlay MP4s uploaded to wandb
+    save_png:           false       # per-frame PNGs; heavy, off by default in-training
+    save_h5:            false       # raw heatmap arrays; heavy, off by default in-training
+    sample_all_stride:  1
+    overlay_alpha:      0.45
+    colormap:           jet
+    resize_to:          224

@@ -14,7 +14,7 @@
 # A larger margin pushes positives and negatives further apart in embedding space.
 # Typical range for unnormalized embeddings (D=128): 0.5 – 2.0.
 # Typical range when normalize_embeddings=true: 0.05 – 0.5.
-margin: 1.0
+margin: 0.2
 
 # ── Triplet sampling ──────────────────────────────────────────────────────────
 # num_triplets_fraction: fraction of valid triplets to keep per clip, in (0, 1].

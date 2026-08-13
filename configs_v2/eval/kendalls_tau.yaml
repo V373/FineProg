@@ -6,9 +6,10 @@
 # ── Embedding source ──────────────────────────────────────────────────
 # Key from configs_v2/runs.yaml :: embeddings
 # The resolver fills in: embedding_h5_path, run_name, h5_stem (for output dir)
-embedding_ref: can_ph_valid_ep50k
+embedding_ref: tcc_can_ph_36_embdim16_ep16k_valid
 
 # Other examples:
+# embedding_ref: tcc_can_ph_36_ctx6_ep16k_valid
 # embedding_ref: square_ph_valid_20_from_180_ep50k
 # embedding_ref: can_ph_train_ep50k
 

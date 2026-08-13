@@ -18,7 +18,7 @@
 #   embedding_h5_path → absolute path to the embedding H5 file
 #   run_name          → used to construct the default output directory
 #   h5_stem           → used to construct the default output directory
-embedding_ref: can_mh_300vid_all_frozen_15k
+embedding_ref: tcc_can_ph_36_embdim16_ep16k_mh_worse
 
 # ── Trajectory selector ──────────────────────────────────────────────
 # Controls which trajectory (or trajectories) to process:

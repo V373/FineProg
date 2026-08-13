@@ -8,13 +8,14 @@ task_name: activation_map
 dataset_ref: robomimic_can_mh_100vid_worse
 
 # Resolve checkpoint_path from registry/runs.yaml
-checkpoint_ref: comp_tt_can_ph_36_frozen_ep15k
+checkpoint_ref: tcc_can_ph_36_softmaxt_0p001_ep10k_s20260726
 # comp_tt_can_ph_36_ep40k_r1 is the lastest TCC + triplet best ckpt, with backbone trained only_bn
 # comp_tt_can_ph_36_frozen_ep15k is the best ckpt with backbone frozen, but it has only 15k epochs and may be underfit
 
-output_dir: outputs/activation_map
+output_dir: outputs/activation_map   # task itself appends <run_name>/<h5_stem>/<video_id>
 device: cuda
 context_size: 2
+embedding_dim: 128   # must match the checkpoint's temporal_embedder.proj output dim
 batch_size: 1
 num_workers: 0
 max_videos: "all"   # int or "all"

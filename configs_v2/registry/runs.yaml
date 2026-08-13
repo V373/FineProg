@@ -76,6 +76,15 @@ runs:
     train_base:       only_bn
     checkpoint_epoch: 50000
 
+  # ── Robomimic Transport PH ──────────────────────────────────────────
+  comp_tt_transport_ph_36_ep20k:
+    description: "Transport PH 36-vid Composite(TCC+TT), epoch 20000"
+    run_name:         COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_transport_ph-36vid_train-resnet50_conv4c-only_bn-20260628-040859
+    train_dataset:    robomimic_transport_ph_36vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 20000
+
   lift_ph_180vid_train_ep50k:
     description: robomimic_lift_ph-180vid_train, epoch 50000 [auto-discovered]
     run_name: TCC-robomimic_lift_ph-180vid_train-resnet50_conv4c-only_bn-20260511-233040
@@ -184,6 +193,97 @@ runs:
     train_base:       only_bn
     checkpoint_epoch: 40000
 
+  # ── Can PH 36-vid · TCC softmax-temperature sweep · epoch 10k ──────
+  tcc_can_ph_36_softmaxt_0p0005_ep8k_s20260727:
+    description: "Can PH 36-vid TCC softmax temperature 0.0005, last finite checkpoint epoch 8000"
+    run_name:         TCC-robomimic_can_ph-36vid_train-resnet50_conv4c-only_bn-20260727-163804-softmaxT0.0005
+    train_dataset:    robomimic_can_ph_36vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 8000
+
+  tcc_can_ph_36_softmaxt_0p001_ep10k_s20260726:
+    description: "Can PH 36-vid TCC softmax temperature 0.001, epoch 10000"
+    run_name:         TCC-robomimic_can_ph-36vid_train-resnet50_conv4c-only_bn-20260726-211221-softmaxT0.001
+    train_dataset:    robomimic_can_ph_36vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 10000
+
+  tcc_can_ph_36_softmaxt_0p0015_ep10k_s20260726:
+    description: "Can PH 36-vid TCC softmax temperature 0.0015, epoch 10000"
+    run_name:         TCC-robomimic_can_ph-36vid_train-resnet50_conv4c-only_bn-20260727-005404-softmaxT0.0015
+    train_dataset:    robomimic_can_ph_36vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 10000
+
+  tcc_can_ph_36_softmaxt_0p002_ep10k_s20260726:
+    description: "Can PH 36-vid TCC softmax temperature 0.002, epoch 10000"
+    run_name:         TCC-robomimic_can_ph-36vid_train-resnet50_conv4c-only_bn-20260727-043603-softmaxT0.002
+    train_dataset:    robomimic_can_ph_36vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 10000
+
+  tcc_can_ph_36_softmaxt_0p0025_ep10k_s20260726:
+    description: "Can PH 36-vid TCC softmax temperature 0.0025, epoch 10000"
+    run_name:         TCC-robomimic_can_ph-36vid_train-resnet50_conv4c-only_bn-20260727-082011-softmaxT0.0025
+    train_dataset:    robomimic_can_ph_36vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 10000
+
+  # ── Can PH 36-vid · TCC context_size sweep ─────────────────────────
+  tcc_can_ph_36_ctx6_ep16k_s20260728:
+    description: "Can PH 36-vid TCC context_size=6 (clip_len 20, context_stride 15), epoch 16000"
+    run_name:         TCC-robomimic_can_ph-36vid_train-resnet50_conv4c-only_bn-20260728-221713-ctx6
+    train_dataset:    robomimic_can_ph_36vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 16000
+
+  # ── Can PH 36-vid · TCC embedding_dim sweep (context_size 2) ───────
+  tcc_can_ph_36_embdim64_ep16k_s20260729:
+    description: "Can PH 36-vid TCC embedding_dim=64 (softmax_temperature 0.002), epoch 16000"
+    run_name:         TCC-robomimic_can_ph-36vid_train-resnet50_conv4c-only_bn-20260729-175358-embdim64
+    train_dataset:    robomimic_can_ph_36vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 16000
+
+  tcc_can_ph_36_embdim32_ep16k_s20260729:
+    description: "Can PH 36-vid TCC embedding_dim=32 (softmax_temperature 0.004), epoch 16000"
+    run_name:         TCC-robomimic_can_ph-36vid_train-resnet50_conv4c-only_bn-20260729-234936-embdim32
+    train_dataset:    robomimic_can_ph_36vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 16000
+
+  tcc_can_ph_36_embdim16_ep16k_s20260730:
+    description: "Can PH 36-vid TCC embedding_dim=16 (softmax_temperature 0.008), epoch 16000"
+    run_name:         TCC-robomimic_can_ph-36vid_train-resnet50_conv4c-only_bn-20260730-054334-embdim16
+    train_dataset:    robomimic_can_ph_36vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 16000
+
+  comp_tt_can_ph_36_margin0p2_ep10k_s20260728:
+    description: "Can PH 36-vid Composite(TCC+TT) margin=0.2, epoch 10000"
+    run_name:         COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_can_ph-36vid_train-resnet50_conv4c-only_bn-20260728-041655-margin0.2
+    train_dataset:    robomimic_can_ph_36vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 10000
+
+  comp_tt_can_ph_36_w1p0_ep10k_s20260728:
+    description: "Can PH 36-vid Composite(TCC+TT) component weight=1.0, epoch 10000"
+    run_name:         COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_can_ph-36vid_train-resnet50_conv4c-only_bn-20260728-152042
+    train_dataset:    robomimic_can_ph_36vid_train
+    backbone:         resnet50_conv4c
+    train_base:       only_bn
+    checkpoint_epoch: 10000
+
   # ── Can PH 36-vid · Composite(TCC+TemporalTriplet) · frozen · epoch 15k ─
   comp_tt_can_ph_36_frozen_ep15k:
     description: "Can PH 36-vid Composite(TCC+TT) frozen backbone, epoch 15000"
@@ -192,6 +292,151 @@ runs:
     backbone:         resnet50_conv4c
     train_base:       frozen
     checkpoint_epoch: 15000
+
+  # ── Robomimic task/loss/embedding-dim sweep · selected finite checkpoints ──
+  lift_tcc_d128_ep14k_s20260802:
+    description: "Task/loss/embdim sweep: Lift TCC d128, last finite checkpoint epoch 14000"
+    run_name: TCC-robomimic_lift_ph-36vid_train-resnet50_conv4c-only_bn-20260802-164725-tcc_d128
+    train_dataset: robomimic_lift_ph_36vid_train
+    backbone: resnet50_conv4c
+    train_base: only_bn
+    checkpoint_epoch: 14000
+
+  square_tcc_d128_ep20k_s20260802:
+    description: "Task/loss/embdim sweep: Square TCC d128, epoch 20000"
+    run_name: TCC-robomimic_square_ph-36vid_train-resnet50_conv4c-only_bn-20260803-002612-tcc_d128
+    train_dataset: robomimic_square_ph_36vid_train
+    backbone: resnet50_conv4c
+    train_base: only_bn
+    checkpoint_epoch: 20000
+
+  transport_tcc_d128_ep20k_s20260802:
+    description: "Task/loss/embdim sweep: Transport TCC d128, epoch 20000"
+    run_name: TCC-robomimic_transport_ph-36vid_train-resnet50_conv4c-only_bn-20260803-075718-tcc_d128
+    train_dataset: robomimic_transport_ph_36vid_train
+    backbone: resnet50_conv4c
+    train_base: only_bn
+    checkpoint_epoch: 20000
+
+  lift_tcc_triplet_w0p5_d128_ep20k_s20260802:
+    description: "Task/loss/embdim sweep: Lift TCC+TemporalTriplet w0.5 d128, epoch 20000"
+    run_name: COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_lift_ph-36vid_train-resnet50_conv4c-only_bn-20260803-152250-tcc_triplet_w0p5_d128
+    train_dataset: robomimic_lift_ph_36vid_train
+    backbone: resnet50_conv4c
+    train_base: only_bn
+    checkpoint_epoch: 20000
+
+  square_tcc_triplet_w0p5_d128_ep20k_s20260802:
+    description: "Task/loss/embdim sweep: Square TCC+TemporalTriplet w0.5 d128, epoch 20000"
+    run_name: COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_square_ph-36vid_train-resnet50_conv4c-only_bn-20260803-230542-tcc_triplet_w0p5_d128
+    train_dataset: robomimic_square_ph_36vid_train
+    backbone: resnet50_conv4c
+    train_base: only_bn
+    checkpoint_epoch: 20000
+
+  transport_tcc_triplet_w0p5_d128_ep20k_s20260802:
+    description: "Task/loss/embdim sweep: Transport TCC+TemporalTriplet w0.5 d128, epoch 20000"
+    run_name: COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_transport_ph-36vid_train-resnet50_conv4c-only_bn-20260804-064845-tcc_triplet_w0p5_d128
+    train_dataset: robomimic_transport_ph_36vid_train
+    backbone: resnet50_conv4c
+    train_base: only_bn
+    checkpoint_epoch: 20000
+
+  lift_tcc_triplet_w1p0_d128_ep20k_s20260802:
+    description: "Task/loss/embdim sweep: Lift TCC+TemporalTriplet w1.0 d128, epoch 20000"
+    run_name: COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_lift_ph-36vid_train-resnet50_conv4c-only_bn-20260804-142301-tcc_triplet_w1p0_d128
+    train_dataset: robomimic_lift_ph_36vid_train
+    backbone: resnet50_conv4c
+    train_base: only_bn
+    checkpoint_epoch: 20000
+
+  square_tcc_triplet_w1p0_d128_ep20k_s20260802:
+    description: "Task/loss/embdim sweep: Square TCC+TemporalTriplet w1.0 d128, epoch 20000"
+    run_name: COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_square_ph-36vid_train-resnet50_conv4c-only_bn-20260804-220854-tcc_triplet_w1p0_d128
+    train_dataset: robomimic_square_ph_36vid_train
+    backbone: resnet50_conv4c
+    train_base: only_bn
+    checkpoint_epoch: 20000
+
+  transport_tcc_triplet_w1p0_d128_ep20k_s20260802:
+    description: "Task/loss/embdim sweep: Transport TCC+TemporalTriplet w1.0 d128, epoch 20000"
+    run_name: COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_transport_ph-36vid_train-resnet50_conv4c-only_bn-20260805-054948-tcc_triplet_w1p0_d128
+    train_dataset: robomimic_transport_ph_36vid_train
+    backbone: resnet50_conv4c
+    train_base: only_bn
+    checkpoint_epoch: 20000
+
+  lift_tcc_d64_ep20k_s20260802:
+    description: "Task/loss/embdim sweep: Lift TCC d64, epoch 20000"
+    run_name: TCC-robomimic_lift_ph-36vid_train-resnet50_conv4c-only_bn-20260805-141835-tcc_d64
+    train_dataset: robomimic_lift_ph_36vid_train
+    backbone: resnet50_conv4c
+    train_base: only_bn
+    checkpoint_epoch: 20000
+
+  square_tcc_d64_ep20k_s20260802:
+    description: "Task/loss/embdim sweep: Square TCC d64, epoch 20000"
+    run_name: TCC-robomimic_square_ph-36vid_train-resnet50_conv4c-only_bn-20260805-223237-tcc_d64
+    train_dataset: robomimic_square_ph_36vid_train
+    backbone: resnet50_conv4c
+    train_base: only_bn
+    checkpoint_epoch: 20000
+
+  transport_tcc_d64_ep20k_s20260802:
+    description: "Task/loss/embdim sweep: Transport TCC d64, epoch 20000"
+    run_name: TCC-robomimic_transport_ph-36vid_train-resnet50_conv4c-only_bn-20260806-060532-tcc_d64
+    train_dataset: robomimic_transport_ph_36vid_train
+    backbone: resnet50_conv4c
+    train_base: only_bn
+    checkpoint_epoch: 20000
+
+  lift_tcc_d32_ep20k_s20260802:
+    description: "Task/loss/embdim sweep: Lift TCC d32, epoch 20000"
+    run_name: TCC-robomimic_lift_ph-36vid_train-resnet50_conv4c-only_bn-20260806-133212-tcc_d32
+    train_dataset: robomimic_lift_ph_36vid_train
+    backbone: resnet50_conv4c
+    train_base: only_bn
+    checkpoint_epoch: 20000
+
+  square_tcc_d32_ep20k_s20260802:
+    description: "Task/loss/embdim sweep: Square TCC d32, epoch 20000"
+    run_name: TCC-robomimic_square_ph-36vid_train-resnet50_conv4c-only_bn-20260806-210218-tcc_d32
+    train_dataset: robomimic_square_ph_36vid_train
+    backbone: resnet50_conv4c
+    train_base: only_bn
+    checkpoint_epoch: 20000
+
+  transport_tcc_d32_ep20k_s20260802:
+    description: "Task/loss/embdim sweep: Transport TCC d32, epoch 20000"
+    run_name: TCC-robomimic_transport_ph-36vid_train-resnet50_conv4c-only_bn-20260807-043039-tcc_d32
+    train_dataset: robomimic_transport_ph_36vid_train
+    backbone: resnet50_conv4c
+    train_base: only_bn
+    checkpoint_epoch: 20000
+
+  lift_tcc_triplet_w1p0_d32_ep20k_s20260802:
+    description: "Task/loss/embdim sweep: Lift TCC+TemporalTriplet w1.0 d32, epoch 20000"
+    run_name: COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_lift_ph-36vid_train-resnet50_conv4c-only_bn-20260807-115817-tcc_triplet_w1p0_d32
+    train_dataset: robomimic_lift_ph_36vid_train
+    backbone: resnet50_conv4c
+    train_base: only_bn
+    checkpoint_epoch: 20000
+
+  square_tcc_triplet_w1p0_d32_ep14k_s20260802:
+    description: "Task/loss/embdim sweep: Square TCC+TemporalTriplet w1.0 d32, last finite checkpoint epoch 14000"
+    run_name: COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_square_ph-36vid_train-resnet50_conv4c-only_bn-20260807-194020-tcc_triplet_w1p0_d32
+    train_dataset: robomimic_square_ph_36vid_train
+    backbone: resnet50_conv4c
+    train_base: only_bn
+    checkpoint_epoch: 14000
+
+  transport_tcc_triplet_w1p0_d32_ep20k_s20260802:
+    description: "Task/loss/embdim sweep: Transport TCC+TemporalTriplet w1.0 d32, epoch 20000"
+    run_name: COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_transport_ph-36vid_train-resnet50_conv4c-only_bn-20260808-032102-tcc_triplet_w1p0_d32
+    train_dataset: robomimic_transport_ph_36vid_train
+    backbone: resnet50_conv4c
+    train_base: only_bn
+    checkpoint_epoch: 20000
 
   # ── Template for new runs ─────────────────────────────────────────────
   # new_run_alias:
@@ -316,6 +561,35 @@ embeddings:
     dataset_ref: robomimic_square_ph_36vid_train
     variant:     mean_path
     embedding_h5_path: datasets/embeddings/COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_square_ph-36vid_train-resnet50_conv4c-only_bn-20260627-125332/robomimic_square_ph-36vid_train-embd-mean_path-ep020000.h5
+
+  # ── Transport PH 36-vid · Composite(TCC+TT) · epoch 20k ─────────────
+  comp_tt_transport_ph_36_train_ep20k:
+    description: "Transport PH 36-vid train embeddings, Composite(TCC+TT) ep20k"
+    run_ref:     comp_tt_transport_ph_36_ep20k
+    dataset_ref: robomimic_transport_ph_36vid_train
+    variant:     standard
+    embedding_h5_path: datasets/embeddings/COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_transport_ph-36vid_train-resnet50_conv4c-only_bn-20260628-040859/robomimic_transport_ph-36vid_train-embd-ep020000.h5
+
+  comp_tt_transport_ph_36_valid_ep20k:
+    description: "Transport PH 4-vid valid embeddings, Composite(TCC+TT) ep20k"
+    run_ref:     comp_tt_transport_ph_36_ep20k
+    dataset_ref: robomimic_transport_ph_4vid_valid
+    variant:     standard
+    embedding_h5_path: datasets/embeddings/COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_transport_ph-36vid_train-resnet50_conv4c-only_bn-20260628-040859/robomimic_transport_ph-4vid_valid-embd-ep020000.h5
+
+  comp_tt_transport_ph_36_transport_mh_worse_ep20k:
+    description: "Transport MH 50-vid worse embeddings, Composite(TCC+TT) ep20k"
+    run_ref:     comp_tt_transport_ph_36_ep20k
+    dataset_ref: robomimic_transport_mh_50vid_worse
+    variant:     standard
+    embedding_h5_path: datasets/embeddings/COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_transport_ph-36vid_train-resnet50_conv4c-only_bn-20260628-040859/robomimic_transport_mh-50vid_worse-embd-ep020000.h5
+
+  comp_tt_transport_ph_36_train_mean_path_ep20k:
+    description: "Transport PH 36-vid train mean-path, Composite(TCC+TT) ep20k"
+    run_ref:     comp_tt_transport_ph_36_ep20k
+    dataset_ref: robomimic_transport_ph_36vid_train
+    variant:     mean_path
+    embedding_h5_path: datasets/embeddings/COMPOSITE_TCC_TEMPORAL_TRIPLET-robomimic_transport_ph-36vid_train-resnet50_conv4c-only_bn-20260628-040859/robomimic_transport_ph-36vid_train-embd-mean_path-ep020000.h5
 
   # ── Square PH 90 · epoch 50k ──────────────────────────────────────────
   square_ph_valid_20_from_90_ep50k:
@@ -559,6 +833,79 @@ embeddings:
     dataset_ref: robomimic_can_ph_36vid_train
     variant:     mean_path
 
+  # ── Can PH 36-vid · TCC softmax-temperature sweep · epoch 10k ──────
+  tcc_can_ph_36_softmaxt_0p001_ep10k_s20260726_train:
+    description: "Can PH 36-vid train embeddings, TCC softmax temperature 0.001 ep10k"
+    run_ref:     tcc_can_ph_36_softmaxt_0p001_ep10k_s20260726
+    dataset_ref: robomimic_can_ph_36vid_train
+    variant:     standard
+
+  tcc_can_ph_36_softmaxt_0p001_ep10k_s20260726_valid:
+    description: "Can PH 4-vid valid embeddings, TCC softmax temperature 0.001 ep10k"
+    run_ref:     tcc_can_ph_36_softmaxt_0p001_ep10k_s20260726
+    dataset_ref: robomimic_can_ph_4vid_valid
+    variant:     standard
+
+  tcc_can_ph_36_softmaxt_0p001_ep10k_s20260726_mh_worse:
+    description: "Can MH 100-vid worse embeddings, TCC softmax temperature 0.001 ep10k"
+    run_ref:     tcc_can_ph_36_softmaxt_0p001_ep10k_s20260726
+    dataset_ref: robomimic_can_mh_100vid_worse
+    variant:     standard
+
+  tcc_can_ph_36_softmaxt_0p0015_ep10k_s20260726_train:
+    description: "Can PH 36-vid train embeddings, TCC softmax temperature 0.0015 ep10k"
+    run_ref:     tcc_can_ph_36_softmaxt_0p0015_ep10k_s20260726
+    dataset_ref: robomimic_can_ph_36vid_train
+    variant:     standard
+
+  tcc_can_ph_36_softmaxt_0p0015_ep10k_s20260726_valid:
+    description: "Can PH 4-vid valid embeddings, TCC softmax temperature 0.0015 ep10k"
+    run_ref:     tcc_can_ph_36_softmaxt_0p0015_ep10k_s20260726
+    dataset_ref: robomimic_can_ph_4vid_valid
+    variant:     standard
+
+  tcc_can_ph_36_softmaxt_0p0015_ep10k_s20260726_mh_worse:
+    description: "Can MH 100-vid worse embeddings, TCC softmax temperature 0.0015 ep10k"
+    run_ref:     tcc_can_ph_36_softmaxt_0p0015_ep10k_s20260726
+    dataset_ref: robomimic_can_mh_100vid_worse
+    variant:     standard
+
+  tcc_can_ph_36_softmaxt_0p002_ep10k_s20260726_train:
+    description: "Can PH 36-vid train embeddings, TCC softmax temperature 0.002 ep10k"
+    run_ref:     tcc_can_ph_36_softmaxt_0p002_ep10k_s20260726
+    dataset_ref: robomimic_can_ph_36vid_train
+    variant:     standard
+
+  tcc_can_ph_36_softmaxt_0p002_ep10k_s20260726_valid:
+    description: "Can PH 4-vid valid embeddings, TCC softmax temperature 0.002 ep10k"
+    run_ref:     tcc_can_ph_36_softmaxt_0p002_ep10k_s20260726
+    dataset_ref: robomimic_can_ph_4vid_valid
+    variant:     standard
+
+  tcc_can_ph_36_softmaxt_0p002_ep10k_s20260726_mh_worse:
+    description: "Can MH 100-vid worse embeddings, TCC softmax temperature 0.002 ep10k"
+    run_ref:     tcc_can_ph_36_softmaxt_0p002_ep10k_s20260726
+    dataset_ref: robomimic_can_mh_100vid_worse
+    variant:     standard
+
+  tcc_can_ph_36_softmaxt_0p0025_ep10k_s20260726_train:
+    description: "Can PH 36-vid train embeddings, TCC softmax temperature 0.0025 ep10k"
+    run_ref:     tcc_can_ph_36_softmaxt_0p0025_ep10k_s20260726
+    dataset_ref: robomimic_can_ph_36vid_train
+    variant:     standard
+
+  tcc_can_ph_36_softmaxt_0p0025_ep10k_s20260726_valid:
+    description: "Can PH 4-vid valid embeddings, TCC softmax temperature 0.0025 ep10k"
+    run_ref:     tcc_can_ph_36_softmaxt_0p0025_ep10k_s20260726
+    dataset_ref: robomimic_can_ph_4vid_valid
+    variant:     standard
+
+  tcc_can_ph_36_softmaxt_0p0025_ep10k_s20260726_mh_worse:
+    description: "Can MH 100-vid worse embeddings, TCC softmax temperature 0.0025 ep10k"
+    run_ref:     tcc_can_ph_36_softmaxt_0p0025_ep10k_s20260726
+    dataset_ref: robomimic_can_mh_100vid_worse
+    variant:     standard
+
   # ── Can PH 36-vid · Composite(TCC+TT) · epoch 50k ────────────────────
   comp_tt_can_ph_36_ep50k_train:
     description: "Can PH 36-vid train embeddings, Composite(TCC+TT) ep50k"
@@ -621,4 +968,450 @@ embeddings:
     description: "Can MH 300-vid-all embeddings, frozen backbone ep15k"
     run_ref: comp_tt_can_ph_36_frozen_ep15k
     dataset_ref: robomimic_can_mh_300vid_all
+    variant: standard
+
+  tcc_can_ph_36_softmaxt_0p0005_ep8k_s20260727_train:
+    description: robomimic_can_ph_36vid_train embeddings (standard)
+    run_ref: tcc_can_ph_36_softmaxt_0p0005_ep8k_s20260727
+    dataset_ref: robomimic_can_ph_36vid_train
+    variant: standard
+
+  tcc_can_ph_36_softmaxt_0p0005_ep8k_s20260727_valid:
+    description: robomimic_can_ph_4vid_valid embeddings (standard)
+    run_ref: tcc_can_ph_36_softmaxt_0p0005_ep8k_s20260727
+    dataset_ref: robomimic_can_ph_4vid_valid
+    variant: standard
+
+  tcc_can_ph_36_softmaxt_0p0005_ep8k_s20260727_mh_worse:
+    description: robomimic_can_mh_100vid_worse embeddings (standard)
+    run_ref: tcc_can_ph_36_softmaxt_0p0005_ep8k_s20260727
+    dataset_ref: robomimic_can_mh_100vid_worse
+    variant: standard
+
+  # ── ctx6 sweep run · epoch 16k ───────────────────────────────────────
+  tcc_can_ph_36_ctx6_ep16k_train:
+    description: robomimic_can_ph_36vid_train embeddings (standard, ctx6 ep16k)
+    run_ref: tcc_can_ph_36_ctx6_ep16k_s20260728
+    dataset_ref: robomimic_can_ph_36vid_train
+    variant: standard
+
+  tcc_can_ph_36_ctx6_ep16k_valid:
+    description: robomimic_can_ph_4vid_valid embeddings (standard, ctx6 ep16k)
+    run_ref: tcc_can_ph_36_ctx6_ep16k_s20260728
+    dataset_ref: robomimic_can_ph_4vid_valid
+    variant: standard
+
+  tcc_can_ph_36_ctx6_ep16k_mh_worse:
+    description: robomimic_can_mh_100vid_worse embeddings (standard, ctx6 ep16k)
+    run_ref: tcc_can_ph_36_ctx6_ep16k_s20260728
+    dataset_ref: robomimic_can_mh_100vid_worse
+    variant: standard
+
+  # ── embedding_dim sweep · epoch 16k ──────────────────────────────────
+  tcc_can_ph_36_embdim64_ep16k_train:
+    description: robomimic_can_ph_36vid_train embeddings (standard, embdim64 ep16k)
+    run_ref: tcc_can_ph_36_embdim64_ep16k_s20260729
+    dataset_ref: robomimic_can_ph_36vid_train
+    variant: standard
+
+  tcc_can_ph_36_embdim64_ep16k_valid:
+    description: robomimic_can_ph_4vid_valid embeddings (standard, embdim64 ep16k)
+    run_ref: tcc_can_ph_36_embdim64_ep16k_s20260729
+    dataset_ref: robomimic_can_ph_4vid_valid
+    variant: standard
+
+  tcc_can_ph_36_embdim64_ep16k_mh_worse:
+    description: robomimic_can_mh_100vid_worse embeddings (standard, embdim64 ep16k)
+    run_ref: tcc_can_ph_36_embdim64_ep16k_s20260729
+    dataset_ref: robomimic_can_mh_100vid_worse
+    variant: standard
+
+  tcc_can_ph_36_embdim32_ep16k_train:
+    description: robomimic_can_ph_36vid_train embeddings (standard, embdim32 ep16k)
+    run_ref: tcc_can_ph_36_embdim32_ep16k_s20260729
+    dataset_ref: robomimic_can_ph_36vid_train
+    variant: standard
+
+  tcc_can_ph_36_embdim32_ep16k_valid:
+    description: robomimic_can_ph_4vid_valid embeddings (standard, embdim32 ep16k)
+    run_ref: tcc_can_ph_36_embdim32_ep16k_s20260729
+    dataset_ref: robomimic_can_ph_4vid_valid
+    variant: standard
+
+  tcc_can_ph_36_embdim32_ep16k_mh_worse:
+    description: robomimic_can_mh_100vid_worse embeddings (standard, embdim32 ep16k)
+    run_ref: tcc_can_ph_36_embdim32_ep16k_s20260729
+    dataset_ref: robomimic_can_mh_100vid_worse
+    variant: standard
+
+  tcc_can_ph_36_embdim16_ep16k_train:
+    description: robomimic_can_ph_36vid_train embeddings (standard, embdim16 ep16k)
+    run_ref: tcc_can_ph_36_embdim16_ep16k_s20260730
+    dataset_ref: robomimic_can_ph_36vid_train
+    variant: standard
+
+  tcc_can_ph_36_embdim16_ep16k_valid:
+    description: robomimic_can_ph_4vid_valid embeddings (standard, embdim16 ep16k)
+    run_ref: tcc_can_ph_36_embdim16_ep16k_s20260730
+    dataset_ref: robomimic_can_ph_4vid_valid
+    variant: standard
+
+  tcc_can_ph_36_embdim16_ep16k_mh_worse:
+    description: robomimic_can_mh_100vid_worse embeddings (standard, embdim16 ep16k)
+    run_ref: tcc_can_ph_36_embdim16_ep16k_s20260730
+    dataset_ref: robomimic_can_mh_100vid_worse
+    variant: standard
+
+  lift_tcc_d32_ep20k_s20260802_valid:
+    description: robomimic_lift_ph_4vid_valid embeddings (standard)
+    run_ref: lift_tcc_d32_ep20k_s20260802
+    dataset_ref: robomimic_lift_ph_4vid_valid
+    variant: standard
+
+  lift_tcc_d128_ep14k_s20260802_valid:
+    description: robomimic_lift_ph_4vid_valid embeddings (standard)
+    run_ref: lift_tcc_d128_ep14k_s20260802
+    dataset_ref: robomimic_lift_ph_4vid_valid
+    variant: standard
+
+  lift_tcc_d128_ep14k_s20260802_train:
+    description: robomimic_lift_ph_36vid_train embeddings (standard)
+    run_ref: lift_tcc_d128_ep14k_s20260802
+    dataset_ref: robomimic_lift_ph_36vid_train
+    variant: standard
+
+  square_tcc_d128_ep20k_s20260802_valid:
+    description: robomimic_square_ph_4vid_valid embeddings (standard)
+    run_ref: square_tcc_d128_ep20k_s20260802
+    dataset_ref: robomimic_square_ph_4vid_valid
+    variant: standard
+
+  square_tcc_d128_ep20k_s20260802_train:
+    description: robomimic_square_ph_36vid_train embeddings (standard)
+    run_ref: square_tcc_d128_ep20k_s20260802
+    dataset_ref: robomimic_square_ph_36vid_train
+    variant: standard
+
+  transport_tcc_d128_ep20k_s20260802_valid:
+    description: robomimic_transport_ph_4vid_valid embeddings (standard)
+    run_ref: transport_tcc_d128_ep20k_s20260802
+    dataset_ref: robomimic_transport_ph_4vid_valid
+    variant: standard
+
+  transport_tcc_d128_ep20k_s20260802_train:
+    description: robomimic_transport_ph_36vid_train embeddings (standard)
+    run_ref: transport_tcc_d128_ep20k_s20260802
+    dataset_ref: robomimic_transport_ph_36vid_train
+    variant: standard
+
+  lift_tcc_triplet_w0p5_d128_ep20k_s20260802_valid:
+    description: robomimic_lift_ph_4vid_valid embeddings (standard)
+    run_ref: lift_tcc_triplet_w0p5_d128_ep20k_s20260802
+    dataset_ref: robomimic_lift_ph_4vid_valid
+    variant: standard
+
+  lift_tcc_triplet_w0p5_d128_ep20k_s20260802_train:
+    description: robomimic_lift_ph_36vid_train embeddings (standard)
+    run_ref: lift_tcc_triplet_w0p5_d128_ep20k_s20260802
+    dataset_ref: robomimic_lift_ph_36vid_train
+    variant: standard
+
+  square_tcc_triplet_w0p5_d128_ep20k_s20260802_valid:
+    description: robomimic_square_ph_4vid_valid embeddings (standard)
+    run_ref: square_tcc_triplet_w0p5_d128_ep20k_s20260802
+    dataset_ref: robomimic_square_ph_4vid_valid
+    variant: standard
+
+  square_tcc_triplet_w0p5_d128_ep20k_s20260802_train:
+    description: robomimic_square_ph_36vid_train embeddings (standard)
+    run_ref: square_tcc_triplet_w0p5_d128_ep20k_s20260802
+    dataset_ref: robomimic_square_ph_36vid_train
+    variant: standard
+
+  transport_tcc_triplet_w0p5_d128_ep20k_s20260802_valid:
+    description: robomimic_transport_ph_4vid_valid embeddings (standard)
+    run_ref: transport_tcc_triplet_w0p5_d128_ep20k_s20260802
+    dataset_ref: robomimic_transport_ph_4vid_valid
+    variant: standard
+
+  transport_tcc_triplet_w0p5_d128_ep20k_s20260802_train:
+    description: robomimic_transport_ph_36vid_train embeddings (standard)
+    run_ref: transport_tcc_triplet_w0p5_d128_ep20k_s20260802
+    dataset_ref: robomimic_transport_ph_36vid_train
+    variant: standard
+
+  lift_tcc_triplet_w1p0_d128_ep20k_s20260802_valid:
+    description: robomimic_lift_ph_4vid_valid embeddings (standard)
+    run_ref: lift_tcc_triplet_w1p0_d128_ep20k_s20260802
+    dataset_ref: robomimic_lift_ph_4vid_valid
+    variant: standard
+
+  lift_tcc_triplet_w1p0_d128_ep20k_s20260802_train:
+    description: robomimic_lift_ph_36vid_train embeddings (standard)
+    run_ref: lift_tcc_triplet_w1p0_d128_ep20k_s20260802
+    dataset_ref: robomimic_lift_ph_36vid_train
+    variant: standard
+
+  square_tcc_triplet_w1p0_d128_ep20k_s20260802_valid:
+    description: robomimic_square_ph_4vid_valid embeddings (standard)
+    run_ref: square_tcc_triplet_w1p0_d128_ep20k_s20260802
+    dataset_ref: robomimic_square_ph_4vid_valid
+    variant: standard
+
+  square_tcc_triplet_w1p0_d128_ep20k_s20260802_train:
+    description: robomimic_square_ph_36vid_train embeddings (standard)
+    run_ref: square_tcc_triplet_w1p0_d128_ep20k_s20260802
+    dataset_ref: robomimic_square_ph_36vid_train
+    variant: standard
+
+  transport_tcc_triplet_w1p0_d128_ep20k_s20260802_valid:
+    description: robomimic_transport_ph_4vid_valid embeddings (standard)
+    run_ref: transport_tcc_triplet_w1p0_d128_ep20k_s20260802
+    dataset_ref: robomimic_transport_ph_4vid_valid
+    variant: standard
+
+  transport_tcc_triplet_w1p0_d128_ep20k_s20260802_train:
+    description: robomimic_transport_ph_36vid_train embeddings (standard)
+    run_ref: transport_tcc_triplet_w1p0_d128_ep20k_s20260802
+    dataset_ref: robomimic_transport_ph_36vid_train
+    variant: standard
+
+  lift_tcc_d64_ep20k_s20260802_valid:
+    description: robomimic_lift_ph_4vid_valid embeddings (standard)
+    run_ref: lift_tcc_d64_ep20k_s20260802
+    dataset_ref: robomimic_lift_ph_4vid_valid
+    variant: standard
+
+  lift_tcc_d64_ep20k_s20260802_train:
+    description: robomimic_lift_ph_36vid_train embeddings (standard)
+    run_ref: lift_tcc_d64_ep20k_s20260802
+    dataset_ref: robomimic_lift_ph_36vid_train
+    variant: standard
+
+  square_tcc_d64_ep20k_s20260802_valid:
+    description: robomimic_square_ph_4vid_valid embeddings (standard)
+    run_ref: square_tcc_d64_ep20k_s20260802
+    dataset_ref: robomimic_square_ph_4vid_valid
+    variant: standard
+
+  square_tcc_d64_ep20k_s20260802_train:
+    description: robomimic_square_ph_36vid_train embeddings (standard)
+    run_ref: square_tcc_d64_ep20k_s20260802
+    dataset_ref: robomimic_square_ph_36vid_train
+    variant: standard
+
+  transport_tcc_d64_ep20k_s20260802_valid:
+    description: robomimic_transport_ph_4vid_valid embeddings (standard)
+    run_ref: transport_tcc_d64_ep20k_s20260802
+    dataset_ref: robomimic_transport_ph_4vid_valid
+    variant: standard
+
+  transport_tcc_d64_ep20k_s20260802_train:
+    description: robomimic_transport_ph_36vid_train embeddings (standard)
+    run_ref: transport_tcc_d64_ep20k_s20260802
+    dataset_ref: robomimic_transport_ph_36vid_train
+    variant: standard
+
+  lift_tcc_d32_ep20k_s20260802_train:
+    description: robomimic_lift_ph_36vid_train embeddings (standard)
+    run_ref: lift_tcc_d32_ep20k_s20260802
+    dataset_ref: robomimic_lift_ph_36vid_train
+    variant: standard
+
+  square_tcc_d32_ep20k_s20260802_valid:
+    description: robomimic_square_ph_4vid_valid embeddings (standard)
+    run_ref: square_tcc_d32_ep20k_s20260802
+    dataset_ref: robomimic_square_ph_4vid_valid
+    variant: standard
+
+  square_tcc_d32_ep20k_s20260802_train:
+    description: robomimic_square_ph_36vid_train embeddings (standard)
+    run_ref: square_tcc_d32_ep20k_s20260802
+    dataset_ref: robomimic_square_ph_36vid_train
+    variant: standard
+
+  transport_tcc_d32_ep20k_s20260802_valid:
+    description: robomimic_transport_ph_4vid_valid embeddings (standard)
+    run_ref: transport_tcc_d32_ep20k_s20260802
+    dataset_ref: robomimic_transport_ph_4vid_valid
+    variant: standard
+
+  transport_tcc_d32_ep20k_s20260802_train:
+    description: robomimic_transport_ph_36vid_train embeddings (standard)
+    run_ref: transport_tcc_d32_ep20k_s20260802
+    dataset_ref: robomimic_transport_ph_36vid_train
+    variant: standard
+
+  lift_tcc_triplet_w1p0_d32_ep20k_s20260802_valid:
+    description: robomimic_lift_ph_4vid_valid embeddings (standard)
+    run_ref: lift_tcc_triplet_w1p0_d32_ep20k_s20260802
+    dataset_ref: robomimic_lift_ph_4vid_valid
+    variant: standard
+
+  lift_tcc_triplet_w1p0_d32_ep20k_s20260802_train:
+    description: robomimic_lift_ph_36vid_train embeddings (standard)
+    run_ref: lift_tcc_triplet_w1p0_d32_ep20k_s20260802
+    dataset_ref: robomimic_lift_ph_36vid_train
+    variant: standard
+
+  square_tcc_triplet_w1p0_d32_ep14k_s20260802_valid:
+    description: robomimic_square_ph_4vid_valid embeddings (standard)
+    run_ref: square_tcc_triplet_w1p0_d32_ep14k_s20260802
+    dataset_ref: robomimic_square_ph_4vid_valid
+    variant: standard
+
+  square_tcc_triplet_w1p0_d32_ep14k_s20260802_train:
+    description: robomimic_square_ph_36vid_train embeddings (standard)
+    run_ref: square_tcc_triplet_w1p0_d32_ep14k_s20260802
+    dataset_ref: robomimic_square_ph_36vid_train
+    variant: standard
+
+  transport_tcc_triplet_w1p0_d32_ep20k_s20260802_valid:
+    description: robomimic_transport_ph_4vid_valid embeddings (standard)
+    run_ref: transport_tcc_triplet_w1p0_d32_ep20k_s20260802
+    dataset_ref: robomimic_transport_ph_4vid_valid
+    variant: standard
+
+  transport_tcc_triplet_w1p0_d32_ep20k_s20260802_train:
+    description: robomimic_transport_ph_36vid_train embeddings (standard)
+    run_ref: transport_tcc_triplet_w1p0_d32_ep20k_s20260802
+    dataset_ref: robomimic_transport_ph_36vid_train
+    variant: standard
+
+  can__tcc_d128__20vid_valid:
+    description: robomimic_can_ph_20vid_valid embeddings (standard)
+    run_ref: tcc_can_ph_36_softmaxt_0p001_ep10k_s20260726
+    dataset_ref: robomimic_can_ph_20vid_valid
+    variant: standard
+
+  can__tcc_d64__20vid_valid:
+    description: robomimic_can_ph_20vid_valid embeddings (standard)
+    run_ref: tcc_can_ph_36_embdim64_ep16k_s20260729
+    dataset_ref: robomimic_can_ph_20vid_valid
+    variant: standard
+
+  can__tcc_d32__20vid_valid:
+    description: robomimic_can_ph_20vid_valid embeddings (standard)
+    run_ref: tcc_can_ph_36_embdim32_ep16k_s20260729
+    dataset_ref: robomimic_can_ph_20vid_valid
+    variant: standard
+
+  can__tcc_triplet_w0p5_d128__20vid_valid:
+    description: robomimic_can_ph_20vid_valid embeddings (standard)
+    run_ref: comp_tt_can_ph_36_margin0p2_ep10k_s20260728
+    dataset_ref: robomimic_can_ph_20vid_valid
+    variant: standard
+
+  can__tcc_triplet_w1p0_d128__20vid_valid:
+    description: robomimic_can_ph_20vid_valid embeddings (standard)
+    run_ref: comp_tt_can_ph_36_w1p0_ep10k_s20260728
+    dataset_ref: robomimic_can_ph_20vid_valid
+    variant: standard
+
+  lift__tcc_d128__20vid_valid:
+    description: robomimic_lift_ph_20vid_valid embeddings (standard)
+    run_ref: lift_tcc_d128_ep14k_s20260802
+    dataset_ref: robomimic_lift_ph_20vid_valid
+    variant: standard
+
+  lift__tcc_d64__20vid_valid:
+    description: robomimic_lift_ph_20vid_valid embeddings (standard)
+    run_ref: lift_tcc_d64_ep20k_s20260802
+    dataset_ref: robomimic_lift_ph_20vid_valid
+    variant: standard
+
+  lift__tcc_d32__20vid_valid:
+    description: robomimic_lift_ph_20vid_valid embeddings (standard)
+    run_ref: lift_tcc_d32_ep20k_s20260802
+    dataset_ref: robomimic_lift_ph_20vid_valid
+    variant: standard
+
+  lift__tcc_triplet_w0p5_d128__20vid_valid:
+    description: robomimic_lift_ph_20vid_valid embeddings (standard)
+    run_ref: lift_tcc_triplet_w0p5_d128_ep20k_s20260802
+    dataset_ref: robomimic_lift_ph_20vid_valid
+    variant: standard
+
+  lift__tcc_triplet_w1p0_d128__20vid_valid:
+    description: robomimic_lift_ph_20vid_valid embeddings (standard)
+    run_ref: lift_tcc_triplet_w1p0_d128_ep20k_s20260802
+    dataset_ref: robomimic_lift_ph_20vid_valid
+    variant: standard
+
+  lift__tcc_triplet_w1p0_d32__20vid_valid:
+    description: robomimic_lift_ph_20vid_valid embeddings (standard)
+    run_ref: lift_tcc_triplet_w1p0_d32_ep20k_s20260802
+    dataset_ref: robomimic_lift_ph_20vid_valid
+    variant: standard
+
+  square__tcc_d128__20vid_valid:
+    description: robomimic_square_ph_20vid_valid embeddings (standard)
+    run_ref: square_tcc_d128_ep20k_s20260802
+    dataset_ref: robomimic_square_ph_20vid_valid
+    variant: standard
+
+  square__tcc_d64__20vid_valid:
+    description: robomimic_square_ph_20vid_valid embeddings (standard)
+    run_ref: square_tcc_d64_ep20k_s20260802
+    dataset_ref: robomimic_square_ph_20vid_valid
+    variant: standard
+
+  square__tcc_d32__20vid_valid:
+    description: robomimic_square_ph_20vid_valid embeddings (standard)
+    run_ref: square_tcc_d32_ep20k_s20260802
+    dataset_ref: robomimic_square_ph_20vid_valid
+    variant: standard
+
+  square__tcc_triplet_w0p5_d128__20vid_valid:
+    description: robomimic_square_ph_20vid_valid embeddings (standard)
+    run_ref: square_tcc_triplet_w0p5_d128_ep20k_s20260802
+    dataset_ref: robomimic_square_ph_20vid_valid
+    variant: standard
+
+  square__tcc_triplet_w1p0_d128__20vid_valid:
+    description: robomimic_square_ph_20vid_valid embeddings (standard)
+    run_ref: square_tcc_triplet_w1p0_d128_ep20k_s20260802
+    dataset_ref: robomimic_square_ph_20vid_valid
+    variant: standard
+
+  square__tcc_triplet_w1p0_d32__20vid_valid:
+    description: robomimic_square_ph_20vid_valid embeddings (standard)
+    run_ref: square_tcc_triplet_w1p0_d32_ep14k_s20260802
+    dataset_ref: robomimic_square_ph_20vid_valid
+    variant: standard
+
+  transport__tcc_d128__20vid_valid:
+    description: robomimic_transport_ph_20vid_valid embeddings (standard)
+    run_ref: transport_tcc_d128_ep20k_s20260802
+    dataset_ref: robomimic_transport_ph_20vid_valid
+    variant: standard
+
+  transport__tcc_d64__20vid_valid:
+    description: robomimic_transport_ph_20vid_valid embeddings (standard)
+    run_ref: transport_tcc_d64_ep20k_s20260802
+    dataset_ref: robomimic_transport_ph_20vid_valid
+    variant: standard
+
+  transport__tcc_d32__20vid_valid:
+    description: robomimic_transport_ph_20vid_valid embeddings (standard)
+    run_ref: transport_tcc_d32_ep20k_s20260802
+    dataset_ref: robomimic_transport_ph_20vid_valid
+    variant: standard
+
+  transport__tcc_triplet_w0p5_d128__20vid_valid:
+    description: robomimic_transport_ph_20vid_valid embeddings (standard)
+    run_ref: transport_tcc_triplet_w0p5_d128_ep20k_s20260802
+    dataset_ref: robomimic_transport_ph_20vid_valid
+    variant: standard
+
+  transport__tcc_triplet_w1p0_d128__20vid_valid:
+    description: robomimic_transport_ph_20vid_valid embeddings (standard)
+    run_ref: transport_tcc_triplet_w1p0_d128_ep20k_s20260802
+    dataset_ref: robomimic_transport_ph_20vid_valid
+    variant: standard
+
+  transport__tcc_triplet_w1p0_d32__20vid_valid:
+    description: robomimic_transport_ph_20vid_valid embeddings (standard)
+    run_ref: transport_tcc_triplet_w1p0_d32_ep20k_s20260802
+    dataset_ref: robomimic_transport_ph_20vid_valid
     variant: standard

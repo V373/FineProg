@@ -8,20 +8,20 @@
 # ── Expert trajectory ─────────────────────────────────────────────────
 # Must be a mean-path embedding (variant: mean_path in runs.yaml).
 # Key from configs_v2/runs.yaml :: embeddings
-expert_embedding_ref: comp_tt_can_ph_36_r4_train_mean_path_ep20k
+expert_embedding_ref: comp_tt_transport_ph_36_train_mean_path_ep20k
 # square_ph_180vid_train_mean_path_50k
 # can_ph_train_mean_path_ep50k
 # → datasets/embeddings/{run_name}/robomimic_can_ph-180vid_train-embd-mean_path.h5
 
 # ── Non-expert trajectories ───────────────────────────────────────────
 # Key from configs_v2/runs.yaml :: embeddings
-nonexpert_embedding_ref: comp_tt_can_ph_36_r4_can_mh_worse_ep20k
+nonexpert_embedding_ref: comp_tt_transport_ph_36_transport_mh_worse_ep20k
 # can_mh_worse_ep50k
 # → datasets/embeddings/{run_name}/robomimic_can_mh-100vid_worse-embd.h5
 
 # Dataset ref used to look up robomimic_hdf5_path and mask_key automatically.
 # Key from configs_v2/datasets.yaml
-nonexpert_dataset_ref: robomimic_can_mh_100vid_worse
+nonexpert_dataset_ref: robomimic_transport_mh_50vid_worse
 # resolver fills: nonexpert_raw_hdf5_path, nonexpert_mask_key
 
 # ── SNN matching ──────────────────────────────────────────────────────
