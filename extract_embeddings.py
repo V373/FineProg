@@ -24,6 +24,7 @@ Usage:
 
 import argparse
 import sys
+import warnings
 from pathlib import Path
 
 import h5py
@@ -39,33 +40,73 @@ from dataset_preparation.h5vid_dataset import build_dataloader
 from models.encoder import TCCEncoder
 # [v2] V2 config resolver (independent of old config system)
 from utils.config_v2 import ConfigV2
+from utils.embedding_normalization import (
+    validate_embedding_normalization,
+    validate_embeddings_for_normalization,
+)
 
 
 # ---------------------------------------------------------------------------
 # [v2] V2 config constants
 # ---------------------------------------------------------------------------
-_V2_EXTRACT_YAML = str((Path(__file__).parent / "configs_v2" / "extract.yaml"))
+# Honors FINEPROG_CONFIGS_V2_DIR when set, so CLI runs driven by sweep scripts
+# read clip_len / context_size / context_stride from the same snapshot as the
+# resolved extract config below.
+_V2_EXTRACT_YAML = str(ConfigV2()._root / "extract.yaml")
 
 
-def load_checkpoint(model: torch.nn.Module, ckpt_path: str, device: torch.device) -> None:
+def load_checkpoint(
+    model: torch.nn.Module,
+    ckpt_path: str,
+    device: torch.device,
+) -> str:
     """Load model weights from a PyTorch checkpoint.
 
     Supports:
     - bare state_dict saved via torch.save(model.state_dict(), path)
     - wrapped dict with key 'model_state_dict' or 'state_dict'
+
+    Checkpoints without embedding_normalization metadata are legacy raw
+    checkpoints and are loaded with mode "none".
     """
     ckpt = torch.load(ckpt_path, map_location=device)
+    normalization = None
+    has_normalization_metadata = False
     if isinstance(ckpt, dict):
         if "model_state_dict" in ckpt:
             state_dict = ckpt["model_state_dict"]
+            has_normalization_metadata = "embedding_normalization" in ckpt
+            normalization = ckpt.get("embedding_normalization")
         elif "state_dict" in ckpt:
             state_dict = ckpt["state_dict"]
+            has_normalization_metadata = "embedding_normalization" in ckpt
+            normalization = ckpt.get("embedding_normalization")
         else:
             state_dict = ckpt  # assume it is already a state_dict
     else:
         state_dict = ckpt
+
+    if not has_normalization_metadata:
+        warnings.warn(
+            f"{ckpt_path}: legacy checkpoint has no embedding_normalization "
+            "metadata; treating it as 'none'.",
+            UserWarning,
+            stacklevel=2,
+        )
+        normalization = "none"
+    normalization = validate_embedding_normalization(
+        normalization,
+        str(ckpt_path),
+    )
+
+    # Checkpoint metadata is authoritative for inference.
+    model.embedding_normalization = normalization
     model.load_state_dict(state_dict)
-    print(f"[load_checkpoint] Loaded weights from {ckpt_path}")
+    print(
+        f"[load_checkpoint] Loaded weights from {ckpt_path} "
+        f"(embedding_normalization={normalization})"
+    )
+    return normalization
 
 
 # ---------------------------------------------------------------------------
@@ -181,7 +222,11 @@ def extract_embeddings(
 # Save to H5
 # ---------------------------------------------------------------------------
 
-def save_embeddings_h5(results: list[dict], save_path: str) -> None:
+def save_embeddings_h5(
+    results: list[dict],
+    save_path: str,
+    embedding_normalization: str,
+) -> None:
     """Save extracted embeddings to an H5 file.
 
     Structure:
@@ -195,9 +240,41 @@ def save_embeddings_h5(results: list[dict], save_path: str) -> None:
     Args:
         results:   list of dicts from extract_embeddings()
         save_path: destination H5 file path
+        embedding_normalization: Encoder output mode, either "none" or "l2".
     """
+    if not results:
+        raise ValueError("results must contain at least one video")
+
+    embedding_normalization = validate_embedding_normalization(
+        embedding_normalization,
+        str(save_path),
+    )
+    embedding_dim = None
+    for entry in results:
+        validate_embeddings_for_normalization(
+            entry["embeddings"],
+            embedding_normalization,
+            f"{save_path}:/videos/{entry['video_id']}/embeddings",
+        )
+        current_dim = int(entry["embeddings"].shape[1])
+        if current_dim < 1:
+            raise ValueError(
+                f"{save_path}:/videos/{entry['video_id']}/embeddings: "
+                "embedding dimension must be >= 1."
+            )
+        if embedding_dim is None:
+            embedding_dim = current_dim
+        elif current_dim != embedding_dim:
+            raise ValueError(
+                f"{save_path}: inconsistent embedding dimensions; "
+                f"expected D={embedding_dim}, got D={current_dim} "
+                f"for video '{entry['video_id']}'."
+            )
+
     Path(save_path).parent.mkdir(parents=True, exist_ok=True)
     with h5py.File(save_path, "w") as f:
+        f.attrs["embedding_normalization"] = embedding_normalization
+        f.attrs["embedding_dim"] = embedding_dim
         videos_grp = f.create_group("videos")
         for entry in results:
             vid = videos_grp.create_group(entry["video_id"])
@@ -275,7 +352,11 @@ def main(extract_h5_path: str | None = None,
         extract_h5 = cfg.get("extract_h5_path", cfg.get("h5_path", ""))
         stem = Path(extract_h5).stem if extract_h5 else "embeddings"
         save_path = str(_PROJ_ROOT / "datasets" / "embeddings" / f"{stem}-embd.h5")
-    save_embeddings_h5(results, save_path)
+    save_embeddings_h5(
+        results,
+        save_path,
+        embedding_normalization=encoder.embedding_normalization,
+    )
     print(f"[main] Done. Embeddings saved to {save_path}")
 
     # [v2] Optional: register embedding into configs_v2/registry/runs.yaml

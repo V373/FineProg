@@ -14,20 +14,38 @@ Data Flow:
   [B*clip_len*context_size, 3, 224, 224] -> [B*clip_len*context_size, 1024, 14, 14]
 - Regroup: [B, clip_len, context_size, 1024, 14, 14]
 - Temporal Embedder: Context aggregation
-  [B, clip_len, context_size, 1024, 14, 14] -> [B, clip_len, 128]
+  [B, clip_len, context_size, 1024, 14, 14] -> [B, clip_len, D]
+- Embedding normalization (output contract): optional L2 normalization
+  applied to every embedding the encoder hands out.
+
+Latent normalization is part of the encoder's public output contract and is
+controlled by `embedding_normalization`:
+- "none" (default): raw projection output, unchanged legacy behaviour.
+- "l2": unit-norm embeddings, computed in FP32 and returned as FP32.
+
+The temporal embedder itself always produces the raw projection; the encoder
+is the single place where the normalization contract is applied, so the
+regular forward path, the backbone-cache path and the dict-returning path all
+share exactly one normalization step.
 
 The encoder does NOT:
 - Sample frames (done by dataset)
 - Construct temporal context (done by dataset)
 - Compute losses
-- Apply L2 normalization
 """
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import yaml
 from pathlib import Path
 from typing import Dict, Optional, Union
+
+# Allowed values for the encoder embedding normalization contract.
+EMBEDDING_NORMALIZATION_MODES = ("none", "l2")
+
+# Sentinel: lets us tell "caller did not specify" apart from an explicit "none".
+_UNSET = object()
 
 try:
     from .backbone import ResNet50Conv4cBackbone
@@ -60,6 +78,8 @@ class TCCEncoder(nn.Module):
         context_stride: int = 15,
         pretrained: bool = True,
         return_backbone_feats: bool = False,
+        embedding_dim: int = 128,
+        embedding_normalization=_UNSET,
         debug: bool = False
     ):
         """
@@ -69,7 +89,7 @@ class TCCEncoder(nn.Module):
             config_path: Path to data/architecture YAML config
                         (e.g., configs_v2/train.yaml or configs_v2/extract.yaml).
                         Overrides clip_len /
-                        context_size / context_stride if provided.
+                        context_size / context_stride / embedding_dim if provided.
             train_config_path: Path to training YAML config
                         (e.g., configs_v2/train.yaml). Controls
                         train_base, train_embedding, pretrained, backbone_name.
@@ -80,6 +100,16 @@ class TCCEncoder(nn.Module):
             pretrained: Whether to load ImageNet pretrained ResNet50 backbone.
                         Overridden by train_config_path if that file is provided.
             return_backbone_feats: If True, also return grouped backbone features.
+            embedding_dim: Positive output embedding dimension. Overridden by
+                        config_path when that YAML defines embedding_dim.
+            embedding_normalization: Encoder output contract for the latent
+                        embeddings. Either "none" (raw projection) or "l2"
+                        (unit-norm, FP32). Resolution order:
+                        explicit argument > train_config_path YAML > "none".
+                        An explicit value always wins, so a checkpoint loader
+                        can later pass the authoritative mode recorded with the
+                        weights. Legacy checkpoints carry no such metadata and
+                        must therefore be interpreted as "none".
             debug: If True, print debug information during forward pass.
         """
         super(TCCEncoder, self).__init__()
@@ -93,11 +123,14 @@ class TCCEncoder(nn.Module):
             self.clip_len = config.get('clip_len', clip_len)
             self.context_size = config.get('context_size', context_size)
             self.context_stride = config.get('context_stride', context_stride)
+            embedding_dim = config.get('embedding_dim', embedding_dim)
             print(f"[TCCEncoder] Loaded data config from {config_path}")
         else:
             self.clip_len = clip_len
             self.context_size = context_size
             self.context_stride = context_stride
+
+        self.embedding_dim = self._resolve_embedding_dim(embedding_dim)
         
         # ------------------------------------------------------------------ #
         # 2. Load training config YAML
@@ -107,6 +140,7 @@ class TCCEncoder(nn.Module):
         _train_embedding = True
         _pretrained = pretrained
         _backbone_name = 'resnet50_conv4c'
+        _embedding_normalization = _UNSET
 
         if train_config_path is not None and Path(train_config_path).exists():
             with open(train_config_path, 'r') as f:
@@ -115,10 +149,17 @@ class TCCEncoder(nn.Module):
             _train_embedding = train_cfg.get('train_embedding', _train_embedding)
             _pretrained = train_cfg.get('pretrained', _pretrained)
             _backbone_name = train_cfg.get('backbone_name', _backbone_name)
+            _embedding_normalization = train_cfg.get(
+                'embedding_normalization', _embedding_normalization
+            )
             print(f"[TCCEncoder] Loaded train config from {train_config_path}")
         else:
             if train_config_path is not None:
                 print(f"[TCCEncoder] Warning: train_config_path not found: {train_config_path}")
+
+        # Explicit constructor argument wins over the YAML value.
+        if embedding_normalization is not _UNSET:
+            _embedding_normalization = embedding_normalization
 
         # Store training config for configure_trainability()
         self._train_base = _train_base
@@ -127,15 +168,25 @@ class TCCEncoder(nn.Module):
         self._backbone_name = _backbone_name
         self.return_backbone_feats = return_backbone_feats
         self.debug = debug
+
+        # Encoder output contract. Kept as plain attributes (not parameters or
+        # buffers) so that state_dict() stays byte-compatible with existing
+        # checkpoints and strict loading of legacy weights keeps working.
+        self.embedding_normalization = self._resolve_embedding_normalization(
+            _embedding_normalization
+        )
+        self.embedding_normalization_eps = 1e-12
         
         print(f"[TCCEncoder] Config:")
         print(f"  - clip_len: {self.clip_len}")
         print(f"  - context_size: {self.context_size}")
         print(f"  - context_stride: {self.context_stride}")
+        print(f"  - embedding_dim: {self.embedding_dim}")
         print(f"  - backbone_name: {self._backbone_name}")
         print(f"  - pretrained: {self.pretrained}")
         print(f"  - train_base: {self._train_base}")
         print(f"  - train_embedding: {self._train_embedding}")
+        print(f"  - embedding_normalization: {self.embedding_normalization}")
         
         # ------------------------------------------------------------------ #
         # 3. Build sub-modules
@@ -147,7 +198,7 @@ class TCCEncoder(nn.Module):
         self.temporal_embedder = TCCTemporalEmbedder(
             in_channels=1024,
             hidden_channels=512,
-            embed_dim=128,
+            embed_dim=self.embedding_dim,
             debug=debug
         )
         
@@ -157,6 +208,77 @@ class TCCEncoder(nn.Module):
         # 4. Apply trainability rules immediately after construction
         # ------------------------------------------------------------------ #
         self.configure_trainability()
+
+    @staticmethod
+    def _resolve_embedding_dim(value) -> int:
+        """Validate the configured output embedding dimension."""
+        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+            raise ValueError(
+                "embedding_dim must be a positive integer, "
+                f"got {value!r} of type {type(value).__name__}"
+            )
+        return value
+
+    @staticmethod
+    def _resolve_embedding_normalization(value) -> str:
+        """
+        Validate and normalize the embedding_normalization setting.
+
+        Accepts only the exact strings in EMBEDDING_NORMALIZATION_MODES.
+        Anything else (bool, None, unknown string) is rejected immediately at
+        construction time, so a misconfigured run fails before training starts.
+
+        Args:
+            value: Raw value from the constructor or the train config YAML,
+                   or the _UNSET sentinel when nothing was specified.
+
+        Returns:
+            The resolved mode string ("none" when nothing was specified).
+        """
+        if value is _UNSET:
+            return "none"
+
+        # bool is a subclass of int, but it is never a valid mode here.
+        if isinstance(value, bool) or not isinstance(value, str):
+            raise ValueError(
+                f"embedding_normalization must be one of "
+                f"{list(EMBEDDING_NORMALIZATION_MODES)}, got {value!r} "
+                f"of type {type(value).__name__}"
+            )
+
+        if value not in EMBEDDING_NORMALIZATION_MODES:
+            raise ValueError(
+                f"embedding_normalization must be one of "
+                f"{list(EMBEDDING_NORMALIZATION_MODES)}, got {value!r}"
+            )
+
+        return value
+
+    def _apply_embedding_normalization(self, embeddings: torch.Tensor) -> torch.Tensor:
+        """
+        Apply the encoder output contract to raw projection outputs.
+
+        This is the single place where latent normalization happens; every
+        public embedding path routes through it exactly once.
+
+        Args:
+            embeddings: Raw temporal-embedder output, shape [B, clip_len, D].
+
+        Returns:
+            "none": the input tensor unchanged (same values, same dtype).
+            "l2":   unit-norm embeddings computed and returned in FP32.
+                    The cast and the normalization stay inside the autograd
+                    graph, so AMP training backpropagates normally.
+        """
+        if self.embedding_normalization == "none":
+            return embeddings
+
+        return F.normalize(
+            embeddings.float(),
+            p=2,
+            dim=-1,
+            eps=self.embedding_normalization_eps,
+        )
 
     def configure_trainability(self) -> None:
         """
@@ -225,14 +347,17 @@ class TCCEncoder(nn.Module):
         
         Returns:
             If return_backbone_feats is False/None (default):
-                embeddings: Tensor of shape [B, clip_len, 128]
-                           Per-target-frame embeddings
+                embeddings: Tensor of shape [B, clip_len, D]
+                           Per-target-frame embeddings.
+                           FP32 unit-norm when embedding_normalization="l2".
             
             If return_backbone_feats is True:
                 Dict with keys:
-                - "embeddings": [B, clip_len, 128] - per-target-frame embeddings
+                - "embeddings": [B, clip_len, D] - per-target-frame embeddings
+                                (normalized per the encoder output contract)
                 - "grouped_backbone_feats": [B, clip_len, context_size, 1024, 14, 14]
                                            grouped Conv4c features from backbone
+                                           (raw, never normalized)
         """
         # Determine whether to return backbone features
         if return_backbone_feats is None:
@@ -281,8 +406,10 @@ class TCCEncoder(nn.Module):
         
         # Step 4: Temporal embedding - aggregate context and produce per-frame embeddings
         # [B, clip_len, context_size, 1024, 14, 14]
-        # -> [B, clip_len, 128]
-        embeddings = self.temporal_embedder(grouped_backbone_feats)
+        # -> [B, clip_len, D]
+        # Routed through forward_from_feats() so that the regular path and the
+        # backbone-cache path share exactly one normalization step.
+        embeddings = self.forward_from_feats(grouped_backbone_feats) # here is temporal_embedder(backbone_feats) + _apply_embedding_normalization(embeddings)
         
         if self.debug:
             print(f"[TCCEncoder.forward] After temporal embedder: {embeddings.shape}")
@@ -304,14 +431,19 @@ class TCCEncoder(nn.Module):
         Used when extract_backbone_cache=True and train_base=only_bn so that
         the expensive backbone forward/backward is replaced by a cached lookup.
 
+        Also used internally by forward() so that both paths apply the encoder
+        embedding normalization contract exactly once.
+
         Args:
             backbone_feats: Pre-computed Conv4c features.
                             Shape: [B, clip_len, context_size, 1024, 14, 14]
 
         Returns:
-            embeddings: Tensor of shape [B, clip_len, 128]
+            embeddings: Tensor of shape [B, clip_len, D].
+                        FP32 unit-norm when embedding_normalization="l2".
         """
-        return self.temporal_embedder(backbone_feats)
+        embeddings = self.temporal_embedder(backbone_feats)
+        return self._apply_embedding_normalization(embeddings)
 
 
 def sanity_check(
@@ -417,10 +549,13 @@ def sanity_check(
         embeddings = encoder(batch_frames, return_backbone_feats=False)
     
     print(f"[Encoder Test] Embeddings shape: {embeddings.shape}")
-    print(f"[Encoder Test] Expected shape: [{batch_size}, {dataset.clip_len}, 128]")
+    print(
+        f"[Encoder Test] Expected shape: "
+        f"[{batch_size}, {dataset.clip_len}, {encoder.embedding_dim}]"
+    )
     
     # Verify output shape
-    expected_shape = (batch_size, dataset.clip_len, 128)
+    expected_shape = (batch_size, dataset.clip_len, encoder.embedding_dim)
     if embeddings.shape == expected_shape:
         print(f"✓ [Encoder Test] PASS: Embeddings shape matches expected {expected_shape}")
     else:
@@ -521,7 +656,7 @@ if __name__ == "__main__":
     with torch.no_grad():
         embeddings = encoder(dummy)
 
-    expected_shape = (B, encoder.clip_len, 128)
+    expected_shape = (B, encoder.clip_len, encoder.embedding_dim)
     print(f"  Embeddings shape : {tuple(embeddings.shape)}")
     print(f"  Expected shape   : {expected_shape}")
     assert tuple(embeddings.shape) == expected_shape, \
