@@ -1,108 +1,72 @@
-# mytcc 工程架构
+# fineprog 工程架构
 
-**项目定位**：基于 PyTorch 的 Temporal Cycle-Consistency (TCC) 视频表示学习的极简实现，位于 `projects/google-research/mytcc/`。
+**项目定位**：位于 `/home/user/zhangzk/projects/fineprog/` 的机器人操作进度表示与策略学习工程。根目录负责基于 TCC 的视频时序表示训练、嵌入提取、进度评估及奖励数据构建；`policy_training/` 负责基于 Robomimic 数据的离线 IQL、在线 SAC、策略评估与实验分析。
 
 ---
 
 ## 一、目录结构总览
 
 ```
-mytcc/
-├── train_encoder.py            # 训练入口（当前默认走 ConfigV2）
-├── extract_embeddings.py       # 嵌入提取入口（当前默认走 ConfigV2）
-├── evaluate_encoder.py         # 评估入口（当前默认走 ConfigV2）
-├── _smoke_test_in_training_eval.py   # in-training eval 烟测脚本
-├── tmp_rerun_expert_projection_visuals.py  # 已有 expert projection 结果的可视化重跑工具
-├── models/                     # 神经网络模型定义
-│   ├── backbone.py             # ResNet50 骨干网络
-│   ├── encoder.py              # TCC 完整编码器
-│   └── temporal_embedder.py    # 时序嵌入模块
-├── algos/                      # 算法组件
-│   ├── loss/
-│   │   ├── encoder_loss.py     # 损失接口层 (BaseEncoderLoss + build_loss 工厂)
-│   │   ├── contrastive/
-│   │   │   ├── loss_temporal_infonce.py  # 时序 InfoNCE 损失
-│   │   │   └── loss_temporal_triplet.py  # 时序 Triplet 损失
-│   │   ├── composite/
-│   │   │   └── loss_composite.py         # 复合损失（加权组合）
-│   │   └── tcc/
-│   │       ├── loss_tcc.py         # TCC 损失统一入口 (TCCLoss)
-│   │       ├── deterministic_alignment.py  # 确定性对齐实现
-│   │       ├── stochastic_alignment.py     # 随机对齐实现
-│   │       └── loss_head.py        # 损失头
+fineprog/
+├── train_encoder.py              # TCC 编码器训练入口
+├── extract_embeddings.py         # 编码器嵌入提取入口
+├── evaluate_encoder.py           # 评估任务统一入口
+├── models/                       # ResNet50 Conv4c + 时序嵌入器
+├── algos/
+│   ├── loss/                     # TCC / InfoNCE / Triplet / Composite 损失
 │   └── eval_task/
-│       ├── base_task.py            # 评估任务抽象基类 + build_task 工厂
-│       └── tcc_eval_tasks/
-│           ├── task_kendall.py     # Kendall's Tau 对齐评估任务
-│           ├── task_phase_classification.py  # Phase 分类任务
-│           ├── task_expert_projection.py     # Expert Projection 任务
-│           └── task_latent_distance_heatmap.py  # 潜空间距离热图任务
-├── dataset_preparation/        # 数据准备
-│   ├── h5vid_dataset.py        # H5VideoDataset + build_dataloader
-│   ├── mp4vid_to_h5data.py     # MP4 转 H5 工具
-│   ├── mp4vid_to_png.py        # MP4 逐帧提取为 PNG（人工标注辅助）
-│   ├── add_phase_labels.py     # 为嵌入 H5 写入 phase_labels / keyframe_labels
-│   └── download_pouring_val_14.py  # 数据下载脚本
-├── configs_v2/                 # V2 配置与注册表系统
-│   ├── project.yaml            # 目录布局与路径模板
-│   ├── train.yaml              # 训练阶段配置
-│   ├── extract.yaml            # 提取阶段配置
-│   ├── data_process.yaml       # 数据处理阶段配置
-│   ├── loss/                   # TCC / InfoNCE / Triplet / Composite 损失配置
-│   ├── eval/                   # 各评估任务配置
-│   ├── visualize/              # 各可视化流程配置
-│   └── registry/               # runs.yaml / datasets.yaml 注册表
-├── datasets/
-│   ├── raw/                    # 原始 MP4 视频
-│   ├── processed/              # 处理后的 H5 数据集 (训练/验证)
-│   ├── embeddings/             # 提取的嵌入向量 H5 文件
-│   ├── raw_img/                # mp4vid_to_png.py 提取的帧图像（按视频名子目录）
-│   └── phase_labels/           # 人工标注的关键帧 CSV 文件（按 train/val 分拆）
-├── checkpoint/                 # 训练保存的模型权重
-├── outputs/
-│   ├── kendall_heatmap/        # Kendall's Tau 热图 PNG
-│   ├── confusion_matrix/       # Phase 分类混淆矩阵 PNG
-│   ├── expert_projection/      # Expert Projection 输出 H5 / PNG / MP4
-│   ├── latent_distance_heatmap/  # 潜空间距离热图 / anchor-distance 曲线 PNG
-│   ├── mean_path/              # 平均嵌入路径诊断图 PNG
-│   └── tsne/                   # t-SNE 散点图 PNG（按 run_name 子目录）
-├── scripts/                    # 工具脚本（测试 / 基准 / 批处理 / 可视化）
-│   ├── test_*.py                   # 数据、模型、损失、VOC、W&B logging 等测试
-│   ├── v2_resolve_check.py         # V2 配置解析与路径检查
-│   ├── compute_mean_embedding_path.py  # 计算跨视频平均嵌入路径
-│   ├── bench_*.py                  # TCC / Triplet 距离计算基准
-│   ├── benchmark_cache_recipe.py   # backbone cache 训练方案基准
-│   ├── profile_train_timing.py     # 训练关键时间片 profile
-│   ├── batch_extract_meanpath_expert_projection_4runs.py  # 批量提取+mean-path+expert projection
-│   ├── eval_latent_distance_4runs.py  # 多 run latent-distance 评估
-│   ├── backfill_latent_distance.py    # 历史 latent-distance 图像回填到 wandb
-│   ├── _run_voc_4ckpts.py            # 多 checkpoint VOC 对比
-│   └── visualize_embeddings_tsne*.py # 单组 / 双组 / phase / gap-analysis t-SNE
-└── utils/
-    ├── config_v2.py            # V2 配置解析器
-    ├── in_training_eval.py     # checkpoint 后训练中评估与 wandb 日志
-    ├── registry_v2.py          # V2 注册表追加写入器
-    ├── registry_scan.py        # 磁盘与 registry 自动对账工具
-    └── utils.py                # 通用工具函数
+│       ├── base_task.py          # BaseTask + build_task 工厂
+│       └── tcc_eval_tasks/       # 对齐、分类、进度、激活图等评估任务
+├── dataset_preparation/          # 视频 H5 构建与 phase 标签写入
+├── configs_v2/
+│   ├── project.yaml              # 根目录与工件命名模板
+│   ├── train.yaml / extract.yaml / data_process.yaml
+│   ├── loss/ / eval/ / visualize/
+│   └── registry/                 # datasets.yaml / runs.yaml
+├── scripts/
+│   ├── tsne/                     # t-SNE 可视化
+│   ├── robomimic/                # 数据、奖励与 IQL 实验辅助脚本
+│   ├── compute_mean_embedding_path.py
+│   ├── backfill_latent_distance.py
+│   └── run_online_sac_reward_sweep.py
+├── policy_training/              # 策略学习子系统
+│   ├── train_policy.py           # 离线 IQL / 在线 SAC 统一训练入口
+│   ├── evaluate_policy.py        # 串行或并行 rollout 评估
+│   ├── algos/                    # OfflineRLBase、IQL、OnlineRLBase、OnlineSAC
+│   ├── models/                   # actor / critic / V 网络与特征提取器
+│   ├── datasets/robomimic/       # 离线与在线 replay buffer
+│   ├── reward_model/             # TCC Expert Projection 在线奖励
+│   ├── envs/                     # Robomimic / Robosuite 环境适配
+│   ├── configs/                  # iql / online_sac / evaluate_policy
+│   ├── utils/                    # checkpoint、日志、评估与配置工具
+│   └── tests/                    # 策略训练与评估回归测试
+├── third_party/robomimic/        # Robomimic fork（Git submodule）
+├── datasets/                     # 根编码器流程的数据与嵌入工件
+├── checkpoint/ / outputs/ / wandb/  # 根编码器流程运行产物
+├── tests/                        # Gaussian progress 单元测试
+└── utils/                        # ConfigV2、registry 与训练中评估
 ```
 
 ---
 
-## 二、三阶段工作流
+## 二、总体工作流
 
 ```
-[阶段1: 训练]           [阶段2: 提取嵌入]           [阶段3: 评估/可视化]
-train_encoder.py  →   extract_embeddings.py   →   evaluate_encoder.py
-    ↓                         ↓                        ↓
-datasets/processed/   datasets/embeddings/      Kendall's Tau
-   (训练集 H5)           (嵌入向量 H5)             (标量指标)
-checkpoint/                   ↓                        ↓
-   (保存权重 .pt)      add_phase_labels.py    scripts/visualize_embeddings_tsne.py
-                              ↓                        ↓
-                    embeddings/*-labeled.h5    outputs/tsne/ (PNG 散点图)
-                    （含 phase_labels/
-                      keyframe_labels/
-                      labeled attr）
+[进度表示学习]
+原始视频 / Robomimic HDF5
+  → dataset_preparation/ → datasets/processed/*.h5
+  → train_encoder.py → checkpoint/*/encoder_epoch*.pt
+  → extract_embeddings.py → datasets/embeddings/**/*.h5
+  → evaluate_encoder.py / scripts/tsne/ → 进度指标与 H5 / PNG / MP4 工件
+
+[策略与奖励学习]
+Expert Projection / Gaussian Progress 等进度结果
+  → scripts/robomimic/make_robomimic_dense_reward.py
+  → Robomimic original / dense / PBRS HDF5
+  → policy_training/train_policy.py
+      ├── IQL：离线 replay buffer 训练
+      └── Online SAC：环境采样 + sparse / dense / PBRS 奖励训练
+  → policy_training/evaluate_policy.py → rollout JSON / MP4 / success 指标
 ```
 
 **人工标注辅助流程**：
@@ -124,6 +88,8 @@ datasets/embeddings/{run_name}/{dataset_stem}-embd-labeled.h5
 - `train_encoder.py` 新增可选 backbone feature cache 分支，适用于 `train_base in {only_bn, frozen}` 且 `extract_backbone_cache=true` 的训练路径。
 - `train_encoder.py` 还支持 `in_training_eval` 配置块：在 checkpoint 保存后复用一份临时 embedding 执行训练中评估，当前落地任务为 `latent_distance_heatmap` 与 `kendalls_tau`。
 - `evaluate_encoder.py` 暴露 `run_eval_task()` 供 `utils/in_training_eval.py` 和批处理脚本复用，因此部分评估既可命令行运行，也可被程序化调用。
+- `policy_training/train_policy.py` 通过 `algo_name` 选择 `iql` 或 `online_sac`；两者共用模型、checkpoint、W&B 和 rollout 评估基础设施。
+- `policy_training/evaluate_policy.py` 支持多 seed、串行/多进程 rollout 及自动组织 JSON / MP4 输出。
 
 ---
 
@@ -185,8 +151,11 @@ TCCTemporalEmbedder
 | `tcc_eval_tasks/task_phase_classification.py` | 冻结嵌入 + 线性 SVM phase 分类 |
 | `tcc_eval_tasks/task_expert_projection.py` | 将 non-expert 轨迹软投影到 expert 轨迹 |
 | `tcc_eval_tasks/task_latent_distance_heatmap.py` | 计算单条或全量轨迹的帧间距离热图 |
+| `tcc_eval_tasks/task_gaussian_progress_fitting.py` | 从 expert 轨迹离线拟合分段高斯进度模型 |
+| `tcc_eval_tasks/task_gaussian_progress_pred.py` | 用高斯模型推断 non-expert 连续进度 |
+| `tcc_eval_tasks/task_activation_map.py` | 重跑 encoder 并导出 backbone / temporal 激活图 |
 
-**当前工厂支持的任务名**：`kendalls_tau` / `classification` / `expert_projection` / `latent_distance_heatmap`
+**当前工厂支持的任务名**：`kendalls_tau` / `classification` / `expert_projection` / `latent_distance_heatmap` / `gaussian_progress_fitting` / `gaussian_progress_pred` / `activation_map`
 
 ---
 
@@ -194,7 +163,7 @@ TCCTemporalEmbedder
 
 ### 总体架构
 
-评估当前以 **V2 配置 + 离线 embedding 工件** 为主：`evaluate_encoder.py` 不重跑 encoder，而是从 `configs_v2/eval/{task}.yaml` 读取任务配置，再由 `ConfigV2` 把 `embedding_ref` / `dataset_ref` 解析为具体路径。
+评估当前以 **V2 配置 + 离线 embedding 工件** 为主：`evaluate_encoder.py` 从 `configs_v2/eval/{task}.yaml` 读取任务配置，再由 `ConfigV2` 把 registry ref 解析为具体路径。除 `activation_map` 会加载 checkpoint 并重跑 encoder 外，其余任务直接消费一个或多个 H5 工件。
 
 ```
 configs_v2/
@@ -204,7 +173,7 @@ configs_v2/
 evaluate_encoder.py  main(--task)
     ① ConfigV2.load_eval(task_name)
     ② resolve *_embedding_ref / *_dataset_ref → absolute paths
-    ③ 单 H5 任务: load_embeddings_h5()
+    ③ 按任务加载 embedding / Gaussian model / processed dataset / checkpoint
     ④ build_task(task_name)
     ⑤ task.configure(resolved) / task.evaluate(...)
           ↓
@@ -239,7 +208,7 @@ class BaseTask(abc.ABC):
         # }
 ```
 
-除 `evaluate()` 外，`BaseTask` 还提供可选的 `configure(config: dict)` 钩子；`expert_projection` 与 `latent_distance_heatmap` 依赖该路径，`kendalls_tau` / `classification` 仍保留轻量直接注入风格。
+除 `evaluate()` 外，`BaseTask` 还提供可选的 `configure(config: dict)` 钩子。H5 路径驱动的任务通常保存完整 resolved config 后自行读取输入；`classification` 则由入口加载 train / val embedding 后调用任务。
 
 `embeddings_dataset` 字段：
 
@@ -289,7 +258,7 @@ mean_tau = mean(所有非对角非 NaN 的 tau_ij)
 
 **附加输出**：
 - 终端打印 N×N pairwise tau 矩阵（含每行均值）
-- 保存热图 PNG：`outputs/kendall_heatmap/kendall_heatmap_{timestamp}.png`
+- 保存热图 PNG：`outputs/kendall_heatmap/{run_name}/{h5_stem}/kendall_heatmap_{timestamp}.png`
 
 **主要超参数**（`configs_v2/eval/kendalls_tau.yaml`）：
 
@@ -323,6 +292,18 @@ mean_tau = mean(所有非对角非 NaN 的 tau_ij)
 - 返回指标：`voc_spearman`；在 `"all"` 模式下还会返回 valid video 数与 skipped video IDs
 - 备注：`convert_to_similarity=true` 只影响可视化矩阵/相似度统计，VOC 始终基于原始 L2 距离计算
 
+#### Gaussian Progress（`task_gaussian_progress_fitting.py` / `task_gaussian_progress_pred.py`）
+
+两阶段进度建模流程：
+
+- `gaussian_progress_fitting`：按归一化时序进度把多条 expert embedding 分箱，为每个 bin 拟合均值和 full covariance；支持 independent、shared 及加权混合 covariance，输出模型 H5 和可选 t-SNE 诊断图。
+- `gaussian_progress_pred`：只读取已保存模型和 non-expert embedding，计算各进度 bin 的高斯后验，输出逐帧 progress mean / variance、entropy、MAP bin 与 Mahalanobis 诊断。
+- 默认输出分别位于 `outputs/gaussian_progress_fitting/` 与 `outputs/gaussian_progress_pred/`。
+
+#### Activation Map（`task_activation_map.py` / `task_name=activation_map`）
+
+从 processed video H5 读取完整轨迹，加载 encoder checkpoint，并通过 forward hook 获取 ResNet50 Conv4c 与第二层 Conv3D 激活。输出逐帧 overlay PNG、两路 MP4 和原始 heatmap H5；该任务是当前评估系统中唯一需要重跑 encoder 的任务。
+
 ### 待实现任务（`build_task` 工厂已预留）
 
 | 任务名 | 文件（待创建） | 说明 |
@@ -338,7 +319,7 @@ mean_tau = mean(所有非对角非 NaN 的 tau_ij)
 
 ---
 
-## 四-D、t-SNE 嵌入可视化（`scripts/visualize_embeddings_tsne*.py`）
+## 四-D、t-SNE 嵌入可视化（`scripts/tsne/visualize_embeddings_tsne*.py`）
 
 多个脚本当前默认读取 `configs_v2/visualize/*.yaml`（由 `ConfigV2.load_visualize()` 合并 `base.yaml` 与 per-flow YAML），无需重跑 encoder：
 
@@ -377,11 +358,11 @@ mean_tau = mean(所有非对角非 NaN 的 tau_ij)
 
 | 类别 | 脚本 | 作用 |
 |------|------|------|
-| 测试 / 回归 | `test_setup.py`、`test_data_loading.py`、`test_models.py`、`test_composite_loss.py`、`test_temporal_infonce_loss.py`、`test_temporal_triplet_loss.py`、`test_voc_metric.py`、`test_in_training_eval_logging.py` | 覆盖导入、数据、模型、损失、VOC 指标与训练中评估日志 |
-| 配置检查 | `v2_resolve_check.py` | 验证 `ConfigV2` 解析结果与关键路径 |
-| 基准 / 性能分析 | `bench_tcc.py`、`bench_triplet_pairwise.py`、`benchmark_cache_recipe.py`、`profile_train_timing.py` | 对齐实现、Triplet 距离计算、cache recipe 与训练时间片 profile |
-| 批处理 / 维护 | `batch_extract_meanpath_expert_projection_4runs.py`、`eval_latent_distance_4runs.py`、`_run_voc_4ckpts.py`、`backfill_latent_distance.py` | 多 run 批量提取/评估、VOC 对比、历史图像回填 |
-| 顶层辅助脚本 | `_smoke_test_in_training_eval.py`、`tmp_rerun_expert_projection_visuals.py` | 前者验证训练中评估全链路，后者对已有 expert projection 结果重跑可视化 |
+| 嵌入分析 | `compute_mean_embedding_path.py`、`tsne/visualize_embeddings_tsne*.py`、`backfill_latent_distance.py` | 平均路径、t-SNE 与历史 latent-distance 工件维护 |
+| Robomimic 数据 / 奖励 | `robomimic/make_robomimic_video.py`、`robomimic/make_robomimic_dense_reward.py`、`robomimic/policy_data_preproc/extract_image_features.py` | 视频导出、progress→dense/PBRS reward、ResNet18 特征预计算 |
+| 策略实验 | `robomimic/iql/*.py`、`run_online_sac_reward_sweep.py` | IQL 规模训练 / 基准 / 曲线与 Online SAC 奖励 sweep |
+| 编码器实验 | `train_square_triplet_weight_sweep.py` | Square 任务 composite loss 权重 sweep |
+| 测试 / 辅助 | `tests/test_gaussian_progress*.py`、`_smoke_test_in_training_eval.py`、`tmp_rerun_expert_projection_visuals.py`、`wait_for_pid_then_train.py` | Gaussian progress 回归、训练中评估烟测与任务串行启动 |
 
 ---
 
@@ -449,13 +430,14 @@ python dataset_preparation/add_phase_labels.py \
 | `train.yaml` | `train_encoder.py` 的训练阶段配置；含采样参数、backbone cache、`loss_name` / `loss_config`、`in_training_eval` |
 | `extract.yaml` | `extract_embeddings.py` 的提取阶段配置；解析 `checkpoint_ref` / `extract_dataset` |
 | `loss/*.yaml` | `loss_tcc.yaml` / `loss_temporal_infonce.yaml` / `loss_temporal_triplet.yaml` / `loss_composite_*.yaml` 等损失超参数 |
-| `eval/*.yaml` | `evaluate_encoder.py --task ...` 的任务配置 |
+| `eval/*.yaml` | Kendall、classification、expert projection、latent distance、Gaussian progress、activation map 配置 |
 | `visualize/base.yaml` + `visualize/*.yaml` | t-SNE / phase / gap-analysis / mean-path 等可视化配置 |
 
 **运行时角色**：
 - `utils/config_v2.py` 提供 `load_data_process()` / `load_train()` / `load_extract()` / `load_eval()` / `load_visualize()`，负责把 ref 解析成绝对路径。
-- `utils/in_training_eval.py` 在训练中复用 `evaluate.run_eval_task()` 执行 checkpoint 后评估，并负责 wandb 标量/图像日志。
+- `utils/in_training_eval.py` 在训练中复用 `evaluate_encoder.run_eval_task()` 执行 checkpoint 后评估，并负责 wandb 标量/图像日志。
 - `utils/registry_v2.py` 负责 append-only 注册表写入；`utils/registry_scan.py` 负责磁盘工件与 registry 的自动对账。
+- `policy_training/configs/` 是独立的策略配置域，不经 ConfigV2；由 `PolicyTrainingConfig` 读取 `iql.yaml`、`online_sac.yaml` 和 `evaluate_policy.yaml`。
 
 ---
 
@@ -525,13 +507,31 @@ with h5py.File("pouring-2vid-embd-labeled.h5") as f:
         is_ground_truth  bool  # True = 来自人工标注；False = SVM 预测
 ```
 
+**Gaussian progress 模型与预测 H5**：
+```
+# fitting 输出
+/model/
+    bin_progress_values       [K]
+    bin_means                 [K, D]
+    bin_final_covariances     [K, D, D]
+    bin_log_determinants      [K]
+    bin_counts                [K]
+
+# prediction 输出
+/nonexperts/<video_id>/
+    target_steps, progress_label, progress_variance
+    posterior_entropy, map_bin, min_mahalanobis_sq
+    posterior                [T, K]   # save_posterior=true 时
+```
+
 ---
 
 ## 八、实验跟踪
 
-- 使用 **Weights & Biases (wandb)** 记录训练损失和指标
-- Run 命名规则：`{LOSS_TAG}-{dataset}-{backbone}-{train_base}-{timestamp}`，其中 `{LOSS_TAG}` 来自 `loss_name`（如 `TCC`、`TEMPORAL-INFONCE`、`COMPOSITE`）
-- 日志目录：`wandb/`
+- 编码器训练使用 W&B 记录损失、checkpoint 后评估指标与可选图像；日志目录为根目录 `wandb/`。
+- 编码器 Run 命名规则：`{LOSS_TAG}-{dataset}-{backbone}-{train_base}-{timestamp}`。
+- 策略训练使用独立项目与目录 `policy_training/wandb/`，run metadata 由 env、task、algorithm、mask、reward type、seed 和 timestamp 推导。
+- 两条训练线分别把权重写到根目录 `checkpoint/` 与 `policy_training/checkpoint/`，不共享 checkpoint schema。
 
 ---
 
@@ -547,7 +547,9 @@ datasets/
 │   ├── pouring_val14/            # 新划分验证集，共 14 个 MP4，7 动作 × 2 视角
 │   ├── robomimic_can_ph/         # Robomimic Can PH 任务视频
 │   ├── robomimic_lift_ph/        # Robomimic Lift PH 任务视频
-│   └── robomimic_square_ph/      # Robomimic Square PH 任务视频
+│   ├── robomimic_square_ph/      # Robomimic Square PH 任务视频
+│   ├── robomimic_transport_ph/   # Robomimic Transport PH 任务视频
+│   └── robomimic_{can,lift,square,transport}_mh/  # Mixed-Human 任务视频
 │
 ├── raw_img/                      # mp4vid_to_png.py 提取的帧图像（供人工标注用）
 │   └── {video_stem}/             # 每个视频一个子目录
@@ -562,10 +564,11 @@ datasets/
 │   ├── pouring-4vid.h5           # 4 个视频的小型调试集
 │   ├── pouring_all_training-70vid.h5   # 70 个视频的完整集
 │   ├── pouring_all_val-14vid.h5        # 14 个视频验证集（MOV 来源）
-│   ├── pouring_train56-56vid.h5        # 56 个视频的新划分训练集
-│   ├── pouring_val14-14vid.h5          # 14 个视频的新划分验证集（MP4 来源）
+│   ├── pouring_train56-56vid_fullframe.h5  # 56 个视频的新划分训练集
+│   ├── pouring_val14-14vid_fullframe.h5    # 14 个视频的新划分验证集
 │   ├── robomimic_{task}_ph-{N}vid_train.h5  # Robomimic 任务训练集
-│   └── robomimic_{task}_ph-{N}vid_valid.h5  # Robomimic 任务验证集
+│   ├── robomimic_{task}_ph-{N}vid_valid.h5  # Robomimic 任务验证集
+│   └── robomimic_{task}_mh-{N}vid_{quality}.h5  # Mixed-Human 子集
 │
 └── embeddings/                   # extract_embeddings.py 输出的嵌入 H5 文件
     ├── pouring-2vid-embd.h5      # 早期调试用的 2 视频嵌入
@@ -608,8 +611,9 @@ train_encoder.py → TCCEncoder → build_loss(loss_name) → checkpoint/
 embeddings/{run_name}/{dataset}-embd.h5
     ↓  add_phase_labels.py  --embd_h5 ...  --keyframes_csv ...
 embeddings/{run_name}/{dataset}-embd-labeled.h5   （含 phase/keyframe 标注）
-    ↓  evaluate_encoder.py / visualize_embeddings_tsne*.py
-Kendall / Classification / Expert Projection / Latent Distance Heatmap(VOC) / t-SNE
+    ↓  evaluate_encoder.py / scripts/tsne/visualize_embeddings_tsne*.py
+Kendall / Classification / Expert Projection / Gaussian Progress /
+Latent Distance Heatmap(VOC) / Activation Map / t-SNE
 ```
 
 人工标注辅助流程与 H5 内部 schema 已在上文第二节、第七节说明，这里不再重复展开。
@@ -622,11 +626,13 @@ Kendall / Classification / Expert Projection / Latent Distance Heatmap(VOC) / t-
 | pouring (小) | `pouring-4vid.h5` | 4 | 2 | MP4 | 调试 |
 | pouring_all | `pouring_all_training-70vid.h5` | 70 | 35 | MP4 | 原始完整集 |
 | pouring_all_val | `pouring_all_val-14vid.h5` | 14 | 7 | MOV | 原始验证集 |
-| pouring_train56 | `pouring_train56-56vid.h5` | 56 | 28 | MP4 | **新划分训练集** |
-| pouring_val14 | `pouring_val14-14vid.h5` | 14 | 7 | MP4 | **新划分验证集** |
+| pouring_train56 | `pouring_train56-56vid_fullframe.h5` | 56 | 28 | MP4 | 新划分训练集 |
+| pouring_val14 | `pouring_val14-14vid_fullframe.h5` | 14 | 7 | MP4 | 新划分验证集 |
 | robomimic_square_ph | `robomimic_square_ph-{N}vid_{split}.h5` | 36/90/180 (train), 4/10/20 (valid) | — | MP4 | Robomimic Square PH 任务 |
-| robomimic_can_ph | `robomimic_can_ph-180vid_train.h5` 等 | 180 (train), 20 (valid) | — | MP4 | Robomimic Can PH 任务 |
+| robomimic_can_ph | `robomimic_can_ph-{N}vid_{split}.h5` | 36/180 (train), 4/20 (valid) | — | MP4 | Robomimic Can PH 任务 |
 | robomimic_lift_ph | `robomimic_lift_ph-{N}vid_{split}.h5` | 36/180 (train), 4/20 (valid) | — | MP4 | Robomimic Lift PH 任务 |
+| robomimic_transport_ph | `robomimic_transport_ph-{N}vid_{split}.h5` | 36 (train), 4 (valid) | — | MP4 | Robomimic Transport PH 任务 |
+| robomimic MH | `robomimic_{task}_mh-{N}vid_{quality}.h5` | Can 100/300、Lift 100、Square 100、Transport 50 | — | MP4 | okay / worse / all 质量子集 |
 
 ### 当前人工标注状态
 
@@ -643,13 +649,54 @@ Kendall / Classification / Expert Projection / Latent Distance Heatmap(VOC) / t-
 
 CSV 列说明：
 - `name`：视频文件名（去扩展名），与 `processed H5` 中的 `video_id` 对应
-- `id`：零填充六位数字 ID，与 `pouring_train56-56vid.h5` 中按字母序分配的 key 对应
+- `id`：零填充六位数字 ID，与 `pouring_train56-56vid_fullframe.h5` 中按字母序分配的 key 对应
 - `key_frame_idx`：该关键事件帧在原始视频中的帧编号（10fps 下采样后）
 
 ---
 
-## 十、third_party/robomimic（仅 IQL training recipe）
+## 十、策略训练子系统（`policy_training/`）
 
-- IQL 模板配置位于 `third_party/robomimic/robomimic/exps/templates/iql.json`，训练侧默认 `amp_enabled=true`、`pin_memory=true`、`hdf5_filter_key="IQL_expert_worse"`、`batch_size=256`、`num_epochs=2000`。
-- IQL 算法实现位于 `third_party/robomimic/robomimic/algo/iql.py`：双 Q critic + target critic、独立 V 网络（expectile 回归）、actor 使用 advantage-weighted regression（权重 `exp(adv / beta)`）。
-- IQL 基础超参数定义位于 `third_party/robomimic/robomimic/config/iql_config.py`，模板常用组合为 `adv.beta=3.0`、`vf_quantile=0.8`（其余参数按模板与实验配置覆盖）。
+`policy_training` 与根目录的 encoder 训练相互独立，但通过进度标签、mean-path H5 和 encoder checkpoint 对接。更细的离线 IQL 数据契约与 checkpoint 字段见 `policy_training/PROJECT_ARCHITECTURE.md`。
+
+### 训练与算法
+
+```
+Robomimic HDF5
+  ├── IQL
+  │     RobomimicReplayBuffer → IQL.train_step()
+  │     → actor + Q ensemble + target Q + V(s)
+  └── Online SAC
+        Robomimic env → OnlineDataCollector → OnlineReplayBuffer
+        → OnlineSAC.train_step()
+        → sparse_done / dense / PBRS reward
+```
+
+- `train_policy.py` 是统一入口，`algos.build_algo()` 当前注册 `iql` 与 `online_sac`。
+- IQL 使用 expectile V 回归和 AWR（或 DDPG+BC）actor 更新；可在训练中执行 rollout eval 与 dataset value eval。
+- Online SAC 复用自定义 actor / critic 与特征提取器，按环境步采样并训练；当前仅支持 `action_chunk_size=1`，offline warmstart 与 mixed buffer 仍为预留项。
+- `models/feature_extractors.py` 支持普通 flat range，以及“low-dim + 预计算 ResNet18 feature map + SpatialSoftmax”路径。
+
+### TCC 在线奖励桥接
+
+`reward_model/tcc_expert_proj_reward.py::TCCExpertProjectionDenseRewardProvider` 加载根目录的 TCC encoder checkpoint 与 expert mean-path H5，对在线 RGB observation 编码并软投影到 expert 进度轴。Online SAC 可选择：
+
+- `sparse_done`：环境稀疏成功奖励；
+- `dense`：稀疏奖励加当前 progress；
+- `pbrs`：`sparse + gamma * progress_next - progress_current`。
+
+离线数据侧由 `scripts/robomimic/make_robomimic_dense_reward.py` 把 Expert Projection progress 写成 original / dense / PBRS 三类 Robomimic HDF5；`scripts/robomimic/policy_data_preproc/extract_image_features.py` 再按需预计算冻结 ResNet18Conv 特征。
+
+### 策略评估与 checkpoint
+
+- `evaluate_policy.py` 从 self-describing checkpoint 重建算法、观测适配器和 Robosuite 环境，支持多 seed、串行或多进程 rollout。
+- `TrainingRolloutEvaluator` 供 IQL 与 Online SAC 在训练中周期评估；并行 worker 可独立使用 CPU 或 CUDA。
+- 评估汇总 Return、Horizon、Success Rate，输出 JSON，并可保存或上传 rollout MP4、progress 曲线。
+- checkpoint schema v1 保存 config、环境/shape metadata、obs slices、modules、optimizers 与可选 normalization stats；离线与在线算法共用该 schema。
+
+---
+
+## 十一、Robomimic 依赖边界
+
+- `third_party/robomimic/` 是 Git submodule，保留完整 Robomimic fork、算法模板与工具，主要用于上游参考和数据流程。
+- `policy_training/envs/robomimic_runtime/` 是策略子系统使用的 vendored runtime，提供环境、观测网络与工具依赖。
+- 项目实际调用的 IQL / Online SAC 实现在 `policy_training/algos/`；不直接复用 `third_party/robomimic/robomimic/algo/` 中的训练实现。
