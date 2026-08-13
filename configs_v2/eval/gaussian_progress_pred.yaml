@@ -1,0 +1,15 @@
+# Online Gaussian progress prediction.  The fitted model and query embeddings
+# are read-only inputs; all fitting and covariance choices live in the model H5.
+
+gaussian_model_h5_path: /home/user/zhangzk/projects/fineprog/outputs/gaussian_progress_fitting/robomimic-task-loss-embdim-20260802-164723-pca32-worse/can__tcc_d128/20260812-012419/gaussian_progress_model-covariance_mode-independent-20260812-012419-can__tcc_d128-pca32.h5
+nonexpert_h5_path: /home/user/zhangzk/projects/fineprog/datasets/embeddings/TCC-robomimic_can_ph-36vid_train-resnet50_conv4c-only_bn-20260726-211221-softmaxT0.001/robomimic_can_mh-100vid_worse-embd.h5
+
+posterior_temperature: 1.0e4
+entropy_epsilon: 1.0e-12
+
+enable_calibration: true # if true, we do the conformal p value calibration
+calibration_h5_path: datasets/embeddings/TCC-robomimic_can_ph-36vid_train-resnet50_conv4c-only_bn-20260726-211221-softmaxT0.001/robomimic_can_ph-4vid_valid-embd.h5
+ood_p_value_threshold: 0.2 # OOD if every progress-bin p-value is below this
+save_posterior: true
+enable_visualization: true
+enable_video: false

@@ -34,6 +34,7 @@ Quick usage
 
 from __future__ import annotations
 
+import os
 import yaml
 from pathlib import Path
 from typing import Any, Optional
@@ -42,6 +43,10 @@ from typing import Any, Optional
 _PROJ_ROOT  = Path(__file__).resolve().parent.parent
 _CONFIGS_V2 = _PROJ_ROOT / "configs_v2"
 
+# Optional environment override: point every ConfigV2() instance at an isolated
+# configs_v2 snapshot (used by sweep scripts that drive the CLI entrypoints).
+_CONFIGS_V2_ENV_VAR = "FINEPROG_CONFIGS_V2_DIR"
+
 
 class ConfigV2:
     """V2 configuration loader and path resolver.
@@ -49,8 +54,8 @@ class ConfigV2:
     Parameters
     ----------
     configs_v2_dir:
-        Path to the configs_v2/ directory.  Defaults to
-        ``<project_root>/configs_v2/``.
+        Path to the configs_v2/ directory.  Defaults to the ``FINEPROG_CONFIGS_V2_DIR``
+        environment variable when set, otherwise ``<project_root>/configs_v2/``.
     """
 
     # Maps embedding variant names to filename suffix templates.
@@ -62,6 +67,8 @@ class ConfigV2:
     }
 
     def __init__(self, configs_v2_dir: Optional[str | Path] = None) -> None:
+        if configs_v2_dir is None:
+            configs_v2_dir = os.environ.get(_CONFIGS_V2_ENV_VAR) or None
         root = Path(configs_v2_dir) if configs_v2_dir else _CONFIGS_V2
         self._root      = root
         self._proj_root = _PROJ_ROOT
@@ -302,6 +309,7 @@ class ConfigV2:
         ----------
         task_name:
             One of: ``"kendalls_tau"``, ``"expert_projection"``, ``"classification"``,
+            ``"gaussian_progress_fitting"``, ``"gaussian_progress_pred"``,
             ``"latent_distance_heatmap"``.
         config_path:
             Optional explicit path to the YAML file.  Defaults to
@@ -325,6 +333,8 @@ class ConfigV2:
         _resolvers = {
             "kendalls_tau":              self._resolve_kendalls_tau,
             "expert_projection":         self._resolve_expert_projection,
+            "gaussian_progress_fitting": self._resolve_gaussian_progress_fitting,
+            "gaussian_progress_pred":    self._resolve_gaussian_progress_pred,
             "classification":            self._resolve_classification,
             "latent_distance_heatmap":   self._resolve_latent_distance_heatmap,
             "activation_map":            self._resolve_activation_map,
@@ -384,6 +394,64 @@ class ConfigV2:
             # idx_mapping CSV: fallback demo_name_map source for non-robomimic datasets
             cfg["nonexpert_idx_mapping_csv"] = ds.get("idx_mapping_csv_path", "")
 
+        return cfg
+
+    def _resolve_gaussian_progress_fitting(self, cfg: dict) -> dict:
+        """Resolve the expert embedding and output directory for offline fitting."""
+        cfg = dict(cfg)
+        embedding_entry: dict = {}
+
+        # An explicit expert_h5_path wins over the registry reference.
+        if cfg.get("expert_h5_path"):
+            cfg["expert_h5_path"] = self._abs(str(cfg["expert_h5_path"]))
+        else:
+            expert_ref = cfg.get("expert_embedding_ref")
+            if not expert_ref:
+                raise ValueError(
+                    "[ConfigV2] gaussian_progress_fitting requires either "
+                    "'expert_h5_path' or 'expert_embedding_ref'."
+                )
+            embedding_entry = self.resolve_embedding(expert_ref)
+            cfg["expert_h5_path"] = embedding_entry["embedding_h5_path"]
+
+        if cfg.get("output_dir"):
+            cfg["output_dir"] = self._abs(str(cfg["output_dir"]))
+            return cfg
+
+        expert_path = Path(cfg["expert_h5_path"])
+        output_dir = Path(self._dirs["outputs"]) / "gaussian_progress_fitting"
+
+        run_name = embedding_entry.get("run_name", "")
+        run_ref = embedding_entry.get("run_ref")
+        if not run_name and run_ref:
+            run_name = self.resolve_run(run_ref).get("run_name", "")
+        if run_name:
+            output_dir = output_dir / run_name
+        cfg["output_dir"] = str(output_dir / expert_path.stem)
+        return cfg
+
+    def _resolve_gaussian_progress_pred(self, cfg: dict) -> dict:
+        """Resolve explicit model and query H5 paths for online prediction."""
+        cfg = dict(cfg)
+        gaussian_model_h5_path = cfg.get("gaussian_model_h5_path")
+        if not gaussian_model_h5_path:
+            raise ValueError(
+                "[ConfigV2] gaussian_progress_pred requires "
+                "'gaussian_model_h5_path'."
+            )
+        nonexpert_h5_path = cfg.get("nonexpert_h5_path")
+        if not nonexpert_h5_path:
+            raise ValueError(
+                "[ConfigV2] gaussian_progress_pred requires 'nonexpert_h5_path'."
+            )
+        cfg["gaussian_model_h5_path"] = self._abs(
+            str(gaussian_model_h5_path)
+        )
+        cfg["nonexpert_h5_path"] = self._abs(str(nonexpert_h5_path))
+        if cfg.get("calibration_h5_path"):
+            cfg["calibration_h5_path"] = self._abs(
+                str(cfg["calibration_h5_path"])
+            )
         return cfg
 
     def _resolve_classification(self, cfg: dict) -> dict:

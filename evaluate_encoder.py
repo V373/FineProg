@@ -9,8 +9,10 @@ Pipeline:
     6. Print results
 
 Usage:
-    python evaluate.py --task kendalls_tau
-    python evaluate.py --task expert_projection
+    python evaluate_encoder.py --task kendalls_tau
+    python evaluate_encoder.py --task expert_projection
+    python evaluate_encoder.py --task gaussian_progress_fitting
+    python evaluate_encoder.py --task gaussian_progress_pred
 """
 
 
@@ -32,6 +34,10 @@ from fineprog.algos.eval_task.base_task import build_task  # noqa: E402
 # [v2] V2 config resolver (independent of old config system)
 sys.path.insert(0, str(_PROJ_ROOT))
 from utils.config_v2 import ConfigV2  # noqa: E402
+from utils.embedding_normalization import (  # noqa: E402
+    read_embedding_normalization,
+    validate_embeddings_for_normalization,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -75,11 +81,19 @@ def load_embeddings_h5(path: str) -> dict:
         "labeled":         [],
     }
     with h5py.File(path, "r") as f:
+        embedding_normalization = read_embedding_normalization(f, path)
+        dataset["embedding_normalization"] = embedding_normalization
         videos_grp = f["videos"]
         for video_id in sorted(videos_grp.keys()):
             grp = videos_grp[video_id]
+            embeddings = np.array(grp["embeddings"])
+            validate_embeddings_for_normalization(
+                embeddings,
+                embedding_normalization,
+                f"{path}:/videos/{video_id}/embeddings",
+            )
             dataset["video_id"].append(video_id)
-            dataset["embeddings"].append(np.array(grp["embeddings"]))
+            dataset["embeddings"].append(embeddings)
             dataset["target_steps"].append(np.array(grp["target_steps"]))
             dataset["seq_len"].append(int(grp.attrs["seq_len"]))
             dataset["action_id"].append(int(grp.attrs["action_id"]))
@@ -192,7 +206,14 @@ def main(task_name: str | None = None) -> None:
     # Load embeddings (for tasks that need a single embedding H5)
     # -----------------------------------------------------------------------
     embeddings_dataset = None
-    if task_name not in ("classification", "expert_projection", "latent_distance_heatmap", "activation_map"):
+    if task_name not in (
+        "classification",
+        "expert_projection",
+        "gaussian_progress_fitting",
+        "gaussian_progress_pred",
+        "latent_distance_heatmap",
+        "activation_map",
+    ):
         embedding_save_path = resolved.get("embedding_h5_path")
         if not embedding_save_path:
             raise ValueError(
@@ -208,7 +229,26 @@ def main(task_name: str | None = None) -> None:
     # --- evaluate ---
     print(f"[evaluate] running task: {task_name}")
 
-    if task_name == "expert_projection":
+    if task_name == "gaussian_progress_fitting":
+        print(f"[evaluate] expert_h5_path: {resolved['expert_h5_path']}")
+        print(f"[evaluate] output_dir    : {resolved['output_dir']}")
+
+        task = build_task("gaussian_progress_fitting")
+        task.configure(resolved)
+        result = task.evaluate(None)
+
+    elif task_name == "gaussian_progress_pred":
+        print(
+            "[evaluate] gaussian_model_h5_path:",
+            resolved["gaussian_model_h5_path"],
+        )
+        print(f"[evaluate] nonexpert_h5_path     : {resolved['nonexpert_h5_path']}")
+
+        task = build_task("gaussian_progress_pred")
+        task.configure(resolved)
+        result = task.evaluate(None)
+
+    elif task_name == "expert_projection":
         print(f"[evaluate] expert_h5_path   : {resolved['expert_h5_path']}")
         print(f"[evaluate] nonexpert_h5_path: {resolved['nonexpert_h5_path']}")
 
@@ -250,6 +290,16 @@ def main(task_name: str | None = None) -> None:
 
         train_dataset = load_embeddings_h5(train_h5_path)
         val_dataset   = load_embeddings_h5(val_h5_path)
+        if (
+            train_dataset["embedding_normalization"]
+            != val_dataset["embedding_normalization"]
+        ):
+            raise ValueError(
+                "[evaluate] classification train/val embedding_normalization "
+                "mismatch: "
+                f"{train_dataset['embedding_normalization']!r} vs "
+                f"{val_dataset['embedding_normalization']!r}."
+            )
 
         print(f"[evaluate] train H5 videos: {len(train_dataset['video_id'])}")
         print(f"[evaluate] val   H5 videos: {len(val_dataset['video_id'])}")
@@ -269,7 +319,9 @@ def main(task_name: str | None = None) -> None:
     else:
         raise NotImplementedError(
             f"Task '{task_name}' is not supported. "
-            "Supported tasks: kendalls_tau, classification, expert_projection, latent_distance_heatmap, activation_map."
+            "Supported tasks: kendalls_tau, classification, expert_projection, "
+            "gaussian_progress_fitting, gaussian_progress_pred, "
+            "latent_distance_heatmap, activation_map."
         )
 
     # --- print results ---
@@ -289,7 +341,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Evaluate TCC embeddings on downstream tasks")
     parser.add_argument(
         "--task", type=str, default="kendalls_tau",
-        choices=["kendalls_tau", "expert_projection", "classification", "latent_distance_heatmap", "activation_map"],
+        choices=[
+            "kendalls_tau",
+            "expert_projection",
+            "gaussian_progress_fitting",
+            "gaussian_progress_pred",
+            "classification",
+            "latent_distance_heatmap",
+            "activation_map",
+        ],
         help="[v2] Evaluation task (default: kendalls_tau). "
              "Config is read from configs_v2/eval/<task>.yaml.",
     )

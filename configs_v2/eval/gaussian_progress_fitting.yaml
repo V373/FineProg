@@ -1,0 +1,79 @@
+# V2: Gaussian Progress Model Offline Fitting
+#
+# Fits one full-covariance Gaussian per temporal-progress bin from all expert
+# trajectories in a standard multi-video embedding H5.  Change the registry
+# alias below to fit any other registered expert embedding artifact.
+
+task_name: gaussian_progress_fitting
+
+# Explicit expert_h5_path, when non-null, takes precedence over this registry ref.
+expert_embedding_ref: tcc_can_ph_36_embdim16_ep16k_train
+expert_h5_path: ~
+
+# Null uses outputs/gaussian_progress_fitting/<run_name>/<expert_h5_stem>/.
+# Each invocation writes all artifacts into a YYYYMMDD-HHMMSS subdirectory.
+output_dir: ~
+
+num_bins: 20
+
+# Optional model-space PCA. When enabled, PCA is fitted once on all expert
+# frames, and the projected embeddings are used for Gaussian fitting and
+# prediction. This is independent from the t-SNE-only PCA below.
+enable_pca: true
+pca_dim: 32
+
+# Supported modes: independent | shared | independent_shared_weighted
+covariance_mode: independent
+shared_covariance_weight: 0.5
+
+# Always applied through a full symmetric eigendecomposition.
+variance_floor: 1.0e-8
+
+# Absolute singular-value threshold used for final covariance matrix ranks.
+covariance_rank_tolerance: 1.0e-5
+
+enable_covariance_regularization: false
+covariance_regularization: 1.0e-6
+
+# Phase-1 placeholder only.  true is intentionally rejected by this task.
+enable_calibration: false
+
+# Optional qualitative validation. The fitting H5 is always written first;
+# when enabled, this re-reads that H5 and the expert H5 without re-fitting.
+enable_visualization: true
+
+# With use_open_tsne=true, real expert features alone fit one reference t-SNE;
+# means and Gaussian samples are transformed out of sample, and both PNGs share
+# the same real coordinates. false restores the two-fit sklearn behavior.
+tsne_viz:
+  gaussian_samples_per_bin: 50
+  random_seed: 42
+
+  preprocessing:
+    standardize: true
+    use_pca_before_tsne: true
+    pca_dim: 50
+
+  tsne:
+    use_open_tsne: false # this is for the out-of-sample transform; sklearn TSNE is used for the initial fit
+    perplexity_mode: "config_clamped"
+    perplexity: 1000
+    learning_rate: "auto"
+    init: "pca"
+    max_iter: 5000
+
+  contour:
+    mass_levels: [0.50, 0.80, 0.95]
+
+  plot:
+    # Debug-only real-feature visualizations. When false, neither real-only PNG
+    # is rendered or written; with sklearn t-SNE, the extra real-only fit is
+    # skipped as well. The contour visualization remains enabled.
+    enable_real_only_debug: false
+    # Render the second real-only debug image when the primary debug flag is on.
+    enable_real_video_idx_plot: false
+    figsize: [10, 8]
+    point_size: 20
+    alpha: 0.75
+    dpi: 300
+    cmap_progress_bins: "turbo"

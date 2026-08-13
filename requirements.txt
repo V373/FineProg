@@ -8,12 +8,15 @@ h5py>=3.8.0
 numpy>=1.23.0
 opencv-python>=4.7.0
 pillow>=9.5.0
+imageio>=2.31.0
+imageio-ffmpeg>=0.4.8
 scikit-image>=0.20.0
 
 # Augmentation and data processing
 albumentations>=1.3.0
 scipy>=1.10.0
 scikit-learn>=1.2.0
+openTSNE>=1.0.0
 
 # Configuration management (Hydra-based)
 hydra-core>=1.3.0

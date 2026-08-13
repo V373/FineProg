@@ -62,6 +62,8 @@ _SUPPORTED_TASKS = {
     "kendalls_tau",
     "classification",
     "expert_projection",
+    "gaussian_progress_fitting",
+    "gaussian_progress_pred",
     "latent_distance_heatmap",
     "activation_map",
     # "event_completion",
@@ -102,6 +104,14 @@ def build_task(task_name: str, config_path: str = None, **kwargs) -> BaseTask:
     elif task_name == "expert_projection":
         from fineprog.algos.eval_task.tcc_eval_tasks.task_expert_projection import ExpertProjectionTask  # noqa: PLC0415
         return ExpertProjectionTask()
+
+    elif task_name == "gaussian_progress_fitting":
+        from fineprog.algos.eval_task.tcc_eval_tasks.task_gaussian_progress_fitting import GaussianProgressFittingTask  # noqa: PLC0415
+        return GaussianProgressFittingTask()
+
+    elif task_name == "gaussian_progress_pred":
+        from fineprog.algos.eval_task.tcc_eval_tasks.task_gaussian_progress_pred import GaussianProgressPredTask  # noqa: PLC0415
+        return GaussianProgressPredTask()
 
     elif task_name == "latent_distance_heatmap":
         from fineprog.algos.eval_task.tcc_eval_tasks.task_latent_distance_heatmap import LatentDistanceHeatmapTask  # noqa: PLC0415
