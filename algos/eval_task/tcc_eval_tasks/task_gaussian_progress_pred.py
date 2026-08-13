@@ -1391,6 +1391,15 @@ def _save_prediction_video(
             cursor_x=0.0,
         )
 
+    for line in progress_lines + confidence_lines:
+        line.set_animated(True)
+    progress_figure.canvas.draw()
+    progress_background = progress_figure.canvas.copy_from_bbox(progress_figure.bbox)
+    confidence_figure.canvas.draw()
+    confidence_background = confidence_figure.canvas.copy_from_bbox(
+        confidence_figure.bbox
+    )
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
     temporary_path = output_path.with_name(f".{output_path.stem}.tmp.mp4")
     if temporary_path.exists():
@@ -1414,11 +1423,17 @@ def _save_prediction_video(
             for line in progress_lines + confidence_lines:
                 line.set_xdata([frame_index, frame_index])
 
-            progress_figure.canvas.draw()
+            progress_figure.canvas.restore_region(progress_background)
+            for line in progress_lines:
+                line.axes.draw_artist(line)
+            progress_figure.canvas.blit(progress_figure.bbox)
             progress_panel = np.asarray(progress_figure.canvas.buffer_rgba()).copy()[
                 :, :, :3
             ]
-            confidence_figure.canvas.draw()
+            confidence_figure.canvas.restore_region(confidence_background)
+            for line in confidence_lines:
+                line.axes.draw_artist(line)
+            confidence_figure.canvas.blit(confidence_figure.bbox)
             confidence_panel = np.asarray(
                 confidence_figure.canvas.buffer_rgba()
             ).copy()[:, :, :3]
