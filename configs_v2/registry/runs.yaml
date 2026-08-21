@@ -438,6 +438,39 @@ runs:
     train_base: only_bn
     checkpoint_epoch: 20000
 
+  # ── Fruit Expert Videos · loss / embedding-dimension sweep ───────────
+  fruit_tcc_d128_ep20k_s20260814:
+    description: "Fruit expert sweep: TCC d128, epoch 20000"
+    run_name: TCC-fruit_expert_videos-36vid_train-resnet50_conv4c-only_bn-20260814-160620-tcc_d128
+    train_dataset: fruit_expert_videos_36vid_train
+    backbone: resnet50_conv4c
+    train_base: only_bn
+    checkpoint_epoch: 20000
+
+  fruit_tcc_triplet_w0p5_d128_ep20k_s20260814:
+    description: "Fruit expert sweep: TCC+TemporalTriplet w0.5 d128, epoch 20000"
+    run_name: COMPOSITE_TCC_TEMPORAL_TRIPLET-fruit_expert_videos-36vid_train-resnet50_conv4c-only_bn-20260814-234626-tcc_triplet_w0p5_d128
+    train_dataset: fruit_expert_videos_36vid_train
+    backbone: resnet50_conv4c
+    train_base: only_bn
+    checkpoint_epoch: 20000
+
+  fruit_tcc_d32_ep20k_s20260815:
+    description: "Fruit expert sweep: TCC d32, epoch 20000"
+    run_name: TCC-fruit_expert_videos-36vid_train-resnet50_conv4c-only_bn-20260815-073149-tcc_d32
+    train_dataset: fruit_expert_videos_36vid_train
+    backbone: resnet50_conv4c
+    train_base: only_bn
+    checkpoint_epoch: 20000
+
+  fruit_tcc_triplet_w0p5_d32_ep20k_s20260815:
+    description: "Fruit expert sweep: TCC+TemporalTriplet w0.5 d32, epoch 20000"
+    run_name: COMPOSITE_TCC_TEMPORAL_TRIPLET-fruit_expert_videos-36vid_train-resnet50_conv4c-only_bn-20260815-151030-tcc_triplet_w0p5_d32
+    train_dataset: fruit_expert_videos_36vid_train
+    backbone: resnet50_conv4c
+    train_base: only_bn
+    checkpoint_epoch: 20000
+
   # ── Template for new runs ─────────────────────────────────────────────
   # new_run_alias:
   #   description: "..."
@@ -1414,4 +1447,100 @@ embeddings:
     description: robomimic_transport_ph_20vid_valid embeddings (standard)
     run_ref: transport_tcc_triplet_w1p0_d32_ep20k_s20260802
     dataset_ref: robomimic_transport_ph_20vid_valid
+    variant: standard
+
+  fruit_tcc_d128_train36_ep20k:
+    description: fruit_expert_videos_36vid_train embeddings (standard)
+    run_ref: fruit_tcc_d128_ep20k_s20260814
+    dataset_ref: fruit_expert_videos_36vid_train
+    variant: standard
+
+  fruit_tcc_d128_valid4_ep20k:
+    description: fruit_expert_videos_4vid_valid embeddings (standard)
+    run_ref: fruit_tcc_d128_ep20k_s20260814
+    dataset_ref: fruit_expert_videos_4vid_valid
+    variant: standard
+
+  fruit_tcc_d128_valid20_ep20k:
+    description: fruit_expert_videos_20vid_valid embeddings (standard)
+    run_ref: fruit_tcc_d128_ep20k_s20260814
+    dataset_ref: fruit_expert_videos_20vid_valid
+    variant: standard
+
+  fruit_tcc_d128_fail7_ep20k:
+    description: fruit_fail_videos_7vid embeddings (standard)
+    run_ref: fruit_tcc_d128_ep20k_s20260814
+    dataset_ref: fruit_fail_videos_7vid
+    variant: standard
+
+  fruit_tcc_triplet_w0p5_d128_train36_ep20k:
+    description: fruit_expert_videos_36vid_train embeddings (standard)
+    run_ref: fruit_tcc_triplet_w0p5_d128_ep20k_s20260814
+    dataset_ref: fruit_expert_videos_36vid_train
+    variant: standard
+
+  fruit_tcc_triplet_w0p5_d128_valid4_ep20k:
+    description: fruit_expert_videos_4vid_valid embeddings (standard)
+    run_ref: fruit_tcc_triplet_w0p5_d128_ep20k_s20260814
+    dataset_ref: fruit_expert_videos_4vid_valid
+    variant: standard
+
+  fruit_tcc_triplet_w0p5_d128_valid20_ep20k:
+    description: fruit_expert_videos_20vid_valid embeddings (standard)
+    run_ref: fruit_tcc_triplet_w0p5_d128_ep20k_s20260814
+    dataset_ref: fruit_expert_videos_20vid_valid
+    variant: standard
+
+  fruit_tcc_triplet_w0p5_d128_fail7_ep20k:
+    description: fruit_fail_videos_7vid embeddings (standard)
+    run_ref: fruit_tcc_triplet_w0p5_d128_ep20k_s20260814
+    dataset_ref: fruit_fail_videos_7vid
+    variant: standard
+
+  fruit_tcc_d32_train36_ep20k:
+    description: fruit_expert_videos_36vid_train embeddings (standard)
+    run_ref: fruit_tcc_d32_ep20k_s20260815
+    dataset_ref: fruit_expert_videos_36vid_train
+    variant: standard
+
+  fruit_tcc_d32_valid4_ep20k:
+    description: fruit_expert_videos_4vid_valid embeddings (standard)
+    run_ref: fruit_tcc_d32_ep20k_s20260815
+    dataset_ref: fruit_expert_videos_4vid_valid
+    variant: standard
+
+  fruit_tcc_d32_valid20_ep20k:
+    description: fruit_expert_videos_20vid_valid embeddings (standard)
+    run_ref: fruit_tcc_d32_ep20k_s20260815
+    dataset_ref: fruit_expert_videos_20vid_valid
+    variant: standard
+
+  fruit_tcc_d32_fail7_ep20k:
+    description: fruit_fail_videos_7vid embeddings (standard)
+    run_ref: fruit_tcc_d32_ep20k_s20260815
+    dataset_ref: fruit_fail_videos_7vid
+    variant: standard
+
+  fruit_tcc_triplet_w0p5_d32_train36_ep20k:
+    description: fruit_expert_videos_36vid_train embeddings (standard)
+    run_ref: fruit_tcc_triplet_w0p5_d32_ep20k_s20260815
+    dataset_ref: fruit_expert_videos_36vid_train
+    variant: standard
+
+  fruit_tcc_triplet_w0p5_d32_valid4_ep20k:
+    description: fruit_expert_videos_4vid_valid embeddings (standard)
+    run_ref: fruit_tcc_triplet_w0p5_d32_ep20k_s20260815
+    dataset_ref: fruit_expert_videos_4vid_valid
+    variant: standard
+
+  fruit_tcc_triplet_w0p5_d32_valid20_ep20k:
+    description: fruit_expert_videos_20vid_valid embeddings (standard)
+    run_ref: fruit_tcc_triplet_w0p5_d32_ep20k_s20260815
+    dataset_ref: fruit_expert_videos_20vid_valid
+    variant: standard
+
+  fruit_tcc_triplet_w0p5_d32_fail7_ep20k:
+    description: fruit_fail_videos_7vid embeddings (standard)
+    run_ref: fruit_tcc_triplet_w0p5_d32_ep20k_s20260815
+    dataset_ref: fruit_fail_videos_7vid
     variant: standard

@@ -556,6 +556,10 @@ def test_config_v2_explicit_paths_override_registry_reference(tmp_path):
         {"enable_visualization": True, "tsne_viz": {"gaussian_samples_per_bin": 1}},
         {
             "enable_visualization": True,
+            "tsne_viz": {"gaussian_samples_per_bin": "match_real_bin_count"},
+        },
+        {
+            "enable_visualization": True,
             "tsne_viz": {"tsne": {"perplexity": 0}},
         },
         {
@@ -594,9 +598,10 @@ def test_sklearn_visualization_skips_real_only_debug_by_default(
                         [0.0, 0.0, 0.3],
                         [1.0, 0.2, 1.1],
                         [0.2, 1.0, -0.4],
+                        [0.6, 0.7, 0.8],
                     ]
                 ),
-                np.arange(3),
+                np.arange(4),
             ),
             "000002": (
                 np.array(
@@ -604,9 +609,10 @@ def test_sklearn_visualization_skips_real_only_debug_by_default(
                         [4.0, 4.0, 1.5],
                         [5.0, 4.2, -0.2],
                         [4.2, 5.0, 2.2],
+                        [4.6, 4.7, 0.8],
                     ]
                 ),
-                np.arange(3),
+                np.arange(4),
             ),
         },
     )
@@ -656,7 +662,7 @@ def test_sklearn_visualization_skips_real_only_debug_by_default(
             **_base_config(enable_pca=True, pca_dim=2),
             "enable_visualization": True,
             "tsne_viz": {
-                "gaussian_samples_per_bin": 20,
+                "gaussian_samples_per_bin": "match_real_bin_counts",
                 "random_seed": 7,
                 "preprocessing": {
                     "standardize": True,
@@ -677,8 +683,8 @@ def test_sklearn_visualization_skips_real_only_debug_by_default(
     result = task.evaluate(None)
 
     assert len(tsne_calls) == 1
-    assert tsne_calls[0][1] == (48, 2)
-    assert tsne_calls[0][0]["perplexity"] == pytest.approx(47 / 3)
+    assert tsne_calls[0][1] == (18, 2)
+    assert tsne_calls[0][0]["perplexity"] == pytest.approx(17 / 3)
     for setting in (
         "learning_rate",
         "init",
@@ -694,9 +700,9 @@ def test_sklearn_visualization_skips_real_only_debug_by_default(
     assert real_scatter_markers == ["o", "X", "o", "X"]
     assert contour_save_counts and set(contour_save_counts) == {0}
     assert result["visualization_enabled"]
-    assert result["visualization_num_real_points"] == 6
-    assert result["visualization_num_synthetic_points"] == 40
-    assert result["visualization_num_tsne_points"] == 48
+    assert result["visualization_num_real_points"] == 8
+    assert result["visualization_num_synthetic_points"] == 8
+    assert result["visualization_num_tsne_points"] == 18
     assert result["output_real_visualization_path"] is None
     assert result["output_real_video_idx_visualization_path"] is None
     assert result["real_visualization_num_tsne_points"] == 0
@@ -861,6 +867,19 @@ def test_open_tsne_defaults_to_disabled_for_legacy_configs():
     assert not parsed["use_open_tsne"]
     assert not parsed["enable_real_only_debug"]
     assert not parsed["enable_real_video_idx_plot"]
+
+
+def test_visualization_config_accepts_matching_real_bin_counts():
+    parsed = _parse_visualization_config(
+        {
+            "enable_visualization": True,
+            "tsne_viz": {
+                "gaussian_samples_per_bin": "match_real_bin_counts",
+            },
+        }
+    )
+    assert parsed["gaussian_samples_per_bin"] is None
+    assert parsed["match_real_bin_counts"]
 
 
 def test_one_dimensional_tsne_uses_random_initialization(monkeypatch):

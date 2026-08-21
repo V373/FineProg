@@ -162,6 +162,8 @@ class MP4ToH5Converter:
         robomimic: bool = False,
         robomimic_percent: str = "20_percent",
         two_split: bool = False,
+        demo_id_range: Optional[Tuple[int, int]] = None,
+        split: Optional[str] = None,
     ):
         """
         Initialize converter.
@@ -180,6 +182,10 @@ class MP4ToH5Converter:
                        and valid H5 files from {robomimic_percent}_train/_valid
                        masks.  When False (default), generate a single H5 file
                        from the mask key given by robomimic_percent directly.
+            demo_id_range: Optional inclusive ``(start, end)`` range for files
+                           named ``demo_N.mp4`` or ``demo_N.mov``. The selected
+                           files are processed in numeric demo-ID order.
+            split: Output suffix for demo_id_range mode: "train" or "valid".
         """
         self.raw_root = Path(raw_root)
         self.output_dir = Path(output_dir)
@@ -188,6 +194,21 @@ class MP4ToH5Converter:
         self.robomimic = robomimic
         self.robomimic_percent = robomimic_percent
         self.two_split = two_split
+        self.demo_id_range = demo_id_range
+        self.split = split
+
+        if (self.demo_id_range is None) != (self.split is None):
+            raise ValueError("demo_id_range and split must be provided together")
+        if self.demo_id_range is not None:
+            start_id, end_id = self.demo_id_range
+            if start_id < 0 or end_id < 0:
+                raise ValueError("demo_id_range values must be non-negative")
+            if start_id > end_id:
+                raise ValueError("demo_id_range start must be <= end")
+            if self.split not in ("train", "valid"):
+                raise ValueError("split must be 'train' or 'valid'")
+            if self.robomimic:
+                raise ValueError("demo_id_range mode cannot be combined with robomimic mode")
         
         # Create output directory if it doesn't exist
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -355,6 +376,7 @@ class MP4ToH5Converter:
         h5file: h5py.File,
         video_paths: List[Path],
         base_idx_offset: int = 0,
+        strict: bool = False,
     ) -> Tuple[int, List[dict]]:
         """
         Write a list of video paths into an already-open H5 file.
@@ -365,6 +387,7 @@ class MP4ToH5Converter:
             h5file:          Open, writable H5 file.
             video_paths:     Ordered list of video Paths to write.
             base_idx_offset: Unused; kept for API clarity (groups always start at 1).
+            strict:          Re-raise per-video failures instead of skipping them.
 
         Returns:
             Tuple of (number of videos successfully written, mapping_records).
@@ -388,6 +411,9 @@ class MP4ToH5Converter:
                 frames = self.extract_frames(video_path, stride)
 
                 if frames.size == 0:
+                    message = f"No frames extracted from {video_path.name}"
+                    if strict:
+                        raise ValueError(message)
                     logger.warning(f"    Skipping {video_path.name} - no frames extracted")
                     continue
 
@@ -422,6 +448,8 @@ class MP4ToH5Converter:
 
             except Exception as e:
                 logger.error(f"    Error processing {video_path.name}: {e}", exc_info=True)
+                if strict:
+                    raise
                 continue
 
         return written, mapping_records
@@ -482,17 +510,60 @@ class MP4ToH5Converter:
             self._process_videos_standard()
 
     def _process_videos_standard(self) -> None:
-        """Original behaviour: write all videos into one H5 file."""
+        """Write all videos, or one numeric demo-ID range, into an H5 file."""
+        video_paths = self.mp4_files
+        suffix = ""
+        strict = False
+        if self.demo_id_range is not None:
+            start_id, end_id = self.demo_id_range
+            video_paths = self._select_demo_id_range(start_id, end_id)
+            suffix = f"_{self.split}"
+            strict = True
+
         tmp_h5_path = self.output_dir / f"{self.folder_name}_tmp.h5"
         if tmp_h5_path.exists():
             tmp_h5_path.unlink()
 
-        with h5py.File(str(tmp_h5_path), "w", libver="earliest") as h5file:
-            written, mapping_records = self._write_videos_to_h5(h5file, self.mp4_files)
-            h5file.flush()
+        try:
+            with h5py.File(str(tmp_h5_path), "w", libver="earliest") as h5file:
+                written, mapping_records = self._write_videos_to_h5(
+                    h5file,
+                    video_paths,
+                    strict=strict,
+                )
+                h5file.flush()
+            if strict and written != len(video_paths):
+                raise RuntimeError(
+                    f"Expected {len(video_paths)} videos, but wrote {written}"
+                )
+        except Exception:
+            if tmp_h5_path.exists():
+                tmp_h5_path.unlink()
+            raise
 
-        self.output_h5_path = self._finalize_h5(tmp_h5_path, "", written)
+        self.output_h5_path = self._finalize_h5(tmp_h5_path, suffix, written)
         self._save_idx_mapping(mapping_records, self.output_h5_path)
+
+    def _select_demo_id_range(self, start_id: int, end_id: int) -> List[Path]:
+        """Select an inclusive demo-ID range in numeric order."""
+        demo_id_map = self._build_demo_id_map()
+        missing_ids = [
+            demo_id
+            for demo_id in range(start_id, end_id + 1)
+            if demo_id not in demo_id_map
+        ]
+        if missing_ids:
+            missing = ", ".join(f"demo_{demo_id}" for demo_id in missing_ids)
+            raise ValueError(f"Missing requested demo videos: {missing}")
+
+        selected = [demo_id_map[demo_id] for demo_id in range(start_id, end_id + 1)]
+        logger.info(
+            "Selected demo ID range %d..%d: %d videos in numeric order",
+            start_id,
+            end_id,
+            len(selected),
+        )
+        return selected
 
     def _build_demo_id_map(self) -> Dict[int, Path]:
         """
@@ -505,9 +576,18 @@ class MP4ToH5Converter:
         for path in self.mp4_files:
             m = re.match(r"demo_(\d+)\.(mp4|mov)$", path.name, re.IGNORECASE)
             if m:
-                demo_map[int(m.group(1))] = path
+                demo_id = int(m.group(1))
+                if demo_id in demo_map:
+                    raise ValueError(
+                        f"Duplicate demo ID {demo_id}: "
+                        f"{demo_map[demo_id].name} and {path.name}"
+                    )
+                demo_map[demo_id] = path
             else:
-                logger.warning(f"  File '{path.name}' does not match demo_N.mp4 pattern; skipping in robomimic mode.")
+                logger.warning(
+                    f"  File '{path.name}' does not match demo_N.mp4 or "
+                    "demo_N.mov; skipping."
+                )
         return demo_map
 
     def _process_videos_robomimic(self) -> None:
@@ -715,6 +795,23 @@ def main():
         ),
     )
     parser.add_argument(
+        "--demo_id_range",
+        type=int,
+        nargs=2,
+        metavar=("START", "END"),
+        default=None,
+        help=(
+            "Inclusive numeric demo-ID range for demo_N.mp4 or demo_N.mov. "
+            "Requires --split and cannot be combined with --robomimic."
+        ),
+    )
+    parser.add_argument(
+        "--split",
+        choices=("train", "valid"),
+        default=None,
+        help="Output split suffix for --demo_id_range mode.",
+    )
+    parser.add_argument(
         "--register",
         action="store_true",
         default=False,
@@ -728,6 +825,19 @@ def main():
         help="[v2] Registry alias (auto-suggested if not set). Requires --register.",
     )
     args = parser.parse_args()
+
+    if (args.demo_id_range is None) != (args.split is None):
+        parser.error("--demo_id_range and --split must be provided together")
+    if args.demo_id_range is not None:
+        start_id, end_id = args.demo_id_range
+        if start_id < 0 or end_id < 0:
+            parser.error("--demo_id_range values must be non-negative")
+        if start_id > end_id:
+            parser.error("--demo_id_range START must be <= END")
+        if args.robomimic:
+            parser.error("--demo_id_range cannot be combined with --robomimic")
+        if args.two_split:
+            parser.error("--demo_id_range cannot be combined with --two_split")
 
     base_dir = "/home/user/zhangzk/projects/fineprog/datasets"
     raw_root = os.path.join(base_dir, "raw", args.task)
@@ -760,6 +870,8 @@ def main():
         robomimic=args.robomimic,
         robomimic_percent=robomimic_percent,
         two_split=args.two_split,
+        demo_id_range=(tuple(args.demo_id_range) if args.demo_id_range else None),
+        split=args.split,
     )
     converter.run()
 

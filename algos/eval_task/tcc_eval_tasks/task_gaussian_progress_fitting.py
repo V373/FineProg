@@ -765,26 +765,36 @@ def _parse_visualization_config(config: dict) -> dict:
         raise ValueError("[gaussian_progress_fitting] tsne_viz must be a mapping.")
 
     gaussian_samples_per_bin = tsne_viz.get("gaussian_samples_per_bin", 200)
-    if isinstance(gaussian_samples_per_bin, bool):
-        raise ValueError(
-            "[gaussian_progress_fitting] gaussian_samples_per_bin must be an integer >= 20."
-        )
-    try:
-        gaussian_samples_float = float(gaussian_samples_per_bin)
-        gaussian_samples_per_bin = int(gaussian_samples_per_bin)
-    except (TypeError, ValueError) as exc:
-        raise ValueError(
-            "[gaussian_progress_fitting] gaussian_samples_per_bin must be an integer >= 20."
-        ) from exc
-    if (
-        not np.isfinite(gaussian_samples_float)
-        or gaussian_samples_float != gaussian_samples_per_bin
-        or gaussian_samples_per_bin < 20
-    ):
-        raise ValueError(
-            "[gaussian_progress_fitting] gaussian_samples_per_bin must be an "
-            f"integer >= 20; got {gaussian_samples_per_bin!r}."
-        )
+    match_real_bin_counts = (
+        isinstance(gaussian_samples_per_bin, str)
+        and gaussian_samples_per_bin.strip().lower() == "match_real_bin_counts"
+    )
+    if match_real_bin_counts:
+        gaussian_samples_per_bin = None
+    else:
+        if isinstance(gaussian_samples_per_bin, bool):
+            raise ValueError(
+                "[gaussian_progress_fitting] gaussian_samples_per_bin must be "
+                "an integer >= 20 or 'match_real_bin_counts'."
+            )
+        try:
+            gaussian_samples_float = float(gaussian_samples_per_bin)
+            gaussian_samples_per_bin = int(gaussian_samples_per_bin)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                "[gaussian_progress_fitting] gaussian_samples_per_bin must be "
+                "an integer >= 20 or 'match_real_bin_counts'."
+            ) from exc
+        if (
+            not np.isfinite(gaussian_samples_float)
+            or gaussian_samples_float != gaussian_samples_per_bin
+            or gaussian_samples_per_bin < 20
+        ):
+            raise ValueError(
+                "[gaussian_progress_fitting] gaussian_samples_per_bin must be "
+                "an integer >= 20 or 'match_real_bin_counts'; got "
+                f"{gaussian_samples_per_bin!r}."
+            )
 
     random_seed = int(tsne_viz.get("random_seed", 42))
     preprocessing = tsne_viz.get("preprocessing", {})
@@ -912,6 +922,7 @@ def _parse_visualization_config(config: dict) -> dict:
     return {
         "enabled": True,
         "gaussian_samples_per_bin": gaussian_samples_per_bin,
+        "match_real_bin_counts": match_real_bin_counts,
         "random_seed": random_seed,
         "use_open_tsne": bool(use_open_tsne),
         "standardize": bool(standardize),
@@ -1084,14 +1095,37 @@ def _read_gaussian_model_for_visualization(
     return model
 
 
-def _sample_saved_gaussians(model: dict, samples_per_bin: int, random_seed: int) -> np.ndarray:
+def _resolve_gaussian_sample_counts(
+    model: dict,
+    visualization_config: dict,
+) -> np.ndarray:
+    """Resolve the number of visualization samples to draw for every bin."""
+    if visualization_config.get("match_real_bin_counts", False):
+        sample_counts = np.asarray(model["bin_counts"], dtype=np.int64)
+    else:
+        samples_per_bin = int(visualization_config["gaussian_samples_per_bin"])
+        sample_counts = np.full(
+            model["num_bins"], samples_per_bin, dtype=np.int64
+        )
+
+    if sample_counts.shape != (model["num_bins"],) or np.any(sample_counts < 3):
+        raise ValueError(
+            "[gaussian_progress_fitting] Gaussian visualization sample counts "
+            "must contain at least 3 samples for every bin for 2D KDE."
+        )
+    return sample_counts
+
+
+def _sample_saved_gaussians(
+    model: dict,
+    sample_counts: np.ndarray,
+    random_seed: int,
+) -> list[np.ndarray]:
     """Draw deterministic high-dimensional samples from every saved Gaussian."""
     rng = np.random.default_rng(random_seed)
-    samples = np.empty(
-        (model["num_bins"], samples_per_bin, model["embedding_dim"]),
-        dtype=np.float64,
-    )
+    samples: list[np.ndarray] = []
     for bin_index in range(model["num_bins"]):
+        samples_per_bin = int(sample_counts[bin_index])
         try:
             cholesky_factor = np.linalg.cholesky(
                 model["bin_final_covariances"][bin_index]
@@ -1104,14 +1138,36 @@ def _sample_saved_gaussians(model: dict, samples_per_bin: int, random_seed: int)
         standard_normal = rng.standard_normal(
             (samples_per_bin, model["embedding_dim"])
         )
-        samples[bin_index] = (
-            standard_normal @ cholesky_factor.T + model["bin_means"][bin_index]
+        bin_samples = (
+            standard_normal @ cholesky_factor.T
+            + model["bin_means"][bin_index]
         )
-    if not np.isfinite(samples).all():
-        raise ValueError(
-            "[gaussian_progress_fitting] sampled Gaussian features contain NaN or Inf."
-        )
+        if not np.isfinite(bin_samples).all():
+            raise ValueError(
+                "[gaussian_progress_fitting] sampled Gaussian features contain "
+                "NaN or Inf."
+            )
+        samples.append(bin_samples)
     return samples
+
+
+def _split_coordinates_by_counts(
+    coordinates: np.ndarray,
+    sample_counts: np.ndarray,
+) -> list[np.ndarray]:
+    """Split flattened 2D coordinates into one variable-length array per bin."""
+    split_coordinates: list[np.ndarray] = []
+    offset = 0
+    for count in sample_counts:
+        next_offset = offset + int(count)
+        split_coordinates.append(coordinates[offset:next_offset])
+        offset = next_offset
+    if offset != coordinates.shape[0]:
+        raise ValueError(
+            "[gaussian_progress_fitting] split coordinate count does not match "
+            "the flattened coordinate array."
+        )
+    return split_coordinates
 
 
 def _evaluate_projected_kde(
@@ -1641,14 +1697,21 @@ def _save_gaussian_progress_visualization(
             "the saved model means."
         )
 
+    gaussian_sample_counts = _resolve_gaussian_sample_counts(
+        model, visualization_config
+    )
     gaussian_samples = _sample_saved_gaussians(
         model,
-        visualization_config["gaussian_samples_per_bin"],
+        gaussian_sample_counts,
         visualization_config["random_seed"],
     )
-    flat_gaussian_samples = gaussian_samples.reshape(-1, model["embedding_dim"])
+    flat_gaussian_samples = np.concatenate(gaussian_samples, axis=0)
     num_real = all_embeddings.shape[0]
     num_synthetic = flat_gaussian_samples.shape[0]
+    print(
+        "[gaussian_progress_fitting] tsne: Gaussian samples per bin: "
+        f"{gaussian_sample_counts.tolist()}"
+    )
     use_open_tsne = visualization_config["use_open_tsne"]
     enable_real_only_debug = visualization_config["enable_real_only_debug"]
 
@@ -1673,12 +1736,9 @@ def _save_gaussian_progress_visualization(
         )
         real_only_coordinates = real_coordinates if enable_real_only_debug else None
         mean_coordinates = out_of_sample_coordinates[: model["num_bins"]]
-        synthetic_coordinates = out_of_sample_coordinates[
-            model["num_bins"] :
-        ].reshape(
-            model["num_bins"],
-            visualization_config["gaussian_samples_per_bin"],
-            2,
+        synthetic_coordinates = _split_coordinates_by_counts(
+            out_of_sample_coordinates[model["num_bins"] :],
+            gaussian_sample_counts,
         )
         num_tsne_points = num_real
         real_perplexity_used = perplexity_used if enable_real_only_debug else None
@@ -1709,12 +1769,9 @@ def _save_gaussian_progress_visualization(
             fit_label="joint Gaussian fit",
         )
         real_coordinates = coordinates[:num_real]
-        synthetic_coordinates = coordinates[
-            num_real : num_real + num_synthetic
-        ].reshape(
-            model["num_bins"],
-            visualization_config["gaussian_samples_per_bin"],
-            2,
+        synthetic_coordinates = _split_coordinates_by_counts(
+            coordinates[num_real : num_real + num_synthetic],
+            gaussian_sample_counts,
         )
         mean_coordinates = coordinates[num_real + num_synthetic :]
         backend_label = "sklearn"

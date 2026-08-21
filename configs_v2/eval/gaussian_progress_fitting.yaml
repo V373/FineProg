@@ -14,7 +14,7 @@ expert_h5_path: ~
 # Each invocation writes all artifacts into a YYYYMMDD-HHMMSS subdirectory.
 output_dir: ~
 
-num_bins: 20
+num_bins: 20 # i havent try this ablation yet
 
 # Optional model-space PCA. When enabled, PCA is fitted once on all expert
 # frames, and the projected embeddings are used for Gaussian fitting and
@@ -35,7 +35,7 @@ covariance_rank_tolerance: 1.0e-5
 enable_covariance_regularization: false
 covariance_regularization: 1.0e-6
 
-# Phase-1 placeholder only.  true is intentionally rejected by this task.
+# Phase-1 placeholder only.  true is intentionally rejected by this task. see gaussian pred for real calibration
 enable_calibration: false
 
 # Optional qualitative validation. The fitting H5 is always written first;
@@ -46,7 +46,7 @@ enable_visualization: true
 # means and Gaussian samples are transformed out of sample, and both PNGs share
 # the same real coordinates. false restores the two-fit sklearn behavior.
 tsne_viz:
-  gaussian_samples_per_bin: 50
+  gaussian_samples_per_bin: 50 # num_bins*gaussian_samples_per_bin should be ~4000
   random_seed: 42
 
   preprocessing:

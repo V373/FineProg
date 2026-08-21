@@ -18,6 +18,7 @@ from fineprog.algos.eval_task.tcc_eval_tasks.task_gaussian_progress_pred import 
     _build_progress_figure,
     _compute_conformal_p_values,
     _compute_gaussian_log_likelihood,
+    _compute_progress_gated,
     _compute_progress_posterior,
     _compute_squared_mahalanobis,
     _infer_one_trajectory,
@@ -140,7 +141,7 @@ def test_config_v2_and_task_factory_registration():
     assert Path(resolved["nonexpert_h5_path"]).is_absolute()
     assert Path(resolved["calibration_h5_path"]).is_absolute()
     assert Path(resolved["calibration_h5_path"]).name == (
-        "robomimic_can_ph-4vid_valid-embd.h5"
+        "fruit_expert_videos-20vid_valid-embd.h5"
     )
     parsed = _parse_pred_config(resolved)
     assert np.isfinite(parsed["posterior_temperature"])
@@ -148,10 +149,10 @@ def test_config_v2_and_task_factory_registration():
     assert parsed["entropy_epsilon"] == 1.0e-12
     assert parsed["enable_calibration"] is True
     assert parsed["calibration_h5_path"] == resolved["calibration_h5_path"]
-    assert parsed["ood_p_value_threshold"] == 0.2
+    assert parsed["ood_p_value_threshold"] == 0.3
     assert resolved["save_posterior"] is True
     assert resolved["enable_visualization"] is True
-    assert resolved["enable_video"] is False
+    assert resolved["enable_video"] is True
     defaults = _parse_pred_config(
         {
             "gaussian_model_h5_path": "model.h5",
@@ -475,6 +476,18 @@ def test_conformal_p_value_uses_strict_less_than():
     assert conformal_p_value.dtype == np.dtype("float64")
 
 
+def test_progress_gated_holds_last_in_distribution_progress():
+    progress_mean = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7])
+    is_ood = np.array([True, True, False, True, True, False, True])
+
+    progress_gated = _compute_progress_gated(progress_mean, is_ood)
+
+    np.testing.assert_allclose(
+        progress_gated,
+        [0.0, 0.0, 0.3, 0.3, 0.3, 0.6, 0.6],
+    )
+
+
 def test_saved_log_determinants_control_the_posterior(tmp_path):
     model_path = tmp_path / "saved_logdet.h5"
     means = np.zeros((2, 2), dtype=np.float64)
@@ -741,6 +754,16 @@ def test_calibration_end_to_end_uses_matching_gaussian_column(tmp_path, monkeypa
             is_ood_dataset[:],
             [False, False, False, False, False, False, False, True],
         )
+        progress_gated_dataset = video_group["progress_gated"]
+        assert progress_gated_dataset.shape == (8,)
+        assert progress_gated_dataset.dtype == np.dtype("float64")
+        progress_mean = video_group["progress_mean"][:]
+        expected_progress_gated = progress_mean.copy()
+        expected_progress_gated[-1] = progress_mean[-2]
+        np.testing.assert_allclose(
+            progress_gated_dataset[:],
+            expected_progress_gated,
+        )
 
 
 def test_calibration_rejects_empty_temporal_bin(tmp_path, monkeypatch):
@@ -883,7 +906,9 @@ def test_visualization_uses_requested_axes_and_color_norms(tmp_path, monkeypatch
         frame_steps,
         bin_progress_values,
         np.array([0.2, 0.5, 0.9]),
+        np.array([0.2, 0.2, 0.9]),
         posterior,
+        is_ood,
         tmp_path / "progress.png",
     )
     _save_confidence_figure(
@@ -896,7 +921,8 @@ def test_visualization_uses_requested_axes_and_color_norms(tmp_path, monkeypatch
         tmp_path / "confidence.png",
     )
 
-    progress_heatmap = saved_figures[0].axes[1].collections[0]
+    progress_ood_heatmap = saved_figures[0].axes[0].collections[0]
+    progress_heatmap = saved_figures[0].axes[3].collections[0]
     ood_heatmap = saved_figures[1].axes[0].collections[0]
     p_value_heatmap = saved_figures[1].axes[1].collections[0]
     likelihood_heatmap = saved_figures[1].axes[2].collections[0]
@@ -904,6 +930,11 @@ def test_visualization_uses_requested_axes_and_color_norms(tmp_path, monkeypatch
     assert progress_heatmap.norm.vmin == pytest.approx(posterior.min())
     assert progress_heatmap.norm.vmax == pytest.approx(posterior.max())
     assert progress_heatmap.cmap.name == "Blues"
+    assert isinstance(progress_ood_heatmap.norm, BoundaryNorm)
+    np.testing.assert_array_equal(
+        np.asarray(progress_ood_heatmap.get_array()).reshape(-1),
+        is_ood.astype(np.int8),
+    )
     assert isinstance(ood_heatmap.norm, BoundaryNorm)
     np.testing.assert_array_equal(
         np.asarray(ood_heatmap.get_array()).reshape(-1),
@@ -929,13 +960,31 @@ def test_visualization_uses_requested_axes_and_color_norms(tmp_path, monkeypatch
     assert likelihood_heatmap.norm.vmax == 3.0
     assert likelihood_heatmap.cmap.name == "Blues"
     progress_figure = saved_figures[0]
+    progress_figure.canvas.draw()
+    assert len(progress_figure.axes) == 5
+    np.testing.assert_allclose(progress_figure.get_size_inches(), [8.0, 6.5])
+    assert progress_figure.dpi == 300
+    progress_ood_box = progress_figure.axes[0].get_position()
+    progress_gated_box = progress_figure.axes[1].get_position()
+    progress_mean_box = progress_figure.axes[2].get_position()
+    progress_heatmap_box = progress_figure.axes[3].get_position()
     assert progress_figure.axes[0].get_xlim() == pytest.approx((0.0, 2.0))
-    progress_curve_box = progress_figure.axes[0].get_position()
-    progress_heatmap_box = progress_figure.axes[1].get_position()
-    assert progress_curve_box.x0 == pytest.approx(progress_heatmap_box.x0)
-    assert progress_curve_box.width == pytest.approx(progress_heatmap_box.width)
-    assert progress_curve_box.height == pytest.approx(progress_heatmap_box.height)
-    assert progress_figure.axes[2].get_position().x0 > progress_curve_box.x1
+    assert progress_figure.axes[1].get_ylabel() == "Progress gated"
+    assert progress_figure.axes[2].get_ylabel() == "Progress mean"
+    assert progress_ood_box.x0 == pytest.approx(progress_gated_box.x0)
+    assert progress_gated_box.x0 == pytest.approx(progress_mean_box.x0)
+    assert progress_mean_box.x0 == pytest.approx(progress_heatmap_box.x0)
+    assert progress_ood_box.width == pytest.approx(progress_gated_box.width)
+    assert progress_gated_box.width == pytest.approx(progress_mean_box.width)
+    assert progress_mean_box.width == pytest.approx(progress_heatmap_box.width)
+    assert progress_gated_box.height == pytest.approx(progress_mean_box.height)
+    assert progress_mean_box.height == pytest.approx(progress_heatmap_box.height)
+    assert progress_ood_box.height == pytest.approx(progress_gated_box.height / 6.0)
+    assert not progress_figure.axes[0].xaxis.get_ticklabels()
+    assert not progress_figure.axes[1].xaxis.get_ticklabels()
+    assert not progress_figure.axes[2].xaxis.get_ticklabels()
+    assert progress_figure.axes[4].get_ylabel() == "Posterior probability"
+    assert progress_figure.axes[4].get_position().x0 > progress_heatmap_box.x1
 
     confidence_figure = saved_figures[1]
     confidence_figure.canvas.draw()
@@ -989,6 +1038,7 @@ def test_video_figures_are_compact_titleless_and_have_cursor_lines():
         bin_progress_values=bin_progress_values,
         progress_mean=np.array([0.1, 0.5, 0.9]),
         posterior=np.array([[0.9, 0.1], [0.5, 0.5], [0.1, 0.9]]),
+        progress_curve_label="Progress gated",
         figsize=(4.0, 2.0),
         show_title=False,
         cursor_x=1.0,
@@ -1009,6 +1059,7 @@ def test_video_figures_are_compact_titleless_and_have_cursor_lines():
         np.testing.assert_allclose(progress_figure.get_size_inches(), [4.0, 2.0])
         np.testing.assert_allclose(confidence_figure.get_size_inches(), [4.0, 2.25])
         assert progress_figure.axes[0].get_title() == ""
+        assert progress_figure.axes[0].get_ylabel() == "Progress gated"
         assert confidence_figure._suptitle is None
         assert len(progress_lines) == 2
         assert len(confidence_lines) == 3
@@ -1086,7 +1137,7 @@ def test_prediction_video_end_to_end_and_alignment_fail_fast(tmp_path):
         "processed_frame_count": 3,
         "target_steps": np.arange(3),
         "bin_progress_values": np.array([0.0, 1.0]),
-        "progress_mean": np.array([0.1, 0.5, 0.9]),
+        "progress_gated": np.array([0.1, 0.1, 0.9]),
         "posterior": np.array([[0.9, 0.1], [0.5, 0.5], [0.1, 0.9]]),
         "is_ood": np.array([False, True, False]),
         "conformal_p_value": np.array([[0.9, 0.1], [0.5, 0.5], [0.1, 0.9]]),

@@ -60,6 +60,23 @@ datasets:
     raw_dir: pouring_val14
     phase_labels_csv: datasets/phase_labels/pouring_val14_phase_labels.csv
 
+  # ── Fruit Expert Videos ────────────────────────────────────────────
+  fruit_expert_videos_36vid_train:
+    display_name: Fruit Expert Videos Train (36 videos)
+    processed_h5: fruit_expert_videos-36vid_train.h5
+    raw_dir: fruit_expert_videos
+    validation_dataset_ref: fruit_expert_videos_4vid_valid
+
+  fruit_expert_videos_4vid_valid:
+    display_name: Fruit Expert Videos Valid (4 videos)
+    processed_h5: fruit_expert_videos-4vid_valid.h5
+    raw_dir: fruit_expert_videos
+
+  fruit_expert_videos_20vid_valid:
+    display_name: Fruit Expert Videos Calibration / Valid (20 videos)
+    processed_h5: fruit_expert_videos-20vid_valid.h5
+    raw_dir: fruit_expert_videos
+
   # ── Robomimic Can PH (professional human) ──────────────────────────
   robomimic_can_ph_180vid_train:
     display_name: Robomimic Can PH Train (180 videos)
@@ -236,3 +253,8 @@ datasets:
     raw_dir: robomimic_transport_mh
     robomimic_hdf5: datasets/raw/robomimic_transport_mh/demo_v15.hdf5
     mask_key: worse
+
+  fruit_fail_videos_7vid:
+    display_name: fruit_fail_videos (fruit_fail_videos-7vid.h5)
+    processed_h5: fruit_fail_videos-7vid.h5
+    raw_dir: fruit_fail_videos

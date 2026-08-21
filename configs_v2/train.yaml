@@ -5,7 +5,7 @@
 
 # ── Dataset ───────────────────────────────────────────────────────────
 # Key from configs_v2/datasets.yaml  →  resolved to processed_h5_path at runtime
-train_dataset: robomimic_can_ph_36vid_train
+train_dataset: fruit_expert_videos_36vid_train
 
 # ── Model ─────────────────────────────────────────────────────────────
 backbone_name:   resnet50_conv4c
@@ -51,7 +51,7 @@ sampling_strategy:  offset_uniform
 random_offset:      1
 
 # ── Optimizer ─────────────────────────────────────────────────────────
-learning_rate: 4.5e-4 # 4.5e-4
+learning_rate: 4.0e-4 # 4.5e-4
 
 # ── Logging ───────────────────────────────────────────────────────────
 log_every: 100    # log loss to wandb every N epochs

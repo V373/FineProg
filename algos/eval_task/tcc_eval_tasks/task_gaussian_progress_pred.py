@@ -543,6 +543,20 @@ def _compute_conformal_p_values(
     return p_values
 
 
+def _compute_progress_gated(
+    progress_mean: np.ndarray,
+    is_ood: np.ndarray,
+) -> np.ndarray:
+    """Hold the last in-distribution progress across OOD frames."""
+    progress_gated = np.empty_like(progress_mean)
+    last_progress = 0.0
+    for frame_index in range(progress_mean.shape[0]):
+        if not is_ood[frame_index]:
+            last_progress = progress_mean[frame_index]
+        progress_gated[frame_index] = last_progress
+    return progress_gated
+
+
 def _compute_gaussian_log_likelihood(
     squared_mahalanobis: np.ndarray,
     bin_log_determinants: np.ndarray,
@@ -676,9 +690,14 @@ def _infer_one_trajectory(
             calibration_distance_bins=calibration_distance_bins,
         )
         output_arrays["conformal_p_value"] = conformal_p_value
-        output_arrays["is_ood"] = np.all(
+        is_ood = np.all(
             conformal_p_value < ood_p_value_threshold,
             axis=1,
+        )
+        output_arrays["is_ood"] = is_ood
+        output_arrays["progress_gated"] = _compute_progress_gated(
+            progress_mean,
+            is_ood,
         )
     for name, array in output_arrays.items():
         if not np.isfinite(array).all():
@@ -889,7 +908,7 @@ def _frame_tick_values(num_frames: int) -> tuple[np.ndarray, list[str]]:
 
 def _create_progress_axes(plt, figsize: tuple[float, float] = (8.0, 4.0)):
     """Create aligned progress axes with one external heatmap colorbar."""
-    figure = plt.figure(figsize=figsize, constrained_layout=True)
+    figure = plt.figure(figsize=figsize, dpi=300, constrained_layout=True)
     layout = figure.add_gridspec(
         2,
         2,
@@ -906,12 +925,49 @@ def _create_progress_axes(plt, figsize: tuple[float, float] = (8.0, 4.0)):
     return figure, curve_axis, heatmap_axis, colorbar_axis
 
 
+def _create_gated_progress_axes(
+    plt,
+    figsize: tuple[float, float] = (8.0, 6.5),
+):
+    """Create aligned OOD, gated-progress, mean-progress, and heatmap axes."""
+    figure = plt.figure(figsize=figsize, dpi=300, constrained_layout=True)
+    layout = figure.add_gridspec(
+        4,
+        2,
+        height_ratios=(1, 6, 6, 6),
+        width_ratios=(1, 0.035),
+        hspace=0.10,
+        wspace=0.12,
+    )
+    ood_axis = figure.add_subplot(layout[0, 0])
+    gated_curve_axis = figure.add_subplot(layout[1, 0], sharex=ood_axis)
+    curve_axis = figure.add_subplot(layout[2, 0], sharex=ood_axis)
+    heatmap_axis = figure.add_subplot(layout[3, 0], sharex=ood_axis)
+    colorbar_axis = figure.add_subplot(layout[3, 1])
+
+    for axis in (ood_axis, gated_curve_axis, curve_axis):
+        axis.tick_params(
+            axis="x",
+            which="both",
+            bottom=False,
+            labelbottom=False,
+        )
+    return (
+        figure,
+        ood_axis,
+        gated_curve_axis,
+        curve_axis,
+        heatmap_axis,
+        colorbar_axis,
+    )
+
+
 def _create_confidence_axes(
     plt,
     figsize: tuple[float, float] = (8.0, 4.5),
 ):
     """Create aligned OOD, p-value, and likelihood axes."""
-    figure = plt.figure(figsize=figsize, constrained_layout=True)
+    figure = plt.figure(figsize=figsize, dpi=300, constrained_layout=True)
     layout = figure.add_gridspec(
         3,
         2,
@@ -950,28 +1006,83 @@ def _build_progress_figure(
     bin_progress_values: np.ndarray,
     progress_mean: np.ndarray,
     posterior: np.ndarray,
-    figsize: tuple[float, float] = (8.0, 4.0),
+    progress_gated: np.ndarray | None = None,
+    is_ood: np.ndarray | None = None,
+    progress_curve_label: str = "Progress mean",
+    figsize: tuple[float, float] = (8.0, 6.5),
     show_title: bool = True,
     cursor_x: float | None = None,
 ):
-    """Build the posterior heatmap and its mean-progress curve."""
+    """Build a posterior-progress figure, optionally with OOD gating panels."""
+    if (progress_gated is None) != (is_ood is None):
+        raise ValueError(
+            "[gaussian_progress_pred] progress figure requires both "
+            "progress_gated and is_ood."
+        )
+
     frame_edges = _normalized_cell_edges(frame_steps)
     progress_edges = _normalized_cell_edges(bin_progress_values)
     posterior_min = float(np.min(posterior))
     posterior_max = float(np.max(posterior))
-    figure, curve_axis, heatmap_axis, colorbar_axis = _create_progress_axes(
-        plt,
-        figsize=figsize,
-    )
     x_ticks, x_tick_labels = _frame_tick_values(frame_steps.size)
-    curve_axis.plot(frame_steps, progress_mean, color="tab:blue")
-    curve_axis.set_ylabel("Progress mean")
-    curve_axis.set_ylim(0.0, 1.0)
+
+    if progress_gated is None:
+        figure, curve_axis, heatmap_axis, colorbar_axis = _create_progress_axes(
+            plt,
+            figsize=figsize,
+        )
+        curve_axis.plot(frame_steps, progress_mean, color="tab:blue")
+        curve_axis.set_ylabel(progress_curve_label)
+        curve_axis.set_ylim(0.0, 1.0)
+        title_axis = curve_axis
+        cursor_axes = (curve_axis, heatmap_axis)
+    else:
+        from matplotlib.colors import BoundaryNorm, ListedColormap  # noqa: PLC0415
+
+        progress_gated = np.asarray(progress_gated)
+        is_ood = np.asarray(is_ood)
+        if progress_gated.shape != frame_steps.shape:
+            raise ValueError(
+                "[gaussian_progress_pred] progress figure progress_gated shape "
+                f"must match frame_steps shape {frame_steps.shape}; got "
+                f"{progress_gated.shape}."
+            )
+        if is_ood.shape != frame_steps.shape:
+            raise ValueError(
+                "[gaussian_progress_pred] progress figure is_ood shape must "
+                f"match frame_steps shape {frame_steps.shape}; got {is_ood.shape}."
+            )
+        (
+            figure,
+            ood_axis,
+            gated_curve_axis,
+            curve_axis,
+            heatmap_axis,
+            colorbar_axis,
+        ) = _create_gated_progress_axes(plt, figsize=figsize)
+        ood_axis.pcolormesh(
+            frame_edges,
+            np.asarray([0.0, 1.0]),
+            is_ood.astype(np.int8, copy=False)[np.newaxis, :],
+            cmap=ListedColormap(("white", "#d62728")),
+            norm=BoundaryNorm((-0.5, 0.5, 1.5), ncolors=2),
+        )
+        ood_axis.set_ylim(0.0, 1.0)
+        ood_axis.set_yticks([])
+        ood_axis.set_ylabel("")
+
+        gated_curve_axis.plot(frame_steps, progress_gated, color="tab:blue")
+        gated_curve_axis.set_ylabel("Progress gated")
+        gated_curve_axis.set_ylim(0.0, 1.0)
+        curve_axis.plot(frame_steps, progress_mean, color="tab:blue")
+        curve_axis.set_ylabel("Progress mean")
+        curve_axis.set_ylim(0.0, 1.0)
+        title_axis = ood_axis
+        cursor_axes = (ood_axis, gated_curve_axis, curve_axis, heatmap_axis)
+
     if show_title:
-        curve_axis.set_title(f"Posterior progress — {video_id}")
-    curve_axis.set_xlim(frame_steps[0], frame_steps[-1])
-    curve_axis.set_xticks(x_ticks)
-    curve_axis.set_xticklabels(x_tick_labels)
+        title_axis.set_title(f"Posterior progress — {video_id}")
+    title_axis.set_xlim(frame_steps[0], frame_steps[-1])
 
     heatmap = heatmap_axis.pcolormesh(
         frame_edges,
@@ -995,7 +1106,7 @@ def _build_progress_figure(
 
     cursor_lines = []
     if cursor_x is not None:
-        for axis in (curve_axis, heatmap_axis):
+        for axis in cursor_axes:
             cursor_lines.append(
                 axis.axvline(
                     cursor_x,
@@ -1013,10 +1124,12 @@ def _save_progress_figure(
     frame_steps: np.ndarray,
     bin_progress_values: np.ndarray,
     progress_mean: np.ndarray,
+    progress_gated: np.ndarray,
     posterior: np.ndarray,
+    is_ood: np.ndarray,
     output_path: Path,
 ) -> None:
-    """Save the posterior heatmap and its mean-progress curve."""
+    """Save the OOD-gated posterior-progress figure."""
     import matplotlib  # noqa: PLC0415
 
     matplotlib.use("Agg")
@@ -1029,6 +1142,8 @@ def _save_progress_figure(
         bin_progress_values=bin_progress_values,
         progress_mean=progress_mean,
         posterior=posterior,
+        progress_gated=progress_gated,
+        is_ood=is_ood,
     )
     try:
         figure.savefig(output_path, dpi=300, bbox_inches="tight")
@@ -1296,7 +1411,7 @@ def _save_prediction_video(
     processed_frame_count: int,
     target_steps: np.ndarray,
     bin_progress_values: np.ndarray,
-    progress_mean: np.ndarray,
+    progress_gated: np.ndarray,
     posterior: np.ndarray,
     is_ood: np.ndarray,
     conformal_p_value: np.ndarray,
@@ -1312,7 +1427,7 @@ def _save_prediction_video(
     import matplotlib.pyplot as plt  # noqa: PLC0415
 
     target_steps = np.asarray(target_steps)
-    prediction_frame_count = int(progress_mean.shape[0])
+    prediction_frame_count = int(progress_gated.shape[0])
     expected_steps = np.arange(prediction_frame_count, dtype=np.int64)
     if target_steps.shape != expected_steps.shape or not np.array_equal(
         target_steps,
@@ -1372,8 +1487,9 @@ def _save_prediction_video(
             video_id=video_id,
             frame_steps=frame_steps,
             bin_progress_values=bin_progress_values,
-            progress_mean=progress_mean,
+            progress_mean=progress_gated,
             posterior=posterior,
+            progress_curve_label="Progress gated",
             figsize=(4.0, 2.0),
             show_title=False,
             cursor_x=0.0,
@@ -1523,8 +1639,8 @@ def _save_prediction_videos(output_h5_path: Path) -> None:
                     processed_frame_count=processed_frame_count,
                     target_steps=np.asarray(video_group["target_steps"][:]),
                     bin_progress_values=bin_progress_values,
-                    progress_mean=np.asarray(
-                        video_group["progress_mean"][:], dtype=np.float64
+                    progress_gated=np.asarray(
+                        video_group["progress_gated"][:], dtype=np.float64
                     ),
                     posterior=np.asarray(video_group["posterior"][:], dtype=np.float64),
                     is_ood=np.asarray(video_group["is_ood"][:], dtype=np.bool_),
@@ -1560,6 +1676,9 @@ def _save_prediction_visualizations(output_h5_path: Path) -> None:
             progress_mean = np.asarray(
                 video_group["progress_mean"][:], dtype=np.float64
             )
+            progress_gated = np.asarray(
+                video_group["progress_gated"][:], dtype=np.float64
+            )
             posterior = np.asarray(video_group["posterior"][:], dtype=np.float64)
             conformal_p_value = np.asarray(
                 video_group["conformal_p_value"][:], dtype=np.float64
@@ -1575,7 +1694,9 @@ def _save_prediction_visualizations(output_h5_path: Path) -> None:
                 frame_steps=frame_steps,
                 bin_progress_values=bin_progress_values,
                 progress_mean=progress_mean,
+                progress_gated=progress_gated,
                 posterior=posterior,
+                is_ood=is_ood,
                 output_path=progress_dir / f"{video_id}.png",
             )
             _save_confidence_figure(
@@ -1830,6 +1951,10 @@ class GaussianProgressPredTask(BaseTask):
                             output_video_group.create_dataset(
                                 "is_ood",
                                 data=inferred["is_ood"],
+                            )
+                            output_video_group.create_dataset(
+                                "progress_gated",
+                                data=inferred["progress_gated"],
                             )
 
                         current_steps = int(query_embeddings.shape[0])
