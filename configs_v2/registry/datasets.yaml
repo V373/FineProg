@@ -5,7 +5,7 @@
 # The ConfigV2 resolver translates keys into concrete absolute paths at runtime.
 #
 # Required fields per entry:
-#   processed_h5:     Filename under datasets/processed/ (no directory prefix)
+#   processed_h5:     Relative path under datasets/processed/
 #
 # Optional fields:
 #   display_name:            Human-readable label
@@ -258,3 +258,214 @@ datasets:
     display_name: fruit_fail_videos (fruit_fail_videos-7vid.h5)
     processed_h5: fruit_fail_videos-7vid.h5
     raw_dir: fruit_fail_videos
+
+  # ── MetaWorld ──────────────────────────────────────────────────────
+  metaworld_assembly_v2_36vid_train:
+    display_name: MetaWorld Assembly V2 Train (36 videos, noise 0.0)
+    processed_h5: metaworld/assembly-v2-36vid_train.h5
+    validation_dataset_ref: metaworld_assembly_v2_4vid_valid
+
+  metaworld_assembly_v2_4vid_valid:
+    display_name: MetaWorld Assembly V2 Valid (4 videos, noise 0.0)
+    processed_h5: metaworld/assembly-v2-4vid_valid.h5
+
+  metaworld_assembly_v2_20vid_valid:
+    display_name: MetaWorld Assembly V2 Valid (20 videos, noise 0.0)
+    processed_h5: metaworld/assembly-v2-20vid_valid.h5
+
+  metaworld_assembly_v2_50vid_noise01:
+    display_name: MetaWorld Assembly V2 (50 videos, noise 0.1)
+    processed_h5: metaworld/assembly-v2-50vid_noise01.h5
+
+  metaworld_assembly_v2_50vid_noise02:
+    display_name: MetaWorld Assembly V2 (50 videos, noise 0.2)
+    processed_h5: metaworld/assembly-v2-50vid_noise02.h5
+
+  metaworld_coffee_push_v2_36vid_train:
+    display_name: MetaWorld Coffee Push V2 Train (36 videos, noise 0.0)
+    processed_h5: metaworld/coffee-push-v2-36vid_train.h5
+    validation_dataset_ref: metaworld_coffee_push_v2_4vid_valid
+
+  metaworld_coffee_push_v2_4vid_valid:
+    display_name: MetaWorld Coffee Push V2 Valid (4 videos, noise 0.0)
+    processed_h5: metaworld/coffee-push-v2-4vid_valid.h5
+
+  metaworld_coffee_push_v2_20vid_valid:
+    display_name: MetaWorld Coffee Push V2 Valid (20 videos, noise 0.0)
+    processed_h5: metaworld/coffee-push-v2-20vid_valid.h5
+
+  metaworld_coffee_push_v2_50vid_noise01:
+    display_name: MetaWorld Coffee Push V2 (50 videos, noise 0.1)
+    processed_h5: metaworld/coffee-push-v2-50vid_noise01.h5
+
+  metaworld_coffee_push_v2_50vid_noise02:
+    display_name: MetaWorld Coffee Push V2 (50 videos, noise 0.2)
+    processed_h5: metaworld/coffee-push-v2-50vid_noise02.h5
+
+  metaworld_disassemble_v2_36vid_train:
+    display_name: MetaWorld Disassemble V2 Train (36 videos, noise 0.0)
+    processed_h5: metaworld/disassemble-v2-36vid_train.h5
+    validation_dataset_ref: metaworld_disassemble_v2_4vid_valid
+
+  metaworld_disassemble_v2_4vid_valid:
+    display_name: MetaWorld Disassemble V2 Valid (4 videos, noise 0.0)
+    processed_h5: metaworld/disassemble-v2-4vid_valid.h5
+
+  metaworld_disassemble_v2_20vid_valid:
+    display_name: MetaWorld Disassemble V2 Valid (20 videos, noise 0.0)
+    processed_h5: metaworld/disassemble-v2-20vid_valid.h5
+
+  metaworld_disassemble_v2_50vid_noise01:
+    display_name: MetaWorld Disassemble V2 (50 videos, noise 0.1)
+    processed_h5: metaworld/disassemble-v2-50vid_noise01.h5
+
+  metaworld_disassemble_v2_50vid_noise02:
+    display_name: MetaWorld Disassemble V2 (50 videos, noise 0.2)
+    processed_h5: metaworld/disassemble-v2-50vid_noise02.h5
+
+  metaworld_soccer_v2_36vid_train:
+    display_name: MetaWorld Soccer V2 Train (36 videos, noise 0.0)
+    processed_h5: metaworld/soccer-v2-36vid_train.h5
+    validation_dataset_ref: metaworld_soccer_v2_4vid_valid
+
+  metaworld_soccer_v2_4vid_valid:
+    display_name: MetaWorld Soccer V2 Valid (4 videos, noise 0.0)
+    processed_h5: metaworld/soccer-v2-4vid_valid.h5
+
+  metaworld_soccer_v2_20vid_valid:
+    display_name: MetaWorld Soccer V2 Valid (20 videos, noise 0.0)
+    processed_h5: metaworld/soccer-v2-20vid_valid.h5
+
+  metaworld_soccer_v2_50vid_noise01:
+    display_name: MetaWorld Soccer V2 (50 videos, noise 0.1)
+    processed_h5: metaworld/soccer-v2-50vid_noise01.h5
+
+  metaworld_soccer_v2_50vid_noise02:
+    display_name: MetaWorld Soccer V2 (50 videos, noise 0.2)
+    processed_h5: metaworld/soccer-v2-50vid_noise02.h5
+
+  metaworld_button_press_wall_v2_36vid_train:
+    display_name: MetaWorld Button Press Wall V2 Train (36 videos, noise 0.0)
+    processed_h5: metaworld/button-press-wall-v2-36vid_train.h5
+    validation_dataset_ref: metaworld_button_press_wall_v2_4vid_valid
+
+  metaworld_button_press_wall_v2_4vid_valid:
+    display_name: MetaWorld Button Press Wall V2 Valid (4 videos, noise 0.0)
+    processed_h5: metaworld/button-press-wall-v2-4vid_valid.h5
+
+  metaworld_button_press_wall_v2_20vid_valid:
+    display_name: MetaWorld Button Press Wall V2 Valid (20 videos, noise 0.0)
+    processed_h5: metaworld/button-press-wall-v2-20vid_valid.h5
+
+  metaworld_button_press_wall_v2_50vid_noise01:
+    display_name: MetaWorld Button Press Wall V2 (50 videos, noise 0.1)
+    processed_h5: metaworld/button-press-wall-v2-50vid_noise01.h5
+
+  metaworld_button_press_wall_v2_50vid_noise02:
+    display_name: MetaWorld Button Press Wall V2 (50 videos, noise 0.2)
+    processed_h5: metaworld/button-press-wall-v2-50vid_noise02.h5
+
+  metaworld_window_close_v2_36vid_train:
+    display_name: MetaWorld Window Close V2 Train (36 videos, noise 0.0)
+    processed_h5: metaworld/window-close-v2-36vid_train.h5
+    validation_dataset_ref: metaworld_window_close_v2_4vid_valid
+
+  metaworld_window_close_v2_4vid_valid:
+    display_name: MetaWorld Window Close V2 Valid (4 videos, noise 0.0)
+    processed_h5: metaworld/window-close-v2-4vid_valid.h5
+
+  metaworld_window_close_v2_20vid_valid:
+    display_name: MetaWorld Window Close V2 Valid (20 videos, noise 0.0)
+    processed_h5: metaworld/window-close-v2-20vid_valid.h5
+
+  metaworld_window_close_v2_50vid_noise01:
+    display_name: MetaWorld Window Close V2 (50 videos, noise 0.1)
+    processed_h5: metaworld/window-close-v2-50vid_noise01.h5
+
+  metaworld_window_close_v2_50vid_noise02:
+    display_name: MetaWorld Window Close V2 (50 videos, noise 0.2)
+    processed_h5: metaworld/window-close-v2-50vid_noise02.h5
+
+  metaworld_drawer_open_v2_36vid_train:
+    display_name: MetaWorld Drawer Open V2 Train (36 videos, noise 0.0)
+    processed_h5: metaworld/drawer-open-v2-36vid_train.h5
+    validation_dataset_ref: metaworld_drawer_open_v2_4vid_valid
+
+  metaworld_drawer_open_v2_4vid_valid:
+    display_name: MetaWorld Drawer Open V2 Valid (4 videos, noise 0.0)
+    processed_h5: metaworld/drawer-open-v2-4vid_valid.h5
+
+  metaworld_drawer_open_v2_20vid_valid:
+    display_name: MetaWorld Drawer Open V2 Valid (20 videos, noise 0.0)
+    processed_h5: metaworld/drawer-open-v2-20vid_valid.h5
+
+  metaworld_drawer_open_v2_50vid_noise01:
+    display_name: MetaWorld Drawer Open V2 (50 videos, noise 0.1)
+    processed_h5: metaworld/drawer-open-v2-50vid_noise01.h5
+
+  metaworld_drawer_open_v2_50vid_noise02:
+    display_name: MetaWorld Drawer Open V2 (50 videos, noise 0.2)
+    processed_h5: metaworld/drawer-open-v2-50vid_noise02.h5
+
+  metaworld_sweep_into_v2_36vid_train:
+    display_name: MetaWorld Sweep Into V2 Train (36 videos, noise 0.0)
+    processed_h5: metaworld/sweep-into-v2-36vid_train.h5
+    validation_dataset_ref: metaworld_sweep_into_v2_4vid_valid
+
+  metaworld_sweep_into_v2_4vid_valid:
+    display_name: MetaWorld Sweep Into V2 Valid (4 videos, noise 0.0)
+    processed_h5: metaworld/sweep-into-v2-4vid_valid.h5
+
+  metaworld_sweep_into_v2_20vid_valid:
+    display_name: MetaWorld Sweep Into V2 Valid (20 videos, noise 0.0)
+    processed_h5: metaworld/sweep-into-v2-20vid_valid.h5
+
+  metaworld_sweep_into_v2_50vid_noise01:
+    display_name: MetaWorld Sweep Into V2 (50 videos, noise 0.1)
+    processed_h5: metaworld/sweep-into-v2-50vid_noise01.h5
+
+  metaworld_sweep_into_v2_50vid_noise02:
+    display_name: MetaWorld Sweep Into V2 (50 videos, noise 0.2)
+    processed_h5: metaworld/sweep-into-v2-50vid_noise02.h5
+
+  metaworld_door_lock_v2_36vid_train:
+    display_name: MetaWorld Door Lock V2 Train (36 videos, noise 0.0)
+    processed_h5: metaworld/door-lock-v2-36vid_train.h5
+    validation_dataset_ref: metaworld_door_lock_v2_4vid_valid
+
+  metaworld_door_lock_v2_4vid_valid:
+    display_name: MetaWorld Door Lock V2 Valid (4 videos, noise 0.0)
+    processed_h5: metaworld/door-lock-v2-4vid_valid.h5
+
+  metaworld_door_lock_v2_20vid_valid:
+    display_name: MetaWorld Door Lock V2 Valid (20 videos, noise 0.0)
+    processed_h5: metaworld/door-lock-v2-20vid_valid.h5
+
+  metaworld_door_lock_v2_50vid_noise01:
+    display_name: MetaWorld Door Lock V2 (50 videos, noise 0.1)
+    processed_h5: metaworld/door-lock-v2-50vid_noise01.h5
+
+  metaworld_door_lock_v2_50vid_noise02:
+    display_name: MetaWorld Door Lock V2 (50 videos, noise 0.2)
+    processed_h5: metaworld/door-lock-v2-50vid_noise02.h5
+
+  metaworld_hammer_v2_36vid_train:
+    display_name: MetaWorld Hammer V2 Train (36 videos, noise 0.0)
+    processed_h5: metaworld/hammer-v2-36vid_train.h5
+    validation_dataset_ref: metaworld_hammer_v2_4vid_valid
+
+  metaworld_hammer_v2_4vid_valid:
+    display_name: MetaWorld Hammer V2 Valid (4 videos, noise 0.0)
+    processed_h5: metaworld/hammer-v2-4vid_valid.h5
+
+  metaworld_hammer_v2_20vid_valid:
+    display_name: MetaWorld Hammer V2 Valid (20 videos, noise 0.0)
+    processed_h5: metaworld/hammer-v2-20vid_valid.h5
+
+  metaworld_hammer_v2_50vid_noise01:
+    display_name: MetaWorld Hammer V2 (50 videos, noise 0.1)
+    processed_h5: metaworld/hammer-v2-50vid_noise01.h5
+
+  metaworld_hammer_v2_50vid_noise02:
+    display_name: MetaWorld Hammer V2 (50 videos, noise 0.2)
+    processed_h5: metaworld/hammer-v2-50vid_noise02.h5
