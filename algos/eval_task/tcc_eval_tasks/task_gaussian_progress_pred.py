@@ -1321,11 +1321,20 @@ def _processed_h5_path_from_embedding(nonexpert_h5_path: str) -> Path:
             f"'-embd' to locate its processed H5; got {embedding_stem!r}."
         )
     processed_stem = embedding_stem.split("-embd", maxsplit=1)[0]
-    processed_h5_path = _PROJ_ROOT / "datasets" / "processed" / f"{processed_stem}.h5"
-    if not processed_h5_path.is_file():
+    processed_root = _PROJ_ROOT / "datasets" / "processed"
+    candidate_paths = (
+        processed_root / f"{processed_stem}.h5",
+        processed_root / "metaworld" / f"{processed_stem}.h5",
+    )
+    processed_h5_path = next(
+        (path for path in candidate_paths if path.is_file()),
+        None,
+    )
+    if processed_h5_path is None:
         raise FileNotFoundError(
             "[gaussian_progress_pred] processed H5 inferred from the nonexpert "
-            f"embedding H5 was not found: {processed_h5_path}"
+            "embedding H5 was not found. Checked: "
+            + ", ".join(str(path) for path in candidate_paths)
         )
     return processed_h5_path
 
@@ -1358,9 +1367,11 @@ def _resolve_raw_video_path(
             f"[gaussian_progress_pred] {context} path does not identify a raw "
             f"video directory: {str(stale_source_path)!r}."
         )
-    raw_video_path = (
-        _PROJ_ROOT / "datasets" / "raw" / raw_dir_name / stale_source_path.name
-    )
+    raw_video_path = stale_source_path
+    if not raw_video_path.is_file():
+        raw_video_path = (
+            _PROJ_ROOT / "datasets" / "raw" / raw_dir_name / stale_source_path.name
+        )
     if not raw_video_path.is_file():
         raise FileNotFoundError(
             f"[gaussian_progress_pred] raw video not found: {raw_video_path}"

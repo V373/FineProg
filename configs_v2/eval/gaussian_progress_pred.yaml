@@ -9,7 +9,7 @@ entropy_epsilon: 1.0e-12
 
 enable_calibration: true # if true, we do the conformal p value calibration
 calibration_h5_path: /home/user/zhangzk/projects/fineprog/datasets/embeddings/COMPOSITE_TCC_TEMPORAL_TRIPLET-fruit_expert_videos-36vid_train-resnet50_conv4c-only_bn-20260815-151030-tcc_triplet_w0p5_d32/fruit_expert_videos-20vid_valid-embd.h5
-ood_p_value_threshold: 0.3 # OOD if every progress-bin p-value is below this
+ood_p_value_threshold: 0.2 # OOD if every progress-bin p-value is below this
 save_posterior: true
 enable_visualization: true
 enable_video: true
