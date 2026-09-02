@@ -20,7 +20,7 @@ components:
 
   - alias:       temporal_triplet
     name:        temporal_triplet
-    weight:      1.0
+    weight:      0.5
     config_file: loss_temporal_triplet.yaml
 
 # ── Notes ────────────────────────────────────────────────────────────────────

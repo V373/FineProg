@@ -46,7 +46,7 @@ transport_frames_as_uint8: false  # true = move uint8 frames to GPU, then cast/n
 # WARNING: extract.yaml MUST use the same clip_len / context_size / context_stride.
 clip_len:           20
 context_size:       2
-context_stride:     15
+context_stride:     8
 sampling_strategy:  offset_uniform
 random_offset:      1
 
@@ -75,8 +75,8 @@ cache_refresh_every:    500    # re-run backbone every N epochs to refresh cache
 # loss_config: YAML path relative to configs_v2/ for loss hyperparameters (supports subdirs)
 # loss_name:   composite
 # loss_config: loss/loss_composite_tcc_triplet.yaml
-loss_name:   tcc
-loss_config: loss/loss_tcc.yaml
+loss_name:   composite
+loss_config: loss/loss_composite_tcc_triplet.yaml
 
 # loss_composite_tcc_triplet
 
