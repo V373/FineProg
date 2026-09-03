@@ -251,18 +251,18 @@ class TCCLoss(BaseEncoderLoss):
             Scalar loss tensor
         """
         try:
-            from .deterministic_alignment import compute_deterministic_alignment_loss
+            from .deterministic_alignment import compute_deterministic_alignment_loss_batched
         except ImportError:
             # If relative import fails, try absolute import
             try:
-                from algos.loss.tcc.deterministic_alignment import compute_deterministic_alignment_loss
+                from algos.loss.tcc.deterministic_alignment import compute_deterministic_alignment_loss_batched
             except ImportError:
                 raise NotImplementedError(
-                    "deterministic_alignment.compute_deterministic_alignment_loss "
+                    "deterministic_alignment.compute_deterministic_alignment_loss_batched "
                     "is not yet implemented. Please implement the alignment module."
                 )
         
-        loss = compute_deterministic_alignment_loss(
+        loss = compute_deterministic_alignment_loss_batched(
             embs=embeddings,
             steps=target_steps,
             seq_lens=seq_len,

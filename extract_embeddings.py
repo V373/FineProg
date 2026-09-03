@@ -134,6 +134,8 @@ def _run_encoder_chunked(
         embeddings: [1, T_out, D]
     """
     frames = frames.to(device)
+    if frames.dtype == torch.uint8:
+        frames = frames.float().div_(255.0)
     T_out = frames.shape[1]
     embs_chunks = []
 

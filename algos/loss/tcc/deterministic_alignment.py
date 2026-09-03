@@ -293,6 +293,101 @@ def compute_deterministic_alignment_loss(
     return loss
 
 
+def compute_deterministic_alignment_loss_batched(
+    embs,
+    steps,
+    seq_lens,
+    similarity_type='l2',
+    loss_type='classification',
+    temperature=0.1,
+    label_smoothing=0.1,
+    variance_lambda=0.001,
+    huber_delta=0.1,
+    normalize_indices=True,
+):
+    """Compute deterministic TCC alignment for every ordered pair at once."""
+    batch_size, num_steps, embedding_dim = embs.shape
+    if batch_size < 2:
+        raise ValueError(
+            f'batch_size must be >= 2 for deterministic alignment. '
+            f'Got batch_size={batch_size}. '
+            f'Cannot align sequence with itself.'
+        )
+
+    # Similarity for every ordered sequence pair: [B, B, T, T].
+    dot_12 = torch.einsum('iad,jbd->ijab', embs, embs)
+    if similarity_type == 'l2':
+        embs_norm = torch.sum(torch.square(embs), dim=-1)
+        similarity_12 = -torch.clamp(
+            embs_norm[:, None, :, None]
+            + embs_norm[None, :, None, :]
+            - 2.0 * dot_12,
+            min=0.0,
+        )
+    elif similarity_type == 'cosine':
+        embs_norm = None
+        similarity_12 = dot_12
+    else:
+        raise ValueError(
+            f'similarity_type must be "l2" or "cosine", got "{similarity_type}"'
+        )
+    similarity_12 = similarity_12 / float(embedding_dim)
+    similarity_12 = similarity_12 / temperature
+
+    soft_nn_weights = F.softmax(similarity_12, dim=-1)
+    nn_embs = torch.einsum('ijab,jbd->ijad', soft_nn_weights, embs)
+
+    dot_21 = torch.einsum('ijad,ibd->ijab', nn_embs, embs)
+    if similarity_type == 'l2':
+        nn_norm = torch.sum(torch.square(nn_embs), dim=-1)
+        similarity_21 = -torch.clamp(
+            nn_norm[..., None]
+            + embs_norm[:, None, None, :]
+            - 2.0 * dot_21,
+            min=0.0,
+        )
+    else:
+        similarity_21 = dot_21
+    similarity_21 = similarity_21 / float(embedding_dim)
+    similarity_21 = similarity_21 / temperature
+
+    # Boolean indexing preserves the old i-major, j-minor ordered-pair layout.
+    pair_mask = ~torch.eye(batch_size, dtype=torch.bool, device=embs.device)
+    num_pairs = batch_size * (batch_size - 1)
+    logits_all = similarity_21[pair_mask].reshape(num_pairs * num_steps, num_steps)
+    labels_all = torch.eye(
+        num_steps, dtype=embs.dtype, device=embs.device
+    ).expand(num_pairs, -1, -1).reshape(num_pairs * num_steps, num_steps)
+
+    pair_sources = pair_mask.nonzero(as_tuple=True)[0]
+    steps_all = steps[pair_sources].unsqueeze(1).expand(
+        -1, num_steps, -1
+    ).reshape(num_pairs * num_steps, num_steps)
+    seq_lens_all = seq_lens[pair_sources].unsqueeze(1).expand(
+        -1, num_steps
+    ).reshape(num_pairs * num_steps)
+
+    if loss_type == 'classification':
+        return classification_loss(logits_all, labels_all, label_smoothing)
+    if 'regression' in loss_type:
+        return regression_loss(
+            logits_all,
+            labels_all,
+            num_steps,
+            steps_all,
+            seq_lens_all,
+            loss_type,
+            normalize_indices,
+            variance_lambda,
+            huber_delta,
+        )
+    raise ValueError(
+        f'Unsupported loss_type "{loss_type}". '
+        'Supported: "classification", "regression_mse", '
+        '"regression_mse_var", "regression_huber"'
+    )
+
+
 # ============================================================================
 # MINIMAL TEST
 # ============================================================================

@@ -18,6 +18,7 @@ import sys
 import yaml
 import argparse
 import random
+import time
 from datetime import datetime
 import numpy as np
 import torch
@@ -196,6 +197,8 @@ def train(
     _maybe_limit_cpu_threads(bool(_train_cfg.get("limit_cpu_threads", False)))
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if device.type == "cuda":
+        torch.backends.cudnn.benchmark = True
     print(f"[train] Using device: {device}")
 
     # Resolve checkpoint directory (run-specific subfolder)
@@ -347,6 +350,8 @@ def train(
     steps_per_epoch = len(dataloader)
     total_steps = num_epochs * steps_per_epoch
     global_step = 0
+    perf_train_seconds = 0.0
+    perf_train_epochs = 0
 
     pbar = tqdm(
         total=num_epochs,
@@ -390,9 +395,7 @@ def train(
                     num_workers=num_workers,
                 )
 
-            encoder.train()
-            encoder.configure_trainability()
-
+            epoch_train_start = time.perf_counter()
             epoch_loss_sum = 0.0
             epoch_steps = 0
             epoch_metrics_sum: dict = {}
@@ -421,12 +424,26 @@ def train(
                 for k, v in out.get("metrics", {}).items():
                     _accumulate_metric(epoch_metrics_sum, k, v)
 
-            epoch_loss_avg = (epoch_loss_sum / max(epoch_steps, 1)).cpu().item()
-            epoch_metrics_avg = _finalize_metric_averages(epoch_metrics_sum, epoch_steps)
+            should_log = (epoch + 1) % log_every == 0
+            if should_log:
+                epoch_loss_avg = (epoch_loss_sum / max(epoch_steps, 1)).cpu().item()
+                epoch_metrics_avg = _finalize_metric_averages(epoch_metrics_sum, epoch_steps)
+            perf_train_seconds += time.perf_counter() - epoch_train_start
+            perf_train_epochs += 1
             pbar.update(1)
-            pbar.set_postfix(loss=f"{epoch_loss_avg:.4f}")
-            if (epoch + 1) % log_every == 0:
-                wandb.log({"loss": epoch_loss_avg, **epoch_metrics_avg}, step=epoch + 1)
+            if should_log:
+                seconds_per_epoch = perf_train_seconds / perf_train_epochs
+                pbar.set_postfix(loss=f"{epoch_loss_avg:.4f}")
+                wandb.log(
+                    {
+                        "loss": epoch_loss_avg,
+                        **epoch_metrics_avg,
+                        "perf/s_per_epoch": seconds_per_epoch,
+                    },
+                    step=epoch + 1,
+                )
+                perf_train_seconds = 0.0
+                perf_train_epochs = 0
 
             if (epoch + 1) % checkpoint_every == 0:
                 ckpt_path = os.path.join(run_checkpoint_dir, f"encoder_epoch{epoch+1:06d}.pt")
@@ -455,10 +472,7 @@ def train(
         # only_bn-without-cache modes. Zero changes from the pre-cache code.
         # ------------------------------------------------------------------
         for epoch in range(num_epochs):
-            # Set train mode and re-apply trainability rules at the start of each epoch
-            encoder.train()
-            encoder.configure_trainability()
-
+            epoch_train_start = time.perf_counter()
             epoch_loss_sum = 0.0
             epoch_steps = 0
             epoch_metrics_sum: dict = {}
@@ -491,13 +505,26 @@ def train(
                 for k, v in out.get("metrics", {}).items():
                     _accumulate_metric(epoch_metrics_sum, k, v)
 
-            # Log mean epoch loss every log_every epochs
-            epoch_loss_avg = (epoch_loss_sum / max(epoch_steps, 1)).cpu().item()
-            epoch_metrics_avg = _finalize_metric_averages(epoch_metrics_sum, epoch_steps)
+            should_log = (epoch + 1) % log_every == 0
+            if should_log:
+                epoch_loss_avg = (epoch_loss_sum / max(epoch_steps, 1)).cpu().item()
+                epoch_metrics_avg = _finalize_metric_averages(epoch_metrics_sum, epoch_steps)
+            perf_train_seconds += time.perf_counter() - epoch_train_start
+            perf_train_epochs += 1
             pbar.update(1)
-            pbar.set_postfix(loss=f"{epoch_loss_avg:.4f}")
-            if (epoch + 1) % log_every == 0:
-                wandb.log({"loss": epoch_loss_avg, **epoch_metrics_avg}, step=epoch + 1)
+            if should_log:
+                seconds_per_epoch = perf_train_seconds / perf_train_epochs
+                pbar.set_postfix(loss=f"{epoch_loss_avg:.4f}")
+                wandb.log(
+                    {
+                        "loss": epoch_loss_avg,
+                        **epoch_metrics_avg,
+                        "perf/s_per_epoch": seconds_per_epoch,
+                    },
+                    step=epoch + 1,
+                )
+                perf_train_seconds = 0.0
+                perf_train_epochs = 0
 
             # Save checkpoint every checkpoint_every epochs
             if (epoch + 1) % checkpoint_every == 0:

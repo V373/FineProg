@@ -201,6 +201,8 @@ class TCCEncoder(nn.Module):
             embed_dim=self.embedding_dim,
             debug=debug
         )
+        self.backbone.to(memory_format=torch.channels_last)
+        self.temporal_embedder.to(memory_format=torch.channels_last_3d)
         
         print(f"[TCCEncoder] Initialized backbone and temporal embedder")
 
@@ -380,7 +382,9 @@ class TCCEncoder(nn.Module):
         # Step 1: Reshape for backbone processing
         # [B, clip_len, context_size, 3, 224, 224]
         # -> [B*clip_len*context_size, 3, 224, 224]
-        frames_flat = frames.reshape(B * clip_len * context_size, C, H, W)
+        frames_flat = frames.reshape(
+            B * clip_len * context_size, C, H, W
+        ).contiguous(memory_format=torch.channels_last)
         
         if self.debug:
             print(f"[TCCEncoder.forward] After flatten for backbone: {frames_flat.shape}")

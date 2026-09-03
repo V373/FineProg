@@ -128,7 +128,9 @@ class TCCTemporalEmbedder(nn.Module):
         # Step 1b: reshape
         #   [B, clip_len, C, context_size, H, W]
         #   -> [B*clip_len, C, context_size, H, W]
-        cnn_feats_reshaped = cnn_feats.permute(0, 1, 3, 2, 4, 5).reshape(B * clip_len, C, context_size, H, W)
+        cnn_feats_reshaped = cnn_feats.permute(0, 1, 3, 2, 4, 5).reshape(
+            B * clip_len, C, context_size, H, W
+        ).contiguous(memory_format=torch.channels_last_3d)
         
         if self.debug:
             print(f"[TCCTemporalEmbedder] After reshape for Conv3D: {cnn_feats_reshaped.shape}")

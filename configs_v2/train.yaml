@@ -39,7 +39,7 @@ num_epochs: 20000
 batch_size:  12 # 12
 num_workers: 4
 limit_cpu_threads: false   # force OMP / MKL / OpenBLAS / NumExpr and torch CPU threads to 1
-transport_frames_as_uint8: false  # true = move uint8 frames to GPU, then cast/normalize on device
+transport_frames_as_uint8: true   # move uint8 frames to GPU, then cast/normalize on device
 
 # ── Sequence sampling ─────────────────────────────────────────────────
 # These values determine the encoder input shape.
