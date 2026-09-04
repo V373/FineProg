@@ -134,6 +134,34 @@ def _parse_pred_config(config: dict) -> dict:
                 f"and in (0, 1); got {ood_p_value_threshold}."
             )
 
+    enable_ood_filter = config.get("enable_ood_filter", False)
+    if not isinstance(enable_ood_filter, (bool, np.bool_)):
+        raise ValueError("[gaussian_progress_pred] enable_ood_filter must be boolean.")
+    enable_ood_filter = bool(enable_ood_filter)
+    if enable_ood_filter and not enable_calibration:
+        raise ValueError(
+            "[gaussian_progress_pred] enable_ood_filter=true requires "
+            "enable_calibration=true."
+        )
+
+    ood_filter_values: dict[str, int | None] = {
+        "ood_filter_max_gap": None,
+        "ood_filter_min_ood_run": None,
+    }
+    if enable_ood_filter:
+        for name in ood_filter_values:
+            value = config.get(name)
+            if (
+                isinstance(value, (bool, np.bool_))
+                or not isinstance(value, (int, np.integer))
+                or int(value) < 1
+            ):
+                raise ValueError(
+                    f"[gaussian_progress_pred] {name} must be a positive integer "
+                    "when enable_ood_filter=true."
+                )
+            ood_filter_values[name] = int(value)
+
     save_posterior = config.get("save_posterior", True)
     if not isinstance(save_posterior, (bool, np.bool_)):
         raise ValueError("[gaussian_progress_pred] save_posterior must be boolean.")
@@ -175,6 +203,8 @@ def _parse_pred_config(config: dict) -> dict:
             str(calibration_h5_path) if calibration_h5_path else None
         ),
         "ood_p_value_threshold": ood_p_value_threshold,
+        "enable_ood_filter": enable_ood_filter,
+        **ood_filter_values,
         "save_posterior": bool(save_posterior),
         "enable_visualization": enable_visualization,
         "enable_video": enable_video,
@@ -543,6 +573,69 @@ def _compute_conformal_p_values(
     return p_values
 
 
+def _filter_is_ood_short_id_gaps(
+    is_ood: np.ndarray,
+    max_gap: int | None,
+    min_ood_run: int | None,
+) -> np.ndarray:
+    """Fill short internal ID gaps bounded by sufficiently long OOD runs."""
+    raw_is_ood = np.asarray(is_ood)
+    if raw_is_ood.ndim != 1 or raw_is_ood.dtype != np.dtype("bool"):
+        raise ValueError(
+            "[gaussian_progress_pred] is_ood must be a one-dimensional boolean "
+            "array."
+        )
+    for name, value in (("max_gap", max_gap), ("min_ood_run", min_ood_run)):
+        if (
+            isinstance(value, (bool, np.bool_))
+            or not isinstance(value, (int, np.integer))
+            or int(value) < 1
+        ):
+            raise ValueError(
+                f"[gaussian_progress_pred] {name} must be a positive integer."
+            )
+
+    max_gap = int(max_gap)
+    min_ood_run = int(min_ood_run)
+    filtered_is_ood = raw_is_ood.copy()
+    num_steps = int(raw_is_ood.size)
+    index = 0
+    left_ood_run = 0
+
+    while index < num_steps:
+        if raw_is_ood[index]:
+            run_start = index
+            while index < num_steps and raw_is_ood[index]:
+                index += 1
+            left_ood_run = index - run_start
+            continue
+
+        gap_start = index
+        while index < num_steps and not raw_is_ood[index]:
+            index += 1
+        gap_end = index
+
+        # Leading and trailing ID runs are never filled.
+        if gap_start == 0 or gap_end == num_steps:
+            left_ood_run = 0
+            continue
+
+        right_run_start = index
+        while index < num_steps and raw_is_ood[index]:
+            index += 1
+        right_ood_run = index - right_run_start
+
+        if (
+            gap_end - gap_start <= max_gap
+            and left_ood_run >= min_ood_run
+            and right_ood_run >= min_ood_run
+        ):
+            filtered_is_ood[gap_start:gap_end] = True
+        left_ood_run = right_ood_run
+
+    return filtered_is_ood
+
+
 def _compute_progress_gated(
     progress_mean: np.ndarray,
     is_ood: np.ndarray,
@@ -621,6 +714,9 @@ def _infer_one_trajectory(
     entropy_epsilon: float,
     calibration_distance_bins: list[np.ndarray] | None = None,
     ood_p_value_threshold: float | None = None,
+    enable_ood_filter: bool = False,
+    ood_filter_max_gap: int | None = None,
+    ood_filter_min_ood_run: int | None = None,
 ) -> dict:
     """Infer progress and support diagnostics for one non-expert trajectory."""
     squared_mahalanobis = _compute_squared_mahalanobis(
@@ -690,10 +786,19 @@ def _infer_one_trajectory(
             calibration_distance_bins=calibration_distance_bins,
         )
         output_arrays["conformal_p_value"] = conformal_p_value
-        is_ood = np.all(
+        is_ood_raw = np.all(
             conformal_p_value < ood_p_value_threshold,
             axis=1,
         )
+        if enable_ood_filter:
+            is_ood = _filter_is_ood_short_id_gaps(
+                is_ood_raw,
+                max_gap=ood_filter_max_gap,
+                min_ood_run=ood_filter_min_ood_run,
+            )
+        else:
+            is_ood = is_ood_raw.copy()
+        output_arrays["is_ood_raw"] = is_ood_raw
         output_arrays["is_ood"] = is_ood
         output_arrays["progress_gated"] = _compute_progress_gated(
             progress_mean,
@@ -1852,6 +1957,16 @@ class GaussianProgressPredTask(BaseTask):
                         output_file.attrs["ood_p_value_threshold"] = float(
                             pred_config["ood_p_value_threshold"]
                         )
+                    output_file.attrs["enable_ood_filter"] = bool(
+                        pred_config["enable_ood_filter"]
+                    )
+                    if pred_config["enable_ood_filter"]:
+                        output_file.attrs["ood_filter_max_gap"] = int(
+                            pred_config["ood_filter_max_gap"]
+                        )
+                        output_file.attrs["ood_filter_min_ood_run"] = int(
+                            pred_config["ood_filter_min_ood_run"]
+                        )
                     output_file.attrs["save_posterior"] = bool(
                         pred_config["save_posterior"]
                     )
@@ -1904,6 +2019,11 @@ class GaussianProgressPredTask(BaseTask):
                             entropy_epsilon=pred_config["entropy_epsilon"],
                             calibration_distance_bins=calibration_distance_bins,
                             ood_p_value_threshold=pred_config["ood_p_value_threshold"],
+                            enable_ood_filter=pred_config["enable_ood_filter"],
+                            ood_filter_max_gap=pred_config["ood_filter_max_gap"],
+                            ood_filter_min_ood_run=pred_config[
+                                "ood_filter_min_ood_run"
+                            ],
                         )
 
                         output_video_group = output_nonexperts_group.create_group(
@@ -1958,6 +2078,10 @@ class GaussianProgressPredTask(BaseTask):
                                 "conformal_p_value",
                                 data=inferred["conformal_p_value"],
                                 compression="gzip",
+                            )
+                            output_video_group.create_dataset(
+                                "is_ood_raw",
+                                data=inferred["is_ood_raw"],
                             )
                             output_video_group.create_dataset(
                                 "is_ood",

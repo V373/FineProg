@@ -46,7 +46,7 @@ enable_visualization: true
 # means and Gaussian samples are transformed out of sample, and both PNGs share
 # the same real coordinates. false restores the two-fit sklearn behavior.
 tsne_viz:
-  gaussian_samples_per_bin: 50 # num_bins*gaussian_samples_per_bin should be ~4000
+  gaussian_samples_per_bin: 50 # num_bins*gaussian_samples_per_bin should be ~real_data num approximately
   random_seed: 42
 
   preprocessing:

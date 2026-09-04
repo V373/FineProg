@@ -49,11 +49,11 @@ CONFIGS_ENV_VAR = "FINEPROG_CONFIGS_V2_DIR"
 
 # Registry aliases from configs_v2/registry/datasets.yaml, in required order.
 TASKS: tuple[tuple[str, str], ...] = (
-    ("assembly", "metaworld_assembly_v2_36vid_train"),
-    ("soccer", "metaworld_soccer_v2_36vid_train"),
-    ("disassemble", "metaworld_disassemble_v2_36vid_train"),
-    ("coffee_push", "metaworld_coffee_push_v2_36vid_train"),
-    ("drawer_open", "metaworld_drawer_open_v2_36vid_train"),
+    # ("assembly", "metaworld_assembly_v2_36vid_train"),
+    # ("soccer", "metaworld_soccer_v2_36vid_train"),
+    # ("disassemble", "metaworld_disassemble_v2_36vid_train"),
+    # ("coffee_push", "metaworld_coffee_push_v2_36vid_train"),
+    # ("drawer_open", "metaworld_drawer_open_v2_36vid_train"),
     ("sweep_into", "metaworld_sweep_into_v2_36vid_train"),
     ("button_press_wall", "metaworld_button_press_wall_v2_36vid_train"),
     ("door_lock", "metaworld_door_lock_v2_36vid_train"),
