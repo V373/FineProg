@@ -21,8 +21,10 @@ from fineprog.algos.eval_task.tcc_eval_tasks.task_gaussian_progress_pred import 
 	_apply_model_pca,
 	_compute_conformal_p_values,
 	_compute_gaussian_log_likelihood,
+	_compute_progress_gated,
 	_compute_progress_posterior,
 	_compute_squared_mahalanobis,
+	_filter_is_ood_short_id_gaps,
 	_read_calibration_distance_bins,
 	_read_gaussian_model,
 )
@@ -30,6 +32,7 @@ from fineprog.utils.embedding_normalization import (  # noqa: E402
 	validate_embedding_normalization,
 	validate_embeddings_for_normalization,
 )
+from fineprog.utils.encoder_checkpoint import build_encoder_from_checkpoint  # noqa: E402
 
 
 class GaussianProgressGatedProvider:
@@ -50,7 +53,10 @@ class GaussianProgressGatedProvider:
 		ood_p_value_threshold: float,
 		posterior_temperature: float = 1.0e4,
 		image_key: str = "agentview_image",
-		frame_history_stride: int = 15,
+		frame_history_stride: int | None = None,
+		enable_ood_filter: bool = False,
+		ood_filter_max_gap: int | None = None,
+		ood_filter_min_ood_run: int | None = None,
 	):
 		self.device = torch.device(device)
 		self.checkpoint_path = str(Path(checkpoint_path).expanduser().resolve())
@@ -63,13 +69,36 @@ class GaussianProgressGatedProvider:
 		self.posterior_temperature = float(posterior_temperature)
 		self.ood_p_value_threshold = float(ood_p_value_threshold)
 		self.image_key = str(image_key)
-		self.frame_history_stride = int(frame_history_stride)
-		if self.frame_history_stride < 1:
-			raise ValueError("frame_history_stride must be >= 1.")
-		self.history_len = (
-			(self._CONTEXT_SIZE - 1) * self.frame_history_stride + 1
+		self.frame_history_stride = (
+			None if frame_history_stride is None else int(frame_history_stride)
 		)
-
+		if self.frame_history_stride is not None and self.frame_history_stride < 1:
+			raise ValueError("frame_history_stride must be >= 1.")
+		if not isinstance(enable_ood_filter, (bool, np.bool_)):
+			raise ValueError("enable_ood_filter must be boolean.")
+		self.enable_ood_filter = bool(enable_ood_filter)
+		if self.enable_ood_filter:
+			filter_values: dict[str, int | None] = {
+				"ood_filter_max_gap": ood_filter_max_gap,
+				"ood_filter_min_ood_run": ood_filter_min_ood_run,
+			}
+			for name, value in filter_values.items():
+				if (
+					isinstance(value, (bool, np.bool_))
+					or not isinstance(value, (int, np.integer))
+					or int(value) < 1
+				):
+					raise ValueError(
+						f"{name} must be a positive integer when "
+						"enable_ood_filter=true."
+					)
+			self.ood_filter_max_gap = int(filter_values["ood_filter_max_gap"])
+			self.ood_filter_min_ood_run = int(
+				filter_values["ood_filter_min_ood_run"]
+			)
+		else:
+			self.ood_filter_max_gap = None
+			self.ood_filter_min_ood_run = None
 		if (
 			not np.isfinite(self.posterior_temperature)
 			or self.posterior_temperature <= 0.0
@@ -88,10 +117,25 @@ class GaussianProgressGatedProvider:
 			model=self.gaussian_model,
 		)
 		self.encoder = self._build_encoder()
+		self._use_memory = self.encoder.memory is not None
+		if self.frame_history_stride is None:
+			self.frame_history_stride = self.encoder.context_stride
+		elif self._use_memory and self.frame_history_stride != self.encoder.context_stride:
+			raise ValueError(
+				"Memory frame_history_stride must match checkpoint context_stride "
+				f"({self.encoder.context_stride}); supply every observation at the training cadence."
+			)
+		self.history_len = (self._CONTEXT_SIZE - 1) * self.frame_history_stride + 1
+		self._stream_state = (
+			self.encoder.init_stream_state(getattr(self, "n_envs", 1))
+			if self._use_memory else None
+		)
 
 		self.frame_history: deque[np.ndarray] = deque(maxlen=self.history_len)
 		self.progress_current: float | None = None
 		self._last_in_distribution_progress = 0.0
+		self._episode_progress_raw: list[float] = []
+		self._episode_is_ood_raw: list[bool] = []
 
 	def _build_encoder(self) -> torch.nn.Module:
 		checkpoint_path = Path(self.checkpoint_path)
@@ -100,7 +144,7 @@ class GaussianProgressGatedProvider:
 
 		checkpoint = torch.load(
 			checkpoint_path,
-			map_location=self.device,
+			map_location="cpu",
 			weights_only=True,
 		)
 		if not isinstance(checkpoint, dict) or "model_state_dict" not in checkpoint:
@@ -122,20 +166,29 @@ class GaussianProgressGatedProvider:
 				f"{checkpoint_normalization!r}, Gaussian model is {model_normalization!r}."
 			)
 
-		from fineprog.models.encoder import TCCEncoder  # noqa: PLC0415
-
-		encoder = TCCEncoder(
-			clip_len=1,
-			context_size=self._CONTEXT_SIZE,
-			context_stride=self._CONTEXT_STRIDE,
-			pretrained=False,
-			embedding_dim=int(self.gaussian_model["input_embedding_dim"]),
-			embedding_normalization=model_normalization,
+		if checkpoint.get("encoder_config") is None and any(
+			key.removeprefix("module.").startswith("memory.")
+			for key in checkpoint["model_state_dict"]
+		):
+			raise ValueError("Memory checkpoint requires encoder_config metadata.")
+		del checkpoint
+		encoder = build_encoder_from_checkpoint(
+			checkpoint_path,
+			self.device,
+			fallback_config={
+				"clip_len": 1,
+				"context_size": self._CONTEXT_SIZE,
+				"context_stride": self.frame_history_stride or self._CONTEXT_STRIDE,
+				"embedding_dim": int(self.gaussian_model["input_embedding_dim"]),
+			},
 		)
-		encoder.to(self.device)
-		encoder.load_state_dict(checkpoint["model_state_dict"])
-		encoder.eval()
-		return encoder
+		if encoder.embedding_dim != int(self.gaussian_model["input_embedding_dim"]):
+			raise ValueError("Encoder embedding dimension must match Gaussian input_embedding_dim.")
+		if encoder.context_size != self._CONTEXT_SIZE:
+			raise ValueError("Online reward requires a two-frame local context.")
+		if encoder.memory is None:
+			encoder.clip_len = 1
+		return encoder.eval().requires_grad_(False)
 
 	def _prepare_frame_array(self, frame: Any) -> np.ndarray:
 		array = np.asarray(frame)
@@ -181,9 +234,11 @@ class GaussianProgressGatedProvider:
 		return tensor.unsqueeze(0).unsqueeze(0).to(self.device, dtype=torch.float32)
 
 	def _infer_progress_mean_and_ood(self) -> tuple[float, bool]:
-		context = self._build_current_context()
 		with torch.inference_mode():
-			embeddings = self.encoder(context)
+			embeddings = (
+				self.encoder.get_stream_embedding(self._stream_state).unsqueeze(1)
+				if self._use_memory else self.encoder(self._build_current_context())
+			)
 		if not isinstance(embeddings, torch.Tensor) or embeddings.shape != (
 			1,
 			1,
@@ -243,23 +298,74 @@ class GaussianProgressGatedProvider:
 
 	def _update_progress(self) -> float:
 		progress_mean, is_ood = self._infer_progress_mean_and_ood()
+		if self.enable_ood_filter:
+			self._episode_progress_raw.append(float(progress_mean))
+			self._episode_is_ood_raw.append(bool(is_ood))
 		self.progress_current = self._gate_progress(progress_mean, is_ood)
 		return self.progress_current
 
+	def _finalize_progress_trace(
+		self,
+		progress_raw: list[float],
+		is_ood_raw: list[bool],
+	) -> np.ndarray:
+		if not self.enable_ood_filter:
+			raise RuntimeError(
+				"finalize_episode() requires enable_ood_filter=true."
+			)
+		if not progress_raw:
+			raise RuntimeError(
+				"Episode trace is empty; reset the provider before finalizing."
+			)
+		if len(progress_raw) != len(is_ood_raw):
+			raise RuntimeError(
+				"Episode progress and OOD traces have different lengths."
+			)
+
+		progress_raw_array = np.asarray(progress_raw, dtype=np.float64)
+		is_ood_raw_array = np.asarray(is_ood_raw, dtype=np.bool_)
+		is_ood_final = _filter_is_ood_short_id_gaps(
+			is_ood_raw_array,
+			max_gap=self.ood_filter_max_gap,
+			min_ood_run=self.ood_filter_min_ood_run,
+		)
+		return _compute_progress_gated(progress_raw_array, is_ood_final)
+
+	def _append_frame(self, frame: np.ndarray) -> None:
+		if self._use_memory:
+			obs = torch.from_numpy(frame).permute(2, 0, 1).unsqueeze(0).to(self.device)
+			with torch.inference_mode():
+				_, self._stream_state = self.encoder.encode_step(obs, self._stream_state)
+		else:
+			self.frame_history.append(frame)
+
 	def reset(self, obs_dict: dict[str, Any]) -> float:
 		"""Start a new episode and infer its first gated progress value."""
+		frame = self._prepare_frame(obs_dict)
+		if self._use_memory:
+			with torch.inference_mode():
+				self.encoder.reset_stream_state(self._stream_state, [True])
 		self.frame_history.clear()
 		self._last_in_distribution_progress = 0.0
 		self.progress_current = None
-		self.frame_history.append(self._prepare_frame(obs_dict))
+		self._episode_progress_raw.clear()
+		self._episode_is_ood_raw.clear()
+		self._append_frame(frame)
 		return self._update_progress()
 
 	def advance(self, obs_dict: dict[str, Any]) -> float:
-		"""Append one observation and infer the next gated progress value."""
-		if not self.frame_history:
+		"""Consume one new observation at the encoder's training cadence."""
+		if self.progress_current is None:
 			raise RuntimeError("Provider has not been reset for the current episode.")
-		self.frame_history.append(self._prepare_frame(obs_dict))
+		self._append_frame(self._prepare_frame(obs_dict))
 		return self._update_progress()
+
+	def finalize_episode(self) -> np.ndarray:
+		"""Return progress after filtering the complete episode OOD trace."""
+		return self._finalize_progress_trace(
+			self._episode_progress_raw,
+			self._episode_is_ood_raw,
+		)
 
 	def infer_progress_trace_from_frames(self, frames: np.ndarray) -> np.ndarray:
 		"""Infer a trace without changing the provider's current online state."""
@@ -274,18 +380,30 @@ class GaussianProgressGatedProvider:
 		previous_history = deque(self.frame_history, maxlen=self.history_len)
 		previous_progress = self.progress_current
 		previous_last_in_distribution = self._last_in_distribution_progress
+		previous_progress_raw = list(self._episode_progress_raw)
+		previous_is_ood_raw = list(self._episode_is_ood_raw)
+		previous_stream_state = self._stream_state
 		trace: list[float] = []
 		try:
+			if self._use_memory:
+				self._stream_state = self.encoder.init_stream_state(1)
 			trace.append(self.reset({self.image_key: array[0]}))
 			for frame in array[1:]:
 				trace.append(self.advance({self.image_key: frame}))
+			if self.enable_ood_filter:
+				result = self.finalize_episode()
+			else:
+				result = np.asarray(trace, dtype=np.float64)
 		finally:
 			# restore the previous online state
+			self._stream_state = previous_stream_state
 			self.frame_history = previous_history
 			self.progress_current = previous_progress
 			self._last_in_distribution_progress = previous_last_in_distribution
+			self._episode_progress_raw = previous_progress_raw
+			self._episode_is_ood_raw = previous_is_ood_raw
 
-		return np.asarray(trace, dtype=np.float64)
+		return result
 
 
 class BatchedGaussianProgressGatedProvider(GaussianProgressGatedProvider):
@@ -298,7 +416,7 @@ class BatchedGaussianProgressGatedProvider(GaussianProgressGatedProvider):
 		super().__init__(*args, **kwargs)
 
 		self._build_model_tensors()
-		self._frame_ring = torch.zeros(
+		self._frame_ring = None if self._use_memory else torch.zeros(
 			(self.n_envs, self.history_len, 3, self._IMAGE_HEIGHT, self._IMAGE_WIDTH),
 			dtype=torch.uint8,
 			device=self.device,
@@ -315,6 +433,12 @@ class BatchedGaussianProgressGatedProvider(GaussianProgressGatedProvider):
 		self._last_in_distribution = torch.zeros(
 			self.n_envs, dtype=torch.float64, device=self.device
 		)
+		self._episode_progress_raw_by_env: list[list[float]] = [
+			[] for _ in range(self.n_envs)
+		]
+		self._episode_is_ood_raw_by_env: list[list[bool]] = [
+			[] for _ in range(self.n_envs)
+		]
 		self.progress_current: np.ndarray | None = None
 
 	def _build_model_tensors(self) -> None:
@@ -369,31 +493,36 @@ class BatchedGaussianProgressGatedProvider(GaussianProgressGatedProvider):
 		# safe to reuse the pinned buffer: advance_all always syncs before returning
 		return self._staging.to(self.device, non_blocking=True).permute(0, 3, 1, 2)
 
-	def _infer_batch(self) -> torch.Tensor:
-		old_index = (self._head - self._since_reset) % self.history_len
-		context = torch.stack(
-			(
-				self._frame_ring[self._env_index, old_index],
-				self._frame_ring[self._env_index, self._head],
-			),
-			dim=1,
-		)
-		context = context.to(torch.float32).div_(255.0).unsqueeze(1)
+	def _infer_batch(
+		self,
+	) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+		if self._use_memory:
+			embeddings = self.encoder.get_stream_embedding(self._stream_state).unsqueeze(1)
+		else:
+			old_index = (self._head - self._since_reset) % self.history_len
+			context = torch.stack(
+				(
+					self._frame_ring[self._env_index, old_index],
+					self._frame_ring[self._env_index, self._head],
+				),
+				dim=1,
+			)
+			context = context.to(torch.float32).div_(255.0).unsqueeze(1)
 
-		# cuDNN TF32 convolutions are not batch-size invariant, and the Mahalanobis
-		# posterior amplifies that drift (max ~0.018 progress on real square frames).
-		# Re-enable the block below to force fp32 here only, at ~11.6ms -> ~20.2ms
-		# per env-step for n_envs=20; the RL networks keep their TF32 speedup either way.
+			# cuDNN TF32 convolutions are not batch-size invariant, and the Mahalanobis
+			# posterior amplifies that drift (max ~0.018 progress on real square frames).
+			# Re-enable the block below to force fp32 here only, at ~11.6ms -> ~20.2ms
+			# per env-step for n_envs=20; the RL networks keep their TF32 speedup either way.
 
-		# previous_tf32 = torch.backends.cudnn.allow_tf32
-		# torch.backends.cudnn.allow_tf32 = False
-		# try:
-		# 	embeddings = self.encoder(context)
-		# finally:
-		# 	torch.backends.cudnn.allow_tf32 = previous_tf32
+			# previous_tf32 = torch.backends.cudnn.allow_tf32
+			# torch.backends.cudnn.allow_tf32 = False
+			# try:
+			# 	embeddings = self.encoder(context)
+			# finally:
+			# 	torch.backends.cudnn.allow_tf32 = previous_tf32
 
+			embeddings = self.encoder(context)
 
-		embeddings = self.encoder(context)
 		expected_shape = (
 			self.n_envs,
 			1,
@@ -434,10 +563,10 @@ class BatchedGaussianProgressGatedProvider(GaussianProgressGatedProvider):
 		self._last_in_distribution = torch.where(
 			is_ood, self._last_in_distribution, progress_mean
 		)
-		return self._last_in_distribution
+		return self._last_in_distribution, progress_mean, is_ood
 
 	def advance_all(self, frames: Any, reset_mask: Any = None) -> np.ndarray:
-		"""Append one frame per env and infer the next gated progress values."""
+		"""Consume one new frame per env; reset rows receive new episode first frames."""
 		if reset_mask is None:
 			if self.progress_current is None:
 				raise RuntimeError("Provider has not been reset for the current episode.")
@@ -452,26 +581,69 @@ class BatchedGaussianProgressGatedProvider(GaussianProgressGatedProvider):
 				raise RuntimeError("Provider has not been reset for the current episode.")
 
 		with torch.inference_mode():
+			frame_tensor = self._write_frames(frames)
 			is_reset = torch.as_tensor(reset_np, device=self.device)
-			self._head = (self._head + 1) % self.history_len
-			self._since_reset = torch.where(
-				is_reset,
-				torch.zeros_like(self._since_reset),
-				(self._since_reset + 1).clamp(max=self.history_len - 1),
-			)
+			if self.enable_ood_filter:
+				for env_index in np.flatnonzero(reset_np):
+					self._episode_progress_raw_by_env[int(env_index)].clear()
+					self._episode_is_ood_raw_by_env[int(env_index)].clear()
+			if self._use_memory:
+				self.encoder.reset_stream_state(self._stream_state, is_reset)
+				_, self._stream_state = self.encoder.encode_step(frame_tensor, self._stream_state)
+			else:
+				self._head = (self._head + 1) % self.history_len
+				self._since_reset = torch.where(
+					is_reset,
+					torch.zeros_like(self._since_reset),
+					(self._since_reset + 1).clamp(max=self.history_len - 1),
+				)
+				self._frame_ring[self._env_index, self._head] = frame_tensor
 			self._last_in_distribution = torch.where(
 				is_reset,
 				torch.zeros_like(self._last_in_distribution),
 				self._last_in_distribution,
 			)
-			self._frame_ring[self._env_index, self._head] = self._write_frames(frames)
-			self.progress_current = self._infer_batch().cpu().numpy()
+			inferred_progress, progress_raw, is_ood_raw = self._infer_batch()
+			if self.enable_ood_filter:
+				progress_raw_np = progress_raw.cpu().numpy()
+				is_ood_raw_np = is_ood_raw.cpu().numpy()
+				for env_index in range(self.n_envs):
+					self._episode_progress_raw_by_env[env_index].append(
+						float(progress_raw_np[env_index])
+					)
+					self._episode_is_ood_raw_by_env[env_index].append(
+						bool(is_ood_raw_np[env_index])
+					)
+			self.progress_current = inferred_progress.cpu().numpy()
 		return self.progress_current
 
 	def reset_all(self, frames: Any) -> np.ndarray:
 		"""Start a new episode for every env and infer the first progress values."""
 		self.progress_current = None
 		return self.advance_all(frames, reset_mask=np.ones(self.n_envs, dtype=bool))
+
+	def finalize_episode(self, env_index: int | None = None) -> np.ndarray:
+		"""Finalize one environment's complete progress trajectory."""
+		if env_index is None:
+			if self.n_envs != 1:
+				raise ValueError(
+					"env_index is required when finalizing a multi-env provider."
+				)
+			env_index = 0
+		if (
+			isinstance(env_index, (bool, np.bool_))
+			or not isinstance(env_index, (int, np.integer))
+		):
+			raise ValueError("env_index must be an integer.")
+		env_index = int(env_index)
+		if env_index < 0 or env_index >= self.n_envs:
+			raise ValueError(
+				f"env_index must be in [0, {self.n_envs}); got {env_index}."
+			)
+		return self._finalize_progress_trace(
+			self._episode_progress_raw_by_env[env_index],
+			self._episode_is_ood_raw_by_env[env_index],
+		)
 
 	def reset(self, obs_dict: dict[str, Any]) -> float:
 		raise NotImplementedError("Use reset_all(frames) on the batched provider.")
