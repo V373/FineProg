@@ -228,6 +228,8 @@ class TemporalTripletLoss(BaseEncoderLoss):
             self.dynamic_margin_min   = float("nan")
             self.dynamic_margin_max   = float("nan")
 
+        self._candidate_cache = {}
+
         print(f"[TemporalTripletLoss] Initialized:")
         print(f"  margin={self.margin}  num_triplets_fraction={self.num_triplets_fraction}")
         print(f"  reduction={self.reduction}  squared_l2={self.squared_l2}")
@@ -398,6 +400,64 @@ class TemporalTripletLoss(BaseEncoderLoss):
     # Forward
     # ------------------------------------------------------------------
 
+    def _forward_full_budget(self, embeddings, steps):
+        """Batch all fixed-margin triplets without GPU-to-CPU metric reads."""
+        _, T, _ = embeddings.shape
+        key = (T, embeddings.device)
+        if key not in self._candidate_cache:
+            # Structural candidates depend only on T. Build once on CPU to avoid
+            # synchronizing CUDA for a dynamic-size boolean-index result.
+            idx = torch.arange(T)
+            a, j, k = torch.meshgrid(idx, idx, idx, indexing="ij")
+            candidates = (a != j) & (a != k) & (j < k)
+            self._candidate_cache[key] = tuple(
+                x[candidates].to(embeddings.device) for x in (a, j, k))
+        a, j, k = self._candidate_cache[key]
+        s = steps.float()
+        gap_aj = (s[:, a] - s[:, j]).abs()
+        gap_ak = (s[:, a] - s[:, k]).abs()
+        valid = gap_aj != gap_ak
+        j_closer = gap_aj < gap_ak
+
+        # Keep the original per-clip GEMMs: batched FP16 GEMMs can round
+        # differently near zero distances and change clamp/hinge gradients.
+        distances = torch.stack([self._squared_l2_dist_full(z) for z in embeddings])
+        d_aj, d_ak = distances[:, a, j], distances[:, a, k]
+        d_ap = torch.where(j_closer, d_aj, d_ak)
+        d_an = torch.where(j_closer, d_ak, d_aj)
+        d_an_eff = d_an.clamp(max=self.negative_distance_cap) if self.capped else d_an
+        hinge = (d_ap - d_an_eff + self.margin).clamp_min(0)
+        count = valid.sum()
+        # Like mean(), accumulate low-precision inputs in FP32 so a large
+        # triplet budget cannot overflow an otherwise finite FP16 loss.
+        sum_dtype = torch.float32 if hinge.dtype in (torch.float16, torch.bfloat16) else hinge.dtype
+        batch_loss = (hinge.masked_fill(~valid, 0).sum(dtype=sum_dtype) /
+                      count.clamp_min(1)).to(hinge.dtype)
+
+        with torch.no_grad():
+            def mean_valid(values):
+                dtype = torch.float32 if values.dtype in (torch.float16, torch.bfloat16) else values.dtype
+                return (values.masked_fill(~valid, 0).sum(dtype=dtype) / count).to(values.dtype).float()
+
+            nan_metric = _to_metric_tensor(float("nan"), device=embeddings.device)
+            loss_metric = torch.where(count > 0, batch_loss.detach(), nan_metric)
+            metrics = {
+                "loss_total": loss_metric,
+                "loss_temporal_triplet": loss_metric,
+                "num_valid_triplets": count.float(),
+                "num_sampled_triplets": count.float(),
+                "num_clips_with_valid_triplets": valid.any(dim=1).sum().float(),
+                "mean_d_ap": mean_valid(d_ap),
+                "mean_d_an": mean_valid(d_an),
+                "mean_d_an_capped": mean_valid(d_an_eff),
+                "triplet_accuracy_margin": mean_valid((d_ap + self.margin <= d_an).float()),
+                "active_triplet_fraction": mean_valid((hinge > 0).float()),
+                "mean_emb_l2norm": embeddings.norm(dim=-1).mean().float(),
+                "mean_dynamic_margin": nan_metric,
+                "mean_time_gap": nan_metric,
+            }
+        return {"loss": batch_loss, "metrics": metrics}
+
     def forward(
         self,
         embeddings: torch.Tensor,
@@ -453,6 +513,9 @@ class TemporalTripletLoss(BaseEncoderLoss):
         # ── Optional embedding normalisation ────────────────────────────
         if self.normalize_embs:
             embeddings = F.normalize(embeddings, dim=-1)
+
+        if self.num_triplets_fraction == 1.0 and not self.dynamic_margin_enabled:
+            return self._forward_full_budget(embeddings, steps)
 
         # ── Dynamic margin plugin: validate seq_len and target_steps ─────
         if self.dynamic_margin_enabled:
