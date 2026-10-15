@@ -24,7 +24,8 @@ Usage:
 
 import argparse
 import sys
-import warnings
+import json
+import hashlib
 from pathlib import Path
 
 import h5py
@@ -40,6 +41,7 @@ from dataset_preparation.h5vid_dataset import build_dataloader
 from models.encoder import TCCEncoder
 # [v2] V2 config resolver (independent of old config system)
 from utils.config_v2 import ConfigV2
+from utils.encoder_checkpoint import build_encoder_from_checkpoint, encoder_config, load_checkpoint
 from utils.embedding_normalization import (
     validate_embedding_normalization,
     validate_embeddings_for_normalization,
@@ -53,60 +55,6 @@ from utils.embedding_normalization import (
 # read clip_len / context_size / context_stride from the same snapshot as the
 # resolved extract config below.
 _V2_EXTRACT_YAML = str(ConfigV2()._root / "extract.yaml")
-
-
-def load_checkpoint(
-    model: torch.nn.Module,
-    ckpt_path: str,
-    device: torch.device,
-) -> str:
-    """Load model weights from a PyTorch checkpoint.
-
-    Supports:
-    - bare state_dict saved via torch.save(model.state_dict(), path)
-    - wrapped dict with key 'model_state_dict' or 'state_dict'
-
-    Checkpoints without embedding_normalization metadata are legacy raw
-    checkpoints and are loaded with mode "none".
-    """
-    ckpt = torch.load(ckpt_path, map_location=device)
-    normalization = None
-    has_normalization_metadata = False
-    if isinstance(ckpt, dict):
-        if "model_state_dict" in ckpt:
-            state_dict = ckpt["model_state_dict"]
-            has_normalization_metadata = "embedding_normalization" in ckpt
-            normalization = ckpt.get("embedding_normalization")
-        elif "state_dict" in ckpt:
-            state_dict = ckpt["state_dict"]
-            has_normalization_metadata = "embedding_normalization" in ckpt
-            normalization = ckpt.get("embedding_normalization")
-        else:
-            state_dict = ckpt  # assume it is already a state_dict
-    else:
-        state_dict = ckpt
-
-    if not has_normalization_metadata:
-        warnings.warn(
-            f"{ckpt_path}: legacy checkpoint has no embedding_normalization "
-            "metadata; treating it as 'none'.",
-            UserWarning,
-            stacklevel=2,
-        )
-        normalization = "none"
-    normalization = validate_embedding_normalization(
-        normalization,
-        str(ckpt_path),
-    )
-
-    # Checkpoint metadata is authoritative for inference.
-    model.embedding_normalization = normalization
-    model.load_state_dict(state_dict)
-    print(
-        f"[load_checkpoint] Loaded weights from {ckpt_path} "
-        f"(embedding_normalization={normalization})"
-    )
-    return normalization
 
 
 # ---------------------------------------------------------------------------
@@ -194,11 +142,14 @@ def extract_embeddings(
     with torch.no_grad():
         for i, batch in enumerate(dataloader):
             # frames: [1, T_out, context_size, 3, H, W]
-            frames = batch["frames"]
-            T_out = frames.shape[1]
-
-            # [1, T_out, D]
-            embs = _run_encoder_chunked(encoder, frames, frames_per_batch, device)
+            if encoder.memory is not None:
+                if "frames_full" not in batch:
+                    raise ValueError("Memory extraction requires a full_episode dataloader.")
+                raw = encoder.encode_local_episode(batch["frames_full"][0])
+                embs = encoder.forward_episode([raw], batch["seq_len"], batch["target_steps"])
+            else:
+                embs = _run_encoder_chunked(encoder, batch["frames"], frames_per_batch, device)
+            T_out = embs.shape[1]
 
             embs_np = embs[0].cpu().numpy()                     # [T_out, D]
             target_steps_np = batch["target_steps"][0].numpy()  # [T_out]
@@ -228,6 +179,10 @@ def save_embeddings_h5(
     results: list[dict],
     save_path: str,
     embedding_normalization: str,
+    encoder_metadata: dict | None = None,
+    *,
+    checkpoint_path: str | Path | None = None,
+    processed_h5_path: str | Path | None = None,
 ) -> None:
     """Save extracted embeddings to an H5 file.
 
@@ -243,6 +198,8 @@ def save_embeddings_h5(
         results:   list of dicts from extract_embeddings()
         save_path: destination H5 file path
         embedding_normalization: Encoder output mode, either "none" or "l2".
+        checkpoint_path: Source checkpoint, recorded with its SHA256 when provided.
+        processed_h5_path: Source frame dataset used for embedding extraction.
     """
     if not results:
         raise ValueError("results must contain at least one video")
@@ -273,10 +230,26 @@ def save_embeddings_h5(
                 f"for video '{entry['video_id']}'."
             )
 
+    provenance = {}
+    if checkpoint_path is not None:
+        source_checkpoint = Path(checkpoint_path).expanduser().resolve()
+        digest = hashlib.sha256()
+        with source_checkpoint.open("rb") as source_file:
+            for chunk in iter(lambda: source_file.read(1024 * 1024), b""):
+                digest.update(chunk)
+        provenance["checkpoint_path"] = str(source_checkpoint)
+        provenance["checkpoint_sha256"] = digest.hexdigest()
+    if processed_h5_path is not None:
+        provenance["processed_h5_path"] = str(Path(processed_h5_path).expanduser().resolve())
+
     Path(save_path).parent.mkdir(parents=True, exist_ok=True)
     with h5py.File(save_path, "w") as f:
         f.attrs["embedding_normalization"] = embedding_normalization
         f.attrs["embedding_dim"] = embedding_dim
+        if encoder_metadata is not None:
+            f.attrs["encoder_config"] = json.dumps(encoder_metadata)
+        for name, value in provenance.items():
+            f.attrs[name] = value
         videos_grp = f.create_group("videos")
         for entry in results:
             vid = videos_grp.create_group(entry["video_id"])
@@ -316,6 +289,12 @@ def main(extract_h5_path: str | None = None,
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"[main] Device: {device}")
 
+    # Construct from checkpoint metadata before choosing the data path and context.
+    ckpt_path = cfg.get("checkpoint_path")
+    encoder = (build_encoder_from_checkpoint(ckpt_path, device, cfg) if ckpt_path else
+               TCCEncoder(config_path=_V2_EXTRACT_YAML).to(device))
+    encoder.eval()
+
     # --- DataLoader ---
     # sample_all is explicitly overridden to True regardless of config value.
     dataloader = build_dataloader(                       # [v2]
@@ -326,16 +305,12 @@ def main(extract_h5_path: str | None = None,
         num_workers=cfg.get("num_workers", 0),
         split="extract",
         h5_path_override=cfg["extract_h5_path"],        # [v2] resolved absolute path
+        full_episode=encoder.memory is not None,
+        encoder_config=encoder_config(encoder),
     )
 
     # --- Encoder ---
-    encoder = TCCEncoder(config_path=_V2_EXTRACT_YAML)  # [v2] has clip_len, context_size, context_stride
-    encoder.to(device)
-
-    ckpt_path = cfg.get("checkpoint_path")
-    if ckpt_path:
-        load_checkpoint(encoder, ckpt_path, device)
-    else:
+    if not ckpt_path:
         print("[main] WARNING: no checkpoint_path in config — using random weights")
 
     encoder.eval()
@@ -358,6 +333,9 @@ def main(extract_h5_path: str | None = None,
         results,
         save_path,
         embedding_normalization=encoder.embedding_normalization,
+        encoder_metadata=encoder_config(encoder),
+        checkpoint_path=ckpt_path,
+        processed_h5_path=cfg["extract_h5_path"],
     )
     print(f"[main] Done. Embeddings saved to {save_path}")
 

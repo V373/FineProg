@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import torch
+from .encoder_checkpoint import encoder_config
 
 if TYPE_CHECKING:
     pass
@@ -220,10 +221,10 @@ def run_in_training_eval(
                         "output_dir": task_output_dir,
                         "device": str(device),
                         "train_config_path": train_yaml_path,
-                        "clip_len": train_cfg.get("clip_len", 20),
-                        "context_size": train_cfg.get("context_size", 2),
-                        "context_stride": train_cfg.get("context_stride", 15),
-                        "embedding_dim": train_cfg.get("embedding_dim", 128),
+                        "clip_len": encoder.clip_len,
+                        "context_size": encoder.context_size,
+                        "context_stride": encoder.context_stride,
+                        "embedding_dim": encoder.embedding_dim,
                     }
                 else:
                     runtime_overrides = {
@@ -308,6 +309,8 @@ def _extract_embeddings_for_eval(
         num_workers=num_workers,
         split="extract",
         h5_path_override=h5_path,
+        full_episode=encoder.memory is not None,
+        encoder_config=encoder_config(encoder),
     )
     n_videos = len(dataloader.dataset)
     print(f"[in_training_eval] Extracting embeddings: dataset={eval_dataset_ref} "
@@ -320,6 +323,8 @@ def _extract_embeddings_for_eval(
         results,
         save_path,
         embedding_normalization=encoder.embedding_normalization,
+        encoder_metadata=encoder_config(encoder),
+        processed_h5_path=h5_path,
     )
     print(f"[in_training_eval] Extraction done ({len(results)} videos).")
 

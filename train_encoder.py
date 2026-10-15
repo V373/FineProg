@@ -37,6 +37,7 @@ from models.encoder import TCCEncoder
 from algos.loss.encoder_loss import build_loss
 # [v2] V2 config resolver (independent of old config system)
 from utils.config_v2 import ConfigV2
+from utils.encoder_checkpoint import build_training_encoder, checkpoint_dict, encoder_config
 
 # ---------------------------------------------------------------------------
 # [v2] V2 config constants (resolved once at import time)
@@ -51,13 +52,52 @@ _V2_LOSS_YAML  = str(_CFG_V2._root / _loss_cfg_file) # path to configs_v2/<loss_
 
 def _save_encoder_checkpoint(encoder: TCCEncoder, checkpoint_path: str) -> None:
     """Save encoder weights together with the output-normalization mode."""
-    torch.save(
-        {
-            "model_state_dict": encoder.state_dict(),
-            "embedding_normalization": encoder.embedding_normalization,
-        },
-        checkpoint_path,
-    )
+    torch.save(checkpoint_dict(encoder), checkpoint_path)
+
+
+def _memory_log(encoder, norm_stats=None):
+    if encoder.memory is None:
+        return {}
+    metrics = {}
+    if hasattr(encoder.memory, "alpha"):
+        metrics["memory/alpha"] = encoder.memory.alpha.detach().float().item()
+    if norm_stats and norm_stats.get("num_frames", 0) > 0:
+        count = norm_stats["num_frames"]
+        metrics.update({
+            "memory/input_norm_mean": (norm_stats["input_norm_sum"] / count).cpu().item(),
+            "memory/pre_normalization_norm_mean": (
+                norm_stats["pre_normalization_norm_sum"] / count).cpu().item(),
+        })
+        if "branch_weight_sum" in norm_stats:
+            long_weight, short_weight = (norm_stats["branch_weight_sum"] / count).cpu().tolist()
+            metrics.update({"memory/long_weight_mean": long_weight,
+                            "memory/short_weight_mean": short_weight})
+    return metrics
+
+
+def _memory_embeddings(encoder, batch, device, *, norm_stats=None):
+    if "raw_embeddings" in batch:
+        raw = [e.to(device, non_blocking=True) for e in batch["raw_embeddings"]]
+    else:
+        from_feats = "frame_feats" in batch
+        raw = [encoder.encode_local_episode(frames, from_feats=from_feats)
+               for frames in batch["frame_feats" if from_feats else "frames_full"]]
+    return encoder.forward_episode(raw, batch["seq_len"], batch["target_steps"],
+                                   memory_norm_stats=norm_stats)
+
+
+@torch.no_grad()
+def extract_raw_embeddings(encoder, dataset):
+    was_training = encoder.training
+    encoder.eval()
+    try:
+        with tqdm(dataset.video_ids, desc="Extracting raw embedding cache",
+                  unit="video", dynamic_ncols=True) as videos:
+            return {vid: encoder.encode_local_episode(
+                torch.from_numpy(dataset._frames_cache[vid]["frames"]).permute(0, 3, 1, 2)
+            ).float().cpu() for vid in videos}
+    finally:
+        encoder.train(was_training)
 
 
 def _maybe_limit_cpu_threads(enabled: bool) -> None:
@@ -128,7 +168,8 @@ def extract_backbone_features(
 
     cache = {}
     print(f"[extract_backbone_features] Extracting features for {len(h5_dataset.video_ids)} videos...")
-    for vid in h5_dataset.video_ids:
+    for vid in tqdm(h5_dataset.video_ids, desc="Extracting backbone cache",
+                    unit="video", dynamic_ncols=True):
         frames_np = h5_dataset._frames_cache[vid]["frames"]  # [T, 224, 224, 3] uint8
         T = frames_np.shape[0]
         # Normalize and transpose to [T, 3, 224, 224] float32
@@ -201,6 +242,16 @@ def train(
         torch.backends.cudnn.benchmark = True
     print(f"[train] Using device: {device}")
 
+    _seed = _train_cfg.get("seed", 42)
+    random.seed(_seed)
+    np.random.seed(_seed)
+    torch.manual_seed(_seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(_seed)
+    print(f"[train] Random seed: {_seed}")
+    encoder, _train_cfg = build_training_encoder(_train_cfg, device)
+    _use_memory = encoder.memory is not None
+
     # Resolve checkpoint directory (run-specific subfolder)
     if not os.path.isabs(checkpoint_dir):
         checkpoint_dir = os.path.join(_PROJECT_ROOT, checkpoint_dir)
@@ -226,11 +277,16 @@ def train(
     else:
         _loss_tag = _loss_name_v2.replace("_", "-").upper()  # e.g. "TCC", "TEMPORAL-INFONCE"
     run_name = f"{_loss_tag}-{_dataset_name}-{_backbone_name}-{_train_base}-{timestamp}"
+    if _use_memory:
+        run_name += "-mamba2"
+    if _train_cfg.get("run_name_prefix"):
+        run_name = f"{_train_cfg['run_name_prefix']}-{run_name}"
 
     wandb.init(
         project="mytcc",
         name=run_name,
         config={
+            **_train_cfg,
             "num_epochs": num_epochs,
             "batch_size": batch_size,
             "learning_rate": learning_rate,
@@ -277,35 +333,21 @@ def train(
         shuffle=True, # 默认打乱训练，这样training dataset所有视频可以匹配到任意一个pair计算loss
         split="train",
         h5_path_override=_h5_override,  # [v2] resolved path always provided explicitly
+        full_episode=_use_memory,
+        encoder_config=encoder_config(encoder),
     )
-
-    # ------------------------------------------------------------------
-    # 1.5. Fix random seed for reproducibility
-    # ------------------------------------------------------------------
-    _seed = _TRAIN_V2.get("seed", 42)  # [v2]
-    random.seed(_seed)
-    np.random.seed(_seed)
-    torch.manual_seed(_seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(_seed)
-    print(f"[train] Random seed: {_seed}")
 
     # ------------------------------------------------------------------
     # 2. Encoder
     # ------------------------------------------------------------------
-    encoder = TCCEncoder(                      # [v2]
-        config_path=_V2_TRAIN_YAML,            # [v2] has clip_len, context_size, context_stride
-        train_config_path=_V2_TRAIN_YAML,      # [v2] has backbone_name, train_base, train_embedding, pretrained
-    )
-    encoder = encoder.to(device)
     encoder.train()
     # encoder.train() resets all submodule states; restore trainability rules.
     encoder.configure_trainability()
 
     # Print trainability info
     summary = encoder.get_trainable_parameter_groups_summary()
-    total_params = summary["backbone_total"] + summary["embedder_total"]
-    trainable_params = summary["backbone_trainable"] + summary["embedder_trainable"]
+    total_params = sum(v for k, v in summary.items() if k.endswith("_total"))
+    trainable_params = sum(v for k, v in summary.items() if k.endswith("_trainable"))
     print(f"[train] train_base      : {encoder._train_base}")
     print(f"[train] train_embedding : {encoder._train_embedding}")
     print(f"[train] limit_cpu_threads: {bool(_train_cfg.get('limit_cpu_threads', False))}")
@@ -340,7 +382,10 @@ def train(
     # frozen   — backbone never changes; extract once, reuse forever, no refresh.
     # only_bn  — BN γ/β drift each step; refresh cache every _cache_refresh_every epochs.
     # [v1] _train_cfg_full = load_yaml(CONFIG_TRAIN)
-    _train_cfg_full = _TRAIN_V2  # [v2]
+    _train_cfg_full = _train_cfg
+    _use_raw_cache = (_use_memory and encoder._train_base == "frozen"
+                      and not encoder._train_embedding
+                      and encoder.memory_config.get("cache_local_embeddings", True))
     _use_feat_cache = (
         encoder._train_base in ("only_bn", "frozen")
         and _train_cfg_full.get("extract_backbone_cache", False)
@@ -360,7 +405,7 @@ def train(
         dynamic_ncols=True,
     )
 
-    if _use_feat_cache:
+    if _use_feat_cache or _use_raw_cache:
         # ------------------------------------------------------------------
         # CACHE BRANCH — skip backbone in every training step.
         # frozen:   Extract once, never refresh (backbone is fully static).
@@ -368,19 +413,23 @@ def train(
         # Active when train_base in (frozen, only_bn) AND
         # extract_backbone_cache=True in configs_v2/train.yaml.
         # ------------------------------------------------------------------
-        _is_frozen_cache = (encoder._train_base == "frozen")
-        if _is_frozen_cache:
+        _is_frozen_cache = _use_raw_cache or (encoder._train_base == "frozen")
+        if _use_raw_cache:
+            print("[train] Raw local embedding cache enabled (frozen local encoder)")
+        elif _is_frozen_cache:
             print("[train] Backbone cache mode enabled (frozen — extract once, no refresh)")
         else:
             print(f"[train] Backbone cache mode enabled "
                   f"(only_bn — refresh every {_cache_refresh_every} epochs)")
 
-        _feat_cache = extract_backbone_features(encoder, dataloader.dataset, device)
+        _feat_cache = (extract_raw_embeddings(encoder, dataloader.dataset) if _use_raw_cache else
+                       extract_backbone_features(encoder, dataloader.dataset, device))
         _cache_dataloader = build_feature_cache_dataloader(
             _feat_cache,
             dataloader.dataset,
             batch_size=batch_size,
-            num_workers=num_workers,
+            num_workers=0 if _use_raw_cache else num_workers,
+            input_key="raw_embeddings" if _use_raw_cache else "frame_feats",
         )
 
         for epoch in range(num_epochs):
@@ -399,17 +448,21 @@ def train(
             epoch_loss_sum = 0.0
             epoch_steps = 0
             epoch_metrics_sum: dict = {}
+            should_log = (epoch + 1) % log_every == 0
+            memory_norm_stats = {} if _use_memory and should_log else None
 
             for batch in _cache_dataloader:
                 # backbone_feats: [B, clip_len, context_size, 1024, 14, 14] fp16
-                backbone_feats = batch["backbone_feats"].to(device, non_blocking=True)
                 loss_batch = {
                     "target_steps": batch["target_steps"].to(device, non_blocking=True),
                     "seq_len": batch["seq_len"].to(device, non_blocking=True),
                 }
 
                 with torch.amp.autocast(device_type=_autocast_device, enabled=_use_amp):
-                    embeddings = encoder.forward_from_feats(backbone_feats)
+                    if _use_memory:
+                        embeddings = _memory_embeddings(encoder, batch, device, norm_stats=memory_norm_stats)
+                    else:
+                        embeddings = encoder.forward_from_feats(batch["backbone_feats"].to(device, non_blocking=True))
                     out = loss_module(embeddings, loss_batch)
                     loss = out["loss"]
 
@@ -424,7 +477,6 @@ def train(
                 for k, v in out.get("metrics", {}).items():
                     _accumulate_metric(epoch_metrics_sum, k, v)
 
-            should_log = (epoch + 1) % log_every == 0
             if should_log:
                 epoch_loss_avg = (epoch_loss_sum / max(epoch_steps, 1)).cpu().item()
                 epoch_metrics_avg = _finalize_metric_averages(epoch_metrics_sum, epoch_steps)
@@ -439,6 +491,7 @@ def train(
                         "loss": epoch_loss_avg,
                         **epoch_metrics_avg,
                         "perf/s_per_epoch": seconds_per_epoch,
+                        **_memory_log(encoder, memory_norm_stats),
                     },
                     step=epoch + 1,
                 )
@@ -476,12 +529,15 @@ def train(
             epoch_loss_sum = 0.0
             epoch_steps = 0
             epoch_metrics_sum: dict = {}
+            should_log = (epoch + 1) % log_every == 0
+            memory_norm_stats = {} if _use_memory and should_log else None
 
             for batch in dataloader:
                 # Move tensors to device
-                frames = batch["frames"].to(device, non_blocking=True)  # [B, clip_len, ctx, 3, H, W]
-                if _transport_frames_as_uint8:
-                    frames = frames.float().div_(255.0)
+                if not _use_memory:
+                    frames = batch["frames"].to(device, non_blocking=True)
+                    if _transport_frames_as_uint8:
+                        frames = frames.float().div_(255.0)
                 loss_batch = {
                     "target_steps": batch["target_steps"].to(device, non_blocking=True),
                     "seq_len": batch["seq_len"].to(device, non_blocking=True),
@@ -489,7 +545,10 @@ def train(
 
                 # Forward: encoder + loss  (AMP autocast)
                 with torch.amp.autocast(device_type=_autocast_device, enabled=_use_amp):
-                    embeddings = encoder(frames)              # [B, clip_len, D]
+                    if _use_memory:
+                        embeddings = _memory_embeddings(encoder, batch, device, norm_stats=memory_norm_stats)
+                    else:
+                        embeddings = encoder(frames)
                     out = loss_module(embeddings, loss_batch)
                     loss = out["loss"]
 
@@ -505,7 +564,6 @@ def train(
                 for k, v in out.get("metrics", {}).items():
                     _accumulate_metric(epoch_metrics_sum, k, v)
 
-            should_log = (epoch + 1) % log_every == 0
             if should_log:
                 epoch_loss_avg = (epoch_loss_sum / max(epoch_steps, 1)).cpu().item()
                 epoch_metrics_avg = _finalize_metric_averages(epoch_metrics_sum, epoch_steps)
@@ -520,6 +578,7 @@ def train(
                         "loss": epoch_loss_avg,
                         **epoch_metrics_avg,
                         "perf/s_per_epoch": seconds_per_epoch,
+                        **_memory_log(encoder, memory_norm_stats),
                     },
                     step=epoch + 1,
                 )

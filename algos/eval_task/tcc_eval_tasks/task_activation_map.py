@@ -21,6 +21,7 @@ from torch.utils.data import DataLoader
 from fineprog.algos.eval_task.base_task import BaseTask
 from fineprog.dataset_preparation.h5vid_dataset import H5VideoDataset, collate_fn
 from fineprog.models.encoder import TCCEncoder
+from fineprog.utils.encoder_checkpoint import build_encoder_from_checkpoint
 
 
 class ActivationMapTask(BaseTask):
@@ -38,7 +39,9 @@ class ActivationMapTask(BaseTask):
         checkpoint_path = self.config["checkpoint_path"]
         device_name = self.config.get("device", "cuda")
         device = torch.device(device_name if device_name == "cpu" or torch.cuda.is_available() else "cpu")
-        context_size = int(self.config.get("context_size", 2))
+        encoder = build_encoder_from_checkpoint(checkpoint_path, device, self.config)
+        encoder.eval()
+        context_size = encoder.context_size
         batch_size = 1
         num_workers = int(self.config.get("num_workers", 0))
         max_videos = self.config.get("max_videos")
@@ -65,9 +68,9 @@ class ActivationMapTask(BaseTask):
 
         dataset = H5VideoDataset(
             h5_path=dataset_h5_path,
-            clip_len=int(self.config.get("clip_len", 20)),
+            clip_len=encoder.clip_len,
             context_size=context_size,
-            context_stride=int(self.config.get("context_stride", 15)),
+            context_stride=encoder.context_stride,
             sample_all=True,
             sample_all_stride=int(self.config.get("sample_all_stride", 1)),
             transport_frames_as_uint8=False,
@@ -82,21 +85,6 @@ class ActivationMapTask(BaseTask):
             persistent_workers=(num_workers > 0),
         )
         print(f"[activation_map] number of videos: {len(dataset)}")
-
-        # train_config_path (optional) carries backbone_name / embedding_normalization,
-        # which the constructor cannot receive as plain arguments.
-        encoder = TCCEncoder(
-            train_config_path=self.config.get("train_config_path"),
-            clip_len=int(self.config.get("clip_len", 20)),
-            context_size=context_size,
-            context_stride=int(self.config.get("context_stride", 15)),
-            pretrained=False,
-            embedding_dim=int(self.config.get("embedding_dim", 128)),
-            debug=False,
-        )
-        encoder = encoder.to(device)
-        self._load_checkpoint(encoder, checkpoint_path, device)
-        encoder.eval()
 
         conv3d_modules = [m for m in encoder.temporal_embedder.modules() if isinstance(m, nn.Conv3d)]
         if len(conv3d_modules) < 2:
@@ -273,7 +261,7 @@ class ActivationMapTask(BaseTask):
                 chunk = torch.cat([chunk, pad], dim=1)
 
             hook_cache.clear()
-            _ = encoder(chunk)
+            _ = encoder.encode_local_raw(chunk)
 
             if "backbone" not in hook_cache:
                 raise RuntimeError("[activation_map] backbone hook did not capture any output")
@@ -513,32 +501,3 @@ class ActivationMapTask(BaseTask):
         if h5_fps > 1.0e-6:
             return h5_fps
         return 1.0
-
-    def _load_checkpoint(
-        self,
-        model: torch.nn.Module,
-        checkpoint_path: str,
-        device: torch.device,
-    ) -> None:
-        checkpoint = torch.load(checkpoint_path, map_location=device)
-        if isinstance(checkpoint, dict):
-            if "model_state_dict" in checkpoint:
-                state_dict = checkpoint["model_state_dict"]
-            elif "state_dict" in checkpoint:
-                state_dict = checkpoint["state_dict"]
-            else:
-                state_dict = checkpoint
-        else:
-            state_dict = checkpoint
-
-        cleaned_state_dict = {}
-        for key, value in state_dict.items():
-            if not isinstance(value, torch.Tensor):
-                continue
-            cleaned_key = key[7:] if key.startswith("module.") else key
-            cleaned_state_dict[cleaned_key] = value
-
-        missing_keys, unexpected_keys = model.load_state_dict(cleaned_state_dict, strict=False)
-        print(f"[activation_map] loaded checkpoint path: {checkpoint_path}")
-        print(f"[activation_map] missing_keys: {missing_keys}")
-        print(f"[activation_map] unexpected_keys: {unexpected_keys}")
