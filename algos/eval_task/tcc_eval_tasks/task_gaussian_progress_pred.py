@@ -8,6 +8,7 @@ calibration and non-expert embeddings.
 from __future__ import annotations
 
 import datetime
+from contextlib import ExitStack
 from pathlib import Path
 
 import h5py
@@ -176,19 +177,24 @@ def _parse_pred_config(config: dict) -> dict:
     if not isinstance(enable_video, (bool, np.bool_)):
         raise ValueError("[gaussian_progress_pred] enable_video must be boolean.")
     enable_video = bool(enable_video)
-    if enable_video and not enable_visualization:
+    video_branch_weights = config.get("video_branch_weights", False)
+    if not isinstance(video_branch_weights, (bool, np.bool_)):
+        raise ValueError("[gaussian_progress_pred] video_branch_weights must be boolean.")
+    video_output_dir = config.get("video_output_dir")
+    if video_output_dir is not None and (
+        not isinstance(video_output_dir, (str, Path)) or not str(video_output_dir).strip()
+    ):
+        raise ValueError("[gaussian_progress_pred] video_output_dir must be a non-empty path.")
+    if (enable_visualization or enable_video) and not bool(save_posterior):
         raise ValueError(
-            "[gaussian_progress_pred] enable_video=true requires "
-            "enable_visualization=true."
-        )
-    if enable_visualization and not bool(save_posterior):
-        raise ValueError(
-            "[gaussian_progress_pred] enable_visualization=true requires "
+            "[gaussian_progress_pred] enable_visualization=true or "
+            "enable_video=true requires "
             "save_posterior=true."
         )
-    if enable_visualization and not enable_calibration:
+    if (enable_visualization or enable_video) and not enable_calibration:
         raise ValueError(
-            "[gaussian_progress_pred] enable_visualization=true requires "
+            "[gaussian_progress_pred] enable_visualization=true or "
+            "enable_video=true requires "
             "enable_calibration=true so the confidence figure can use "
             "conformal p-values."
         )
@@ -208,6 +214,8 @@ def _parse_pred_config(config: dict) -> dict:
         "save_posterior": bool(save_posterior),
         "enable_visualization": enable_visualization,
         "enable_video": enable_video,
+        "video_branch_weights": bool(video_branch_weights),
+        "video_output_dir": str(video_output_dir) if video_output_dir is not None else None,
     }
 
 
@@ -1521,6 +1529,45 @@ def _resize_rgb_to_height(frame: np.ndarray, target_height: int, cv2) -> np.ndar
     )
 
 
+def _compute_video_branch_weights(encoder, frames_np, expected_embeddings, target_steps):
+    """Recompute a video's fusion weights without changing the encoder API or H5s."""
+    import torch  # noqa: PLC0415
+
+    if not hasattr(encoder.memory, "gate"):
+        raise ValueError("[gaussian_progress_pred] video weights require a dual encoder.")
+    if frames_np.ndim != 4 or frames_np.shape[-1] != 3 or frames_np.dtype != np.uint8:
+        raise ValueError("[gaussian_progress_pred] processed frames must be uint8 [T,H,W,3].")
+    if not np.array_equal(target_steps, np.arange(len(frames_np))):
+        raise ValueError("[gaussian_progress_pred] weight target_steps must equal arange(T).")
+
+    encoder.eval()
+    captured = []
+    device = next(encoder.parameters()).device
+    with torch.no_grad(), torch.autocast(device_type=device.type, enabled=False):
+        frames = torch.from_numpy(frames_np).permute(0, 3, 1, 2)
+        raw = encoder.encode_local_episode(frames)
+        hook = encoder.memory.gate.register_forward_hook(
+            lambda module, inputs, logits: captured.append(logits.detach().softmax(-1).cpu())
+        )
+        try:
+            embeddings = encoder.forward_episode(
+                [raw], [len(frames_np)], torch.as_tensor(target_steps)[None],
+                memory_norm_stats=None,
+            )[0].cpu().numpy()
+        finally:
+            hook.remove()
+    if len(captured) != 1:
+        raise ValueError("[gaussian_progress_pred] expected one fusion gate call per video.")
+    if embeddings.shape != expected_embeddings.shape or not np.allclose(
+        embeddings, expected_embeddings, rtol=0, atol=1e-5
+    ):
+        raise ValueError(
+            "[gaussian_progress_pred] recomputed embeddings do not match the source "
+            "embeddings (atol=1e-5); check checkpoint and processed frames."
+        )
+    return captured[0][0].numpy()
+
+
 def _save_prediction_video(
     video_id: str,
     raw_video_path: Path,
@@ -1533,8 +1580,10 @@ def _save_prediction_video(
     conformal_p_value: np.ndarray,
     gaussian_log_likelihood: np.ndarray,
     output_path: Path,
+    branch_weights: np.ndarray | None = None,
+    branch_labels: tuple[str, str] = ("Long", "Short"),
 ) -> None:
-    """Render one raw-video, progress, and confidence composite MP4."""
+    """Render one composite MP4, optionally adding an encoder-weight strip."""
     import cv2  # noqa: PLC0415
     import imageio.v2 as imageio  # noqa: PLC0415
     import matplotlib  # noqa: PLC0415
@@ -1558,6 +1607,18 @@ def _save_prediction_video(
             f"[gaussian_progress_pred] video {video_id} frame count mismatch: "
             f"processed={processed_frame_count}, prediction={prediction_frame_count}."
         )
+    if branch_weights is not None:
+        branch_weights = np.asarray(branch_weights)
+        if (
+            branch_weights.shape != (prediction_frame_count, 2)
+            or not np.isfinite(branch_weights).all()
+            or np.any((branch_weights < 0) | (branch_weights > 1))
+            or not np.allclose(branch_weights.sum(-1), 1, rtol=0, atol=1e-6)
+        ):
+            raise ValueError(
+                "[gaussian_progress_pred] branch_weights must be finite [T,2] "
+                "probabilities summing to one per frame."
+            )
 
     capture = cv2.VideoCapture(str(raw_video_path))
     if not capture.isOpened():
@@ -1637,6 +1698,7 @@ def _save_prediction_video(
     if temporary_path.exists():
         temporary_path.unlink()
     writer = None
+    weight_figure = None
     try:
         writer = imageio.get_writer(
             str(temporary_path),
@@ -1679,6 +1741,45 @@ def _save_prediction_video(
             combined = np.concatenate(panels, axis=1)
             if combined.shape[1] % 2:
                 combined = combined[:, :-1]
+            if branch_weights is not None:
+                if weight_figure is None:
+                    weight_figure, weight_axis = plt.subplots(
+                        figsize=(combined.shape[1] / 100, 1.6), dpi=100
+                    )
+                    weight_figure.subplots_adjust(left=0.06, right=0.985, bottom=0.27, top=0.78)
+                    for column, color, style in ((0, "tab:orange", "-"), (1, "tab:purple", "--")):
+                        weight_axis.plot(
+                            frame_steps, branch_weights[:, column], color=color,
+                            linestyle=style, linewidth=1.2, label=branch_labels[column],
+                        )
+                    weight_axis.axhline(0.5, color="gray", linewidth=0.5, alpha=0.5)
+                    weight_axis.set(xlim=(0, max(1, prediction_frame_count - 1)), ylim=(0, 1),
+                                    xlabel="Frame number", ylabel="Weight")
+                    weight_axis.set_title("Encoder fusion weights", loc="left", fontsize=9)
+                    weight_axis.tick_params(labelsize=8)
+                    weight_axis.legend(loc="upper right", fontsize=8, ncol=2)
+                    weight_cursor = weight_axis.axvline(0, color="black", linestyle="--", linewidth=0.8)
+                    weight_values = weight_axis.text(
+                        1, 1.08, "", transform=weight_axis.transAxes, ha="right", fontsize=8
+                    )
+                    weight_cursor.set_animated(True)
+                    weight_values.set_animated(True)
+                    weight_figure.canvas.draw()
+                    weight_background = weight_figure.canvas.copy_from_bbox(weight_figure.bbox)
+                weight_cursor.set_xdata([frame_index, frame_index])
+                weight_values.set_text(
+                    f"Frame {frame_index} / {frame_index / source_fps:.2f}s    "
+                    f"Long={branch_weights[frame_index, 0]:.3f}    "
+                    f"Short={branch_weights[frame_index, 1]:.3f}"
+                )
+                weight_figure.canvas.restore_region(weight_background)
+                weight_axis.draw_artist(weight_cursor)
+                weight_axis.draw_artist(weight_values)
+                weight_figure.canvas.blit(weight_figure.bbox)
+                weight_panel = np.asarray(weight_figure.canvas.buffer_rgba())[:, :, :3]
+                if weight_panel.shape[:2] != (160, combined.shape[1]):
+                    weight_panel = cv2.resize(weight_panel, (combined.shape[1], 160))
+                combined = np.concatenate((combined, weight_panel), axis=0)
             writer.append_data(np.ascontiguousarray(combined, dtype=np.uint8))
 
         extra_ok, _ = capture.read()
@@ -1705,27 +1806,61 @@ def _save_prediction_video(
             writer.close()
         plt.close(progress_figure)
         plt.close(confidence_figure)
+        if weight_figure is not None:
+            plt.close(weight_figure)
 
     temporary_path.replace(output_path)
 
 
-def _save_prediction_videos(output_h5_path: Path) -> None:
-    """Render a three-panel MP4 for every prediction in one output H5."""
+def _save_prediction_videos(
+    output_h5_path: Path, *, branch_weights: bool = False, output_dir: Path | None = None
+) -> None:
+    """Render saved predictions, optionally recomputing dual weights for the MP4s."""
     output_h5_path = Path(output_h5_path).expanduser().resolve()
     if not output_h5_path.is_file():
         raise FileNotFoundError(
             f"[gaussian_progress_pred] prediction H5 not found: {output_h5_path}"
         )
-    videos_dir = output_h5_path.parent / "videos"
+    videos_dir = (Path(output_dir).expanduser().resolve() if output_dir is not None
+                  else output_h5_path.parent / "videos")
     videos_dir.mkdir(parents=True, exist_ok=True)
 
-    with h5py.File(output_h5_path, "r") as output_file:
+    with h5py.File(output_h5_path, "r") as output_file, ExitStack() as resources:
         nonexpert_h5_path = _text_attr(
             output_file.attrs,
             "nonexpert_h5_path",
             "prediction H5 root",
         )
-        processed_h5_path = _processed_h5_path_from_embedding(nonexpert_h5_path)
+        encoder = None
+        branch_labels = ("Long", "Short")
+        if branch_weights:
+            import hashlib  # noqa: PLC0415
+            import torch  # noqa: PLC0415
+            from fineprog.utils.encoder_checkpoint import build_encoder_from_checkpoint  # noqa: PLC0415
+
+            embedding_file = resources.enter_context(h5py.File(nonexpert_h5_path, "r"))
+            attrs = embedding_file.attrs
+            checkpoint_path = _text_attr(attrs, "checkpoint_path", "embedding H5 root")
+            checkpoint_sha256 = _text_attr(attrs, "checkpoint_sha256", "embedding H5 root")
+            processed_h5_path = Path(_text_attr(attrs, "processed_h5_path", "embedding H5 root"))
+            digest = hashlib.sha256()
+            with open(checkpoint_path, "rb") as checkpoint_file:
+                for block in iter(lambda: checkpoint_file.read(1024 * 1024), b""):
+                    digest.update(block)
+            if digest.hexdigest() != checkpoint_sha256:
+                raise ValueError("[gaussian_progress_pred] video checkpoint SHA256 mismatch.")
+            if not torch.cuda.is_available():
+                raise RuntimeError("[gaussian_progress_pred] Mamba2 video weights require CUDA.")
+            encoder = build_encoder_from_checkpoint(checkpoint_path, torch.device("cuda")).eval()
+            if not hasattr(encoder.memory, "gate"):
+                raise ValueError("[gaussian_progress_pred] video weights require a dual encoder.")
+            memory = encoder.memory
+            branch_labels = (
+                f"Long HF{memory.long_history_frames}/HS{memory.long_history_stride}",
+                f"Short HF{memory.short_history_frames}/HS{memory.short_history_stride}",
+            )
+        else:
+            processed_h5_path = _processed_h5_path_from_embedding(nonexpert_h5_path)
         bin_progress_values = np.asarray(
             output_file["model/bin_progress_values"][:], dtype=np.float64
         )
@@ -1749,6 +1884,16 @@ def _save_prediction_videos(output_h5_path: Path) -> None:
                     f"[gaussian_progress_pred] rendering video {video_id}: "
                     f"{raw_video_path.name}"
                 )
+                weights = None
+                if encoder is not None:
+                    source_video = embedding_file[f"videos/{video_id}"]
+                    target_steps = np.asarray(video_group["target_steps"][:])
+                    if not np.array_equal(source_video["target_steps"][:], target_steps):
+                        raise ValueError("[gaussian_progress_pred] source/prediction target_steps mismatch.")
+                    weights = _compute_video_branch_weights(
+                        encoder, processed_videos_group[video_id]["frames"][:],
+                        source_video["embeddings"][:], target_steps,
+                    )
                 _save_prediction_video(
                     video_id=video_id,
                     raw_video_path=raw_video_path,
@@ -1768,6 +1913,8 @@ def _save_prediction_videos(output_h5_path: Path) -> None:
                         dtype=np.float64,
                     ),
                     output_path=videos_dir / f"{video_id}.mp4",
+                    branch_weights=weights,
+                    branch_labels=branch_labels,
                 )
 
     print(f"[gaussian_progress_pred] videos              : {videos_dir}")
@@ -2116,7 +2263,11 @@ class GaussianProgressPredTask(BaseTask):
         if pred_config["enable_visualization"]:
             _save_prediction_visualizations(output_h5_path)
         if pred_config["enable_video"]:
-            _save_prediction_videos(output_h5_path)
+            _save_prediction_videos(
+                output_h5_path,
+                branch_weights=pred_config["video_branch_weights"],
+                output_dir=pred_config["video_output_dir"],
+            )
 
         if total_query_steps < 1:
             raise ValueError(
