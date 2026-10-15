@@ -13,6 +13,38 @@ pretrained:      true
 train_base:      only_bn      # frozen | only_bn | train_all
 train_embedding: true
 
+# Optional full-episode memory. Freeze local: frozen + false above.
+# Original FineProg: only_bn + true, with freeze_bn_stats=false below.
+memory:
+  enabled: false
+  dual_branch: false
+  # Dual branch: fixed input L2 + RMSNorm, no local residual.
+  # Each branch defaults to history_stride unless its own stride is specified.
+  # Final normalization still follows embedding_normalization below.
+  long_history_frames: 8
+  short_history_frames: 2
+  # For hf4 long-hs20/short-hs5, set both *_history_frames above to 4 and use:
+  # long_history_stride: 20
+  # short_history_stride: 5
+  branch_output_l2: true       # normalize each branch before both gating and weighted sum
+  local_checkpoint_path: null
+  local_config_path: null      # original train YAML for legacy local checkpoints
+  d_model: 128                 # must equal embedding_dim
+  d_state: 64
+  d_conv: 4
+  expand: 2
+  headdim: 64
+  ngroups: 1
+  chunk_size: 256              # scan block size; never a history truncation
+  alpha_init: 1.0e-3
+  history_frames: 1           # local embeddings per input token, including current; 1 bypasses fusion
+  history_stride: 1           # frame gap within the history window; tokens still advance every frame
+  cache_local_embeddings: true # active only when the entire local encoder is frozen
+  visual_chunk_size: 20
+  checkpoint_visual: true      # recompute visual activations during joint backward
+  freeze_bn_stats: true        # false restores original only_bn running-stat updates
+  use_residual: false
+
 # Encoder output dimension.
 # With embedding_normalization=l2 and the current TCC similarity scaling:
 #   embedding_dim=128 → softmax_temperature≈0.001

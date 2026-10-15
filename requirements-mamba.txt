@@ -1,0 +1,4 @@
+# Optional CUDA extensions, built for the PyTorch already in your environment:
+# python -m pip install --no-build-isolation -r requirements-mamba.txt
+mamba-ssm==2.3.2.post1
+causal-conv1d==1.6.2.post1

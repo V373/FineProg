@@ -36,6 +36,7 @@ class H5VideoDataset(Dataset):
         sample_all: bool = False,
         sample_all_stride: int = 1,
         transport_frames_as_uint8: bool = False,
+        full_episode: bool = False,
     ):
         """
         Initialize H5 Video Dataset.
@@ -58,6 +59,7 @@ class H5VideoDataset(Dataset):
         """
         self.h5_path = h5_path
         self.config_path = config_path
+        self.full_episode = full_episode
         
         # Load config from YAML if provided
         if config_path is not None and Path(config_path).exists():
@@ -245,6 +247,8 @@ class H5VideoDataset(Dataset):
         frames_np = cached['frames']   # [T, 224, 224, 3] uint8
         seq_len = frames_np.shape[0]
         action_id = cached['action_id']
+        if seq_len < 1:
+            raise ValueError(f"Empty episode: {video_id}")
         
         # Step 1: Sample target time steps from full video
         if self.sample_all:
@@ -257,6 +261,13 @@ class H5VideoDataset(Dataset):
             target_steps = self._sample_offset_uniform(seq_len)
         
         T_out = len(target_steps)  # clip_len (train) or T_out (export all frames)
+
+        if self.full_episode:
+            frames = torch.from_numpy(frames_np).permute(0, 3, 1, 2)
+            if not self.transport_frames_as_uint8:
+                frames = frames.float().div(255)
+            return {"frames_full": frames, "target_steps": torch.from_numpy(target_steps),
+                    "seq_len": seq_len, "action_id": action_id, "video_id": video_id}
 
         # Step 2: Construct causal context for each target step
         # Result: [T_out, context_size]
@@ -339,6 +350,18 @@ def collate_fn(batch: list) -> Dict[str, Any]:
     }
 
 
+def collate_episodes(batch):
+    """Keep full episode inputs ragged; only fixed-size loss metadata is stacked."""
+    key = next(k for k in ("frames_full", "frame_feats", "raw_embeddings") if k in batch[0])
+    return {
+        key: [item[key] for item in batch],
+        "target_steps": torch.stack([item["target_steps"] for item in batch]),
+        "seq_len": torch.tensor([item["seq_len"] for item in batch], dtype=torch.int32),
+        "action_id": torch.tensor([item["action_id"] for item in batch], dtype=torch.int32),
+        "video_id": [item["video_id"] for item in batch],
+    }
+
+
 def build_dataloader(
     config_path: Optional[str] = None,
     h5_path: Optional[str] = None,
@@ -350,6 +373,8 @@ def build_dataloader(
     sample_all: bool = False,
     sample_all_stride: int = 1,
     transport_frames_as_uint8: bool = False,
+    full_episode: bool = False,
+    encoder_config: Optional[dict] = None,
 ) -> torch.utils.data.DataLoader:
     """
     Build PyTorch DataLoader for H5 video dataset.
@@ -420,7 +445,11 @@ def build_dataloader(
         sample_all=config_sample_all,
         sample_all_stride=config_sample_all_stride,
         transport_frames_as_uint8=config_transport_frames_as_uint8,
+        full_episode=full_episode,
     )
+    if encoder_config is not None:
+        for key in ("clip_len", "context_size", "context_stride"):
+            setattr(dataset, key, encoder_config[key])
     
     # Create dataloader with custom collate_fn
     dataloader = torch.utils.data.DataLoader(
@@ -428,7 +457,7 @@ def build_dataloader(
         batch_size=config_batch_size,
         num_workers=config_num_workers,
         shuffle=config_shuffle,
-        collate_fn=collate_fn,
+        collate_fn=collate_episodes if full_episode else collate_fn,
         pin_memory=torch.cuda.is_available(),
         persistent_workers=(config_num_workers > 0),
     )
@@ -648,8 +677,10 @@ class FeatureCacheDataset(Dataset):
                     sampling_strategy, random_offset) are reused verbatim.
     """
 
-    def __init__(self, cache: Dict[str, Any], h5_dataset: "H5VideoDataset"):
+    def __init__(self, cache: Dict[str, Any], h5_dataset: "H5VideoDataset", input_key="frame_feats"):
         self._cache = cache
+        self.full_episode = h5_dataset.full_episode
+        self.input_key = input_key
         self.video_ids = h5_dataset.video_ids
         self._action_ids = {
             vid: h5_dataset._frames_cache[vid]["action_id"]
@@ -680,6 +711,10 @@ class FeatureCacheDataset(Dataset):
             target_steps = self._sample_stride(seq_len)
         else:
             target_steps = self._sample_offset_uniform(seq_len)
+
+        if self.full_episode:
+            return {self.input_key: feats, "target_steps": torch.from_numpy(target_steps),
+                    "seq_len": seq_len, "action_id": action_id, "video_id": video_id}
 
         # Build causal context index array [clip_len, context_size]
         context_indices = np.zeros((self.clip_len, self.context_size), dtype=np.int32)
@@ -721,6 +756,7 @@ def build_feature_cache_dataloader(
     h5_dataset: "H5VideoDataset",
     batch_size: int,
     num_workers: int = 0,
+    input_key: str = "frame_feats",
 ) -> torch.utils.data.DataLoader:
     """
     Build a DataLoader backed by pre-computed backbone features.
@@ -734,13 +770,13 @@ def build_feature_cache_dataloader(
     Returns:
         DataLoader yielding batches with key "backbone_feats" instead of "frames".
     """
-    dataset = FeatureCacheDataset(cache, h5_dataset)
+    dataset = FeatureCacheDataset(cache, h5_dataset, input_key=input_key)
     return torch.utils.data.DataLoader(
         dataset,
         batch_size=batch_size,
         shuffle=True,
         num_workers=num_workers,
-        collate_fn=_collate_cache_fn,
+        collate_fn=collate_episodes if dataset.full_episode else _collate_cache_fn,
         pin_memory=torch.cuda.is_available(),
         persistent_workers=(num_workers > 0),
     )

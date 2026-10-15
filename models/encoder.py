@@ -28,16 +28,17 @@ is the single place where the normalization contract is applied, so the
 regular forward path, the backbone-cache path and the dict-returning path all
 share exactly one normalization step.
 
-The encoder does NOT:
-- Sample frames (done by dataset)
-- Construct temporal context (done by dataset)
-- Compute losses
+With memory enabled, complete episodes use encode_local_episode followed by
+forward_episode; contexts are built before Mamba2 consumes all raw embeddings.
+Normalization is applied after the memory residual. Dataset sampling still only
+selects loss targets; the encoder never computes losses.
 """
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import yaml
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 from typing import Dict, Optional, Union
 
@@ -80,7 +81,10 @@ class TCCEncoder(nn.Module):
         return_backbone_feats: bool = False,
         embedding_dim: int = 128,
         embedding_normalization=_UNSET,
-        debug: bool = False
+        debug: bool = False,
+        memory_config: Optional[dict] = None,
+        train_base: Optional[str] = None,
+        train_embedding: Optional[bool] = None,
     ):
         """
         Initialize TCCEncoder.
@@ -141,6 +145,7 @@ class TCCEncoder(nn.Module):
         _pretrained = pretrained
         _backbone_name = 'resnet50_conv4c'
         _embedding_normalization = _UNSET
+        train_cfg = {}
 
         if train_config_path is not None and Path(train_config_path).exists():
             with open(train_config_path, 'r') as f:
@@ -162,8 +167,8 @@ class TCCEncoder(nn.Module):
             _embedding_normalization = embedding_normalization
 
         # Store training config for configure_trainability()
-        self._train_base = _train_base
-        self._train_embedding = _train_embedding
+        self._train_base = _train_base if train_base is None else train_base
+        self._train_embedding = _train_embedding if train_embedding is None else train_embedding
         self.pretrained = _pretrained
         self._backbone_name = _backbone_name
         self.return_backbone_feats = return_backbone_feats
@@ -209,7 +214,26 @@ class TCCEncoder(nn.Module):
         # ------------------------------------------------------------------ #
         # 4. Apply trainability rules immediately after construction
         # ------------------------------------------------------------------ #
+        self.memory = None
+        self.memory_config = {}
+        self.enable_memory(train_cfg.get("memory", {}) if memory_config is None else memory_config)
         self.configure_trainability()
+
+    def enable_memory(self, config):
+        self.memory_config = dict(config)
+        if config.get("enabled", False):
+            if self.context_size != 2 or self.context_stride < 1:
+                raise ValueError("Memory requires two-frame causal contexts and a positive stride.")
+            from .streaming_mamba2 import DualStreamingMamba2, StreamingMamba2
+            memory_cls = DualStreamingMamba2 if config.get("dual_branch", False) else StreamingMamba2
+            self.memory = memory_cls(self.embedding_dim, config)
+            self.memory_config.update(self.memory.config)
+
+    def train(self, mode=True):
+        super().train(mode)
+        if mode and getattr(self, "memory", None) is not None:
+            self.configure_trainability()
+        return self
 
     @staticmethod
     def _resolve_embedding_dim(value) -> int:
@@ -306,6 +330,13 @@ class TCCEncoder(nn.Module):
                 param.requires_grad = False
             self.temporal_embedder.eval()
 
+        if self.memory is not None and self.memory_config.get("freeze_bn_stats", True):
+            # Optional fixed statistics for causal training; affine flags stay intact.
+            # False preserves the original FineProg only_bn training behavior.
+            for module in self.backbone.modules():
+                if isinstance(module, nn.modules.batchnorm._BatchNorm):
+                    module.eval()
+
     def get_trainable_parameter_groups_summary(self) -> Dict[str, int]:
         """
         Return a summary of total and trainable parameter counts per sub-module.
@@ -324,14 +355,28 @@ class TCCEncoder(nn.Module):
 
         bb_total, bb_trainable = _count(self.backbone)
         emb_total, emb_trainable = _count(self.temporal_embedder)
-        return {
+        result = {
             "backbone_total": bb_total,
             "backbone_trainable": bb_trainable,
             "embedder_total": emb_total,
             "embedder_trainable": emb_trainable,
         }
+        if self.memory is not None:
+            result["memory_total"], result["memory_trainable"] = _count(self.memory)
+        return result
     
     def forward(self, frames: torch.Tensor, return_backbone_feats: bool = None) -> Union[torch.Tensor, Dict[str, torch.Tensor]]:
+        if self.memory is not None:
+            raise ValueError("Memory needs complete episodes: use forward_episode or encode_step.")
+        assert frames.shape[1] == self.clip_len, \
+            f"Input clip_len {frames.shape[1]} does not match config clip_len {self.clip_len}"
+        return self._encode_contexts(frames, return_backbone_feats)
+
+    def encode_local_raw(self, contexts):
+        """Differentiable local projection, for any number of contexts; no normalization."""
+        return self._encode_contexts(contexts, False, raw=True)
+
+    def _encode_contexts(self, frames, return_backbone_feats=None, raw=False):
         """
         Forward pass of TCCEncoder.
         
@@ -371,8 +416,6 @@ class TCCEncoder(nn.Module):
         
         assert C == 3, f"Expected 3 channels, got {C}"
         assert H == 224 and W == 224, f"Expected 224x224 spatial size, got {H}x{W}"
-        assert clip_len == self.clip_len, \
-            f"Input clip_len {clip_len} does not match config clip_len {self.clip_len}"
         assert context_size == self.context_size, \
             f"Input context_size {context_size} does not match config context_size {self.context_size}"
         
@@ -411,9 +454,10 @@ class TCCEncoder(nn.Module):
         # Step 4: Temporal embedding - aggregate context and produce per-frame embeddings
         # [B, clip_len, context_size, 1024, 14, 14]
         # -> [B, clip_len, D]
-        # Routed through forward_from_feats() so that the regular path and the
-        # backbone-cache path share exactly one normalization step.
-        embeddings = self.forward_from_feats(grouped_backbone_feats) # here is temporal_embedder(backbone_feats) + _apply_embedding_normalization(embeddings)
+        # Keep the unnormalized local projection available to memory.
+        embeddings = self.temporal_embedder(grouped_backbone_feats)
+        if not raw:
+            embeddings = self._apply_embedding_normalization(embeddings)
         
         if self.debug:
             print(f"[TCCEncoder.forward] After temporal embedder: {embeddings.shape}")
@@ -435,9 +479,6 @@ class TCCEncoder(nn.Module):
         Used when extract_backbone_cache=True and train_base=only_bn so that
         the expensive backbone forward/backward is replaced by a cached lookup.
 
-        Also used internally by forward() so that both paths apply the encoder
-        embedding normalization contract exactly once.
-
         Args:
             backbone_feats: Pre-computed Conv4c features.
                             Shape: [B, clip_len, context_size, 1024, 14, 14]
@@ -446,8 +487,179 @@ class TCCEncoder(nn.Module):
             embeddings: Tensor of shape [B, clip_len, D].
                         FP32 unit-norm when embedding_normalization="l2".
         """
+        if self.memory is not None:
+            raise ValueError("Memory needs full frame features, not sampled contexts.")
         embeddings = self.temporal_embedder(backbone_feats)
         return self._apply_embedding_normalization(embeddings)
+
+    @contextmanager
+    def _recompute_bn_stats(self):
+        """Use temporary BN buffers so activation recomputation cannot update them twice."""
+        buffers = [(m, m.running_mean, m.running_var, m.num_batches_tracked)
+                   for m in self.backbone.modules()
+                   if isinstance(m, nn.modules.batchnorm._BatchNorm)
+                   and m.training and m.track_running_stats]
+        try:
+            for m, mean, var, count in buffers:
+                m.running_mean, m.running_var = mean.clone(), var.clone()
+                m.num_batches_tracked = count.clone()
+            yield
+        finally:
+            for m, mean, var, count in buffers:
+                m.running_mean, m.running_var, m.num_batches_tracked = mean, var, count
+
+    def encode_local_episode(self, frames, *, from_feats=False):
+        """[T,3,H,W] (or [T,C,h,w] features) -> [T,D], with full visual gradients.
+
+        Transfer video frames once, then build the same ordered context chunks.
+        Cached backbone features retain chunked transfers to bound device memory.
+        Checkpointing recomputes local activations; it never detaches history.
+        """
+        from torch.utils.checkpoint import checkpoint
+        if len(frames) < 1:
+            raise ValueError("An episode must contain at least one observation.")
+        chunk_size = int(self.memory_config.get("visual_chunk_size", self.clip_len))
+        if chunk_size < 1:
+            raise ValueError("memory.visual_chunk_size must be positive.")
+        device = next(self.parameters()).device
+        local_fn = self.temporal_embedder if from_feats else self.encode_local_raw
+        local_trainable = any(p.requires_grad for p in self.temporal_embedder.parameters())
+        if not from_feats:
+            local_trainable |= any(p.requires_grad for p in self.backbone.parameters())
+        recompute = (self.training and torch.is_grad_enabled() and local_trainable
+                     and self.memory_config.get("checkpoint_visual", True))
+        if not from_feats:
+            frames = frames.to(device, non_blocking=True)
+        chunks = []
+        for start in range(0, len(frames), chunk_size):
+            times = torch.arange(start, min(start + chunk_size, len(frames)), device=frames.device)
+            offsets = torch.arange(self.context_size - 1, -1, -1, device=frames.device)
+            indices = (times[:, None] - offsets * self.context_stride).clamp_min(0)
+            contexts = frames[indices].unsqueeze(0).to(device)
+            contexts = contexts.float().div(255) if contexts.dtype == torch.uint8 else contexts.float()
+            raw = (checkpoint(local_fn, contexts, use_reentrant=False,
+                              context_fn=lambda: (nullcontext(), self._recompute_bn_stats()))
+                   if recompute else local_fn(contexts))
+            chunks.append(raw[0])
+        return torch.cat(chunks)
+
+    @torch.no_grad()
+    def _accumulate_memory_norms(self, raw, memory_output, stats, *, count, valid=None):
+        """Sum full-episode norms and optional dual weights over real frames."""
+        kwargs = ({"weight_stats": stats, "valid": valid}
+                  if self.memory_config.get("dual_branch", False) else {})
+        fused = self.memory.fuse(raw.detach(), memory_output.detach(), **kwargs)
+        input_norms = raw.detach().float().norm(dim=-1)
+        output_norms = fused.float().norm(dim=-1)
+        if valid is not None:
+            input_norms = input_norms.masked_fill(~valid, 0)
+            output_norms = output_norms.masked_fill(~valid, 0)
+        for key, norms in (("input_norm_sum", input_norms),
+                           ("pre_normalization_norm_sum", output_norms)):
+            value = norms.sum()
+            stats[key] = stats[key] + value if key in stats else value
+        stats["num_frames"] = stats.get("num_frames", 0) + count
+
+    def forward_episode(self, raw, lengths, target_steps=None, *, memory_norm_stats=None):
+        """Full sequence forward, then optional loss gather. raw may be a ragged list.
+
+        Optional memory_norm_stats accumulates detached norms, dual weights and frame counts
+        over all real observations, before sampling and excluding right padding.
+        """
+        if self.memory is None:
+            raise ValueError("forward_episode requires memory.enabled=true.")
+        lengths_cpu = torch.as_tensor(lengths, dtype=torch.long, device="cpu")
+        if lengths_cpu.ndim != 1 or len(lengths_cpu) != len(raw) or not len(raw):
+            raise ValueError("Invalid episode lengths.")
+        lengths_list = lengths_cpu.tolist()
+        if any(n < 1 or n > len(x) for n, x in zip(lengths_list, raw)):
+            raise ValueError("Invalid episode length.")
+        if target_steps is not None:
+            if not isinstance(target_steps, torch.Tensor):
+                target_steps = torch.stack([torch.as_tensor(s) for s in target_steps])
+            indices_cpu = target_steps.to(device="cpu", dtype=torch.long)
+            if indices_cpu.ndim != 2 or len(indices_cpu) != len(raw):
+                raise ValueError("target_steps must have shape [B, K].")
+            if ((indices_cpu < 0) | (indices_cpu >= lengths_cpu[:, None])).any():
+                raise ValueError("target_steps must index real episode observations.")
+        if self._train_base != "frozen" or self._train_embedding:
+            # Preserve per-video AMP projection and gradient accumulation when
+            # jointly training the visual encoder. Small rounding differences
+            # can be amplified by the low-temperature alignment loss.
+            indices = indices_cpu.to(raw[0].device) if target_steps is not None else None
+            outputs = []
+            for b, n in enumerate(lengths_list):
+                e = raw[b][:n]
+                y = self.memory(e.unsqueeze(0))[0]
+                if memory_norm_stats is not None:
+                    self._accumulate_memory_norms(e, y, memory_norm_stats, count=n)
+                if indices is not None:
+                    e, y = e[indices[b]], y[indices[b]]
+                outputs.append(self._apply_embedding_normalization(self.memory.fuse(e, y)))
+            return (torch.stack(outputs) if target_steps is not None else
+                    nn.utils.rnn.pad_sequence(outputs, batch_first=True))
+        # Causal memory cannot let right padding affect any real observation.
+        e = nn.utils.rnn.pad_sequence(
+            [x[:n] for x, n in zip(raw, lengths_list)], batch_first=True)
+        y = self.memory(e)
+        if memory_norm_stats is not None:
+            valid = torch.arange(e.shape[1], device=e.device)[None, :] < lengths_cpu.to(e.device)[:, None]
+            self._accumulate_memory_norms(e, y, memory_norm_stats,
+                                          count=sum(lengths_list), valid=valid)
+        if target_steps is not None:
+            idx = indices_cpu.to(device=e.device)
+            rows = torch.arange(len(raw), device=e.device)[:, None]
+            e, y = e[rows, idx], y[rows, idx]
+        outputs = self._apply_embedding_normalization(self.memory.fuse(e, y))
+        if target_steps is None:
+            valid = torch.arange(e.shape[1], device=e.device)[None, :] < lengths_cpu.to(e.device)[:, None]
+            outputs = outputs.masked_fill(~valid[..., None], 0)
+        return outputs
+
+    def forward_sequence(self, raw, lengths):
+        return self.forward_episode(raw, lengths)
+
+    def init_stream_state(self, batch_size):
+        state = self.memory.init_stream_state(batch_size)
+        state["ring"] = None
+        state["embedding"] = torch.zeros(
+            batch_size, self.embedding_dim, device=state["steps"].device)
+        return state
+
+    @torch.no_grad()
+    def encode_step(self, obs, state):
+        if self.training:
+            raise ValueError("encode_step is inference-only; call encoder.eval().")
+        # Official step caches follow parameter dtypes, not an outer AMP context.
+        with torch.autocast(device_type=obs.device.type, enabled=False):
+            obs = obs.float().div(255) if obs.dtype == torch.uint8 else obs.float()
+            feats = self.backbone(obs.contiguous(memory_format=torch.channels_last))
+            if state["ring"] is None:
+                state["ring"] = feats.new_zeros((len(obs), self.context_stride + 1, *feats.shape[1:]))
+            times = state["steps"]
+            rows = torch.arange(len(obs), device=obs.device)
+            current = times % (self.context_stride + 1)
+            past = (times - self.context_stride).clamp_min(0) % (self.context_stride + 1)
+            state["ring"][rows, current] = feats
+            contexts = torch.stack((state["ring"][rows, past], feats), dim=1).unsqueeze(1)
+            raw = self.temporal_embedder(contexts)[:, 0]
+            y = self.memory.step(raw, state)
+            state["embedding"] = self._apply_embedding_normalization(self.memory.fuse(raw, y))
+            state["steps"].add_(1)
+        return state["embedding"], state
+
+    @staticmethod
+    def reset_stream_state(state, env_mask):
+        mask = torch.as_tensor(env_mask, dtype=torch.bool, device=state["steps"].device)
+        for value in state.values():
+            if value is not None:
+                value[mask] = 0
+
+    @staticmethod
+    def get_stream_embedding(state):
+        if bool((state["steps"] == 0).any()):
+            raise ValueError("Stream has no observation after reset.")
+        return state["embedding"]
 
 
 def sanity_check(
