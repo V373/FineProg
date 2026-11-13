@@ -1,0 +1,9 @@
+# Independent full-covariance Gaussians, fitted after expert-only PCA.
+enable_pca: true
+pca_dim: 32
+num_bins: 20
+variance_floor: 1.0e-8
+batch_size: 20
+# The CLI overrides these with task.progress[stage1|stage2].
+temperature: 1.0e4
+ood_threshold: 0.05

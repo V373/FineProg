@@ -1,5 +1,0 @@
-processed_h5_name,video_idx,source_video_name,source_video_path
-fruit_expert_videos-4vid_valid.h5,000001,demo_36.mp4,/home/user/zhangzk/projects/fineprog/datasets/raw/fruit_expert_videos/demo_36.mp4
-fruit_expert_videos-4vid_valid.h5,000002,demo_37.mp4,/home/user/zhangzk/projects/fineprog/datasets/raw/fruit_expert_videos/demo_37.mp4
-fruit_expert_videos-4vid_valid.h5,000003,demo_38.mp4,/home/user/zhangzk/projects/fineprog/datasets/raw/fruit_expert_videos/demo_38.mp4
-fruit_expert_videos-4vid_valid.h5,000004,demo_39.mp4,/home/user/zhangzk/projects/fineprog/datasets/raw/fruit_expert_videos/demo_39.mp4

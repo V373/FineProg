@@ -1,7 +1,0 @@
-processed_h5_name,video_idx,source_video_name,source_video_path
-soccer-v2-6vid_subopt.h5,000001,soccer_subopt_01_SS1_miss_align_score_left.mp4,/home/user/zhangzk/projects/fineprog/.vibe/.claude/opus/20261029-181956_metaworld_fail/videos/soccer_subopt_01_SS1_miss_align_score_left.mp4
-soccer-v2-6vid_subopt.h5,000002,soccer_subopt_02_SS1_miss_align_score_right.mp4,/home/user/zhangzk/projects/fineprog/.vibe/.claude/opus/20261029-181956_metaworld_fail/videos/soccer_subopt_02_SS1_miss_align_score_right.mp4
-soccer-v2-6vid_subopt.h5,000003,soccer_subopt_03_SS1_miss_align_score_over.mp4,/home/user/zhangzk/projects/fineprog/.vibe/.claude/opus/20261029-181956_metaworld_fail/videos/soccer_subopt_03_SS1_miss_align_score_over.mp4
-soccer-v2-6vid_subopt.h5,000004,soccer_subopt_04_SS2_hover_push_score_a.mp4,/home/user/zhangzk/projects/fineprog/.vibe/.claude/opus/20261029-181956_metaworld_fail/videos/soccer_subopt_04_SS2_hover_push_score_a.mp4
-soccer-v2-6vid_subopt.h5,000005,soccer_subopt_05_SS2_hover_push_score_b.mp4,/home/user/zhangzk/projects/fineprog/.vibe/.claude/opus/20261029-181956_metaworld_fail/videos/soccer_subopt_05_SS2_hover_push_score_b.mp4
-soccer-v2-6vid_subopt.h5,000006,soccer_subopt_06_SS2_hover_push_score_c.mp4,/home/user/zhangzk/projects/fineprog/.vibe/.claude/opus/20261029-181956_metaworld_fail/videos/soccer_subopt_06_SS2_hover_push_score_c.mp4

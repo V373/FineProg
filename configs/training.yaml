@@ -1,0 +1,40 @@
+lower:
+  pretrained_path: weights/imagenet/resnet50.pth
+  seed: 42
+  num_epochs: 20000
+  batch_size: 12
+  clip_len: 20
+  random_offset: 1
+  learning_rate: 0.0004
+  checkpoint_every_epochs: 2000
+  temperature: 0.001
+  variance_lambda: 0.001
+  triplet_margin: 0.2
+  triplet_weight: 0.5
+upper:
+  pretrained_path: weights/imagenet/efficientnet_b0.pth
+  seed: 43
+  l2_normalize: false
+  batch_size: 64
+  num_steps: 400
+  backbone_lr: 0.0001
+  head_lr: 0.001
+  eval_every: 100
+stage2:
+  seed: 42
+  num_epochs: 100
+  expert_batch_size: 2
+  query_batch_size: 1
+  clip_len: 20
+  query_steps: 20
+  refs_per_class: 4
+  random_offset: 1
+  learning_rate: 0.00004
+  set_weight: 1.0
+  set_tau: 0.128
+  checkpoint_every_epochs: 25
+  validation_chunk_size: 20
+  temperature: 0.001
+  variance_lambda: 0.001
+  triplet_margin: 0.2
+  triplet_weight: 0.5

@@ -1,5 +1,0 @@
-processed_h5_name,video_idx,source_video_name,source_video_path
-robomimic_transport_ph-4vid_valid.h5,000001,demo_32.mp4,/home/user/zhangzk/projects/fineprog/datasets/raw/robomimic_transport_ph/demo_32.mp4
-robomimic_transport_ph-4vid_valid.h5,000002,demo_103.mp4,/home/user/zhangzk/projects/fineprog/datasets/raw/robomimic_transport_ph/demo_103.mp4
-robomimic_transport_ph-4vid_valid.h5,000003,demo_125.mp4,/home/user/zhangzk/projects/fineprog/datasets/raw/robomimic_transport_ph/demo_125.mp4
-robomimic_transport_ph-4vid_valid.h5,000004,demo_168.mp4,/home/user/zhangzk/projects/fineprog/datasets/raw/robomimic_transport_ph/demo_168.mp4

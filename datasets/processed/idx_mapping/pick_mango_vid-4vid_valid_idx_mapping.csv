@@ -1,5 +1,0 @@
-processed_h5_name,video_idx,source_video_name,source_video_path,source_episode,source_frame_dir
-pick_mango_vid-4vid_valid.h5,000001,demo_41.mp4,datasets/raw/pick_mango_vid/demo_41.mp4,20260908171125,datasets/raw/zzk_fruits/collect_data/20260908171125/topFullImg
-pick_mango_vid-4vid_valid.h5,000002,demo_32.mp4,datasets/raw/pick_mango_vid/demo_32.mp4,20260908165944,datasets/raw/zzk_fruits/collect_data/20260908165944/topFullImg
-pick_mango_vid-4vid_valid.h5,000003,demo_51.mp4,datasets/raw/pick_mango_vid/demo_51.mp4,20260908171738,datasets/raw/zzk_fruits/collect_data/20260908171738/topFullImg
-pick_mango_vid-4vid_valid.h5,000004,demo_13.mp4,datasets/raw/pick_mango_vid/demo_13.mp4,20260908164606,datasets/raw/zzk_fruits/collect_data/20260908164606/topFullImg

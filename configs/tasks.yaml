@@ -1,0 +1,116 @@
+pick_mango:
+  data:
+    train: datasets/pick_mango/train.h5
+    valid: datasets/pick_mango/valid.h5
+    calibration: datasets/pick_mango/calibration.h5
+    fail: datasets/pick_mango/fail.h5
+  labels:
+    train: datasets/pick_mango/labels/train.csv
+    valid: datasets/pick_mango/labels/valid.csv
+    fail: datasets/pick_mango/labels/fail.csv
+  weights:
+    lower: weights/pick_mango/stage1_local.pt
+    upper: weights/pick_mango/stage1_upper.pt
+    stage2: weights/pick_mango/stage2_local.pt
+  progress:
+    stage1:
+      temperature: 1000
+      ood_threshold: 0.5
+    stage2:
+      temperature: 70
+      ood_threshold: 0.5
+  stage2:
+    query_split: fail
+    train_ids:
+    - '000001'
+    - '000002'
+    - '000003'
+    - '000004'
+    - '000006'
+    - '000007'
+    - 000008
+    - 000009
+    - '000011'
+    - '000012'
+    - '000014'
+    - '000015'
+    - '000016'
+    - 000018
+    valid_ids:
+    - '000005'
+    - '000010'
+    - '000013'
+    - '000017'
+drawer_place:
+  data:
+    train: datasets/drawer_place/train.h5
+    valid: datasets/drawer_place/valid.h5
+    calibration: datasets/drawer_place/calibration.h5
+    subopt: datasets/drawer_place/subopt.h5
+  labels: {}
+  weights:
+    lower: weights/drawer_place/stage1_local.pt
+  progress:
+    stage1:
+      temperature: 10000
+      ood_threshold: 0.5
+towel:
+  data:
+    train: datasets/towel/train.h5
+    valid: datasets/towel/valid.h5
+    calibration: datasets/towel/calibration.h5
+    subopt: datasets/towel/subopt.h5
+    fail: datasets/towel/fail.h5
+  labels:
+    train: datasets/towel/labels/train.csv
+    valid: datasets/towel/labels/valid.csv
+    subopt: datasets/towel/labels/subopt.csv
+    fail: datasets/towel/labels/fail.csv
+  weights:
+    lower: weights/towel/stage1_local.pt
+  progress:
+    stage1:
+      temperature: 7500
+      ood_threshold: 0.5
+can:
+  data:
+    train: datasets/can/train.h5
+    valid: datasets/can/valid.h5
+    calibration: datasets/can/calibration.h5
+    subopt: datasets/can/subopt.h5
+    fail: datasets/can/fail.h5
+  labels: {}
+  weights:
+    lower: weights/can/stage1_local.pt
+  progress:
+    stage1:
+      temperature: 10000
+      ood_threshold: 0.2
+square:
+  data:
+    train: datasets/square/train.h5
+    valid: datasets/square/valid.h5
+    calibration: datasets/square/calibration.h5
+    subopt: datasets/square/subopt.h5
+    fail: datasets/square/fail.h5
+  labels: {}
+  weights:
+    lower: weights/square/stage1_local.pt
+  progress:
+    stage1:
+      temperature: 10000
+      ood_threshold: 0.2
+drawer_open:
+  data:
+    train: datasets/drawer_open/train.h5
+    valid: datasets/drawer_open/valid.h5
+    calibration: datasets/drawer_open/calibration.h5
+    subopt: datasets/drawer_open/subopt.h5
+    fail: datasets/drawer_open/fail.h5
+  labels: {}
+  weights:
+    lower: weights/drawer_open/stage1_local.pt
+  progress:
+    stage1:
+      temperature: 10000
+      ood_threshold: 0.2

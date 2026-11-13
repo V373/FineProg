@@ -1,3 +1,0 @@
-[submodule "third_party/robomimic"]
-	path = third_party/robomimic
-	url = git@github.com:V373/robomimic.git
