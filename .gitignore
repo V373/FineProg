@@ -161,3 +161,11 @@ data/
 outputs/
 wandb/
 runs/
+
+# Agent session artifacts
+.vide/
+/.vibe/
+
+# Local experiment plans and benchmark results (keep source and tests in Git)
+/training_speed_bench.md
+/OOD_FILTER_PARAMETER_EVALUATION_PLAN.md
