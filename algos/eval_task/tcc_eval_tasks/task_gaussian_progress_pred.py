@@ -23,6 +23,14 @@ from fineprog.utils.embedding_normalization import (
     read_embedding_normalization,
     validate_embeddings_for_normalization,
 )
+from fineprog.utils.temporal_diagnostics import (
+    copy_prediction_provenance,
+    copy_trajectory_diagnostics,
+    parse_temporal_config,
+    render_prediction_diagnostics,
+    select_video_ids,
+    validate_prediction_sources,
+)
 
 _PROJ_ROOT = Path(__file__).resolve().parents[3]
 _MODEL_DATASET_NAMES = (
@@ -199,6 +207,13 @@ def _parse_pred_config(config: dict) -> dict:
             "conformal p-values."
         )
 
+    temporal_config = parse_temporal_config(config.get("temporal_diagnostics"))
+    if temporal_config["enabled"] and (not bool(save_posterior) or not enable_calibration):
+        raise ValueError(
+            "[gaussian_progress_pred] temporal_diagnostics requires save_posterior=true "
+            "and enable_calibration=true."
+        )
+
     return {
         "gaussian_model_h5_path": str(gaussian_model_h5_path),
         "nonexpert_h5_path": str(nonexpert_h5_path),
@@ -216,6 +231,7 @@ def _parse_pred_config(config: dict) -> dict:
         "enable_video": enable_video,
         "video_branch_weights": bool(video_branch_weights),
         "video_output_dir": str(video_output_dir) if video_output_dir is not None else None,
+        "temporal_diagnostics": temporal_config,
     }
 
 
@@ -808,6 +824,7 @@ def _infer_one_trajectory(
             is_ood = is_ood_raw.copy()
         output_arrays["is_ood_raw"] = is_ood_raw
         output_arrays["is_ood"] = is_ood
+        output_arrays["progress_gated_raw"] = _compute_progress_gated(progress_mean, is_ood_raw)
         output_arrays["progress_gated"] = _compute_progress_gated(
             progress_mean,
             is_ood,
@@ -1546,16 +1563,24 @@ def _compute_video_branch_weights(encoder, frames_np, expected_embeddings, targe
     with torch.no_grad(), torch.autocast(device_type=device.type, enabled=False):
         frames = torch.from_numpy(frames_np).permute(0, 3, 1, 2)
         raw = encoder.encode_local_episode(frames)
-        hook = encoder.memory.gate.register_forward_hook(
-            lambda module, inputs, logits: captured.append(logits.detach().softmax(-1).cpu())
-        )
-        try:
+        if getattr(encoder, "memory_config", {}).get("mode") == "cross_attention":
+            diagnostics = {}
             embeddings = encoder.forward_episode(
                 [raw], [len(frames_np)], torch.as_tensor(target_steps)[None],
-                memory_norm_stats=None,
+                diagnostics=diagnostics,
             )[0].cpu().numpy()
-        finally:
-            hook.remove()
+            captured.append(diagnostics["branch_weights"].cpu())
+        else:
+            hook = encoder.memory.gate.register_forward_hook(
+                lambda module, inputs, logits: captured.append(logits.detach().softmax(-1).cpu())
+            )
+            try:
+                embeddings = encoder.forward_episode(
+                    [raw], [len(frames_np)], torch.as_tensor(target_steps)[None],
+                    memory_norm_stats=None,
+                )[0].cpu().numpy()
+            finally:
+                hook.remove()
     if len(captured) != 1:
         raise ValueError("[gaussian_progress_pred] expected one fusion gate call per video.")
     if embeddings.shape != expected_embeddings.shape or not np.allclose(
@@ -1840,25 +1865,32 @@ def _save_prediction_videos(
 
             embedding_file = resources.enter_context(h5py.File(nonexpert_h5_path, "r"))
             attrs = embedding_file.attrs
-            checkpoint_path = _text_attr(attrs, "checkpoint_path", "embedding H5 root")
-            checkpoint_sha256 = _text_attr(attrs, "checkpoint_sha256", "embedding H5 root")
             processed_h5_path = Path(_text_attr(attrs, "processed_h5_path", "embedding H5 root"))
-            digest = hashlib.sha256()
-            with open(checkpoint_path, "rb") as checkpoint_file:
-                for block in iter(lambda: checkpoint_file.read(1024 * 1024), b""):
-                    digest.update(block)
-            if digest.hexdigest() != checkpoint_sha256:
-                raise ValueError("[gaussian_progress_pred] video checkpoint SHA256 mismatch.")
-            if not torch.cuda.is_available():
-                raise RuntimeError("[gaussian_progress_pred] Mamba2 video weights require CUDA.")
-            encoder = build_encoder_from_checkpoint(checkpoint_path, torch.device("cuda")).eval()
-            if not hasattr(encoder.memory, "gate"):
-                raise ValueError("[gaussian_progress_pred] video weights require a dual encoder.")
-            memory = encoder.memory
-            branch_labels = (
-                f"Long HF{memory.long_history_frames}/HS{memory.long_history_stride}",
-                f"Short HF{memory.short_history_frames}/HS{memory.short_history_stride}",
-            )
+            need_recompute = any(
+                f"videos/{video_id}/temporal_diagnostics/branch_weights" not in embedding_file
+                for video_id in output_file["nonexperts"])
+            if need_recompute:
+                checkpoint_path = _text_attr(attrs, "checkpoint_path", "embedding H5 root")
+                checkpoint_sha256 = _text_attr(attrs, "checkpoint_sha256", "embedding H5 root")
+                digest = hashlib.sha256()
+                with open(checkpoint_path, "rb") as checkpoint_file:
+                    for block in iter(lambda: checkpoint_file.read(1024 * 1024), b""):
+                        digest.update(block)
+                if digest.hexdigest() != checkpoint_sha256:
+                    raise ValueError("[gaussian_progress_pred] video checkpoint SHA256 mismatch.")
+                if not torch.cuda.is_available():
+                    raise RuntimeError("[gaussian_progress_pred] Mamba2 video weights require CUDA.")
+                encoder = build_encoder_from_checkpoint(checkpoint_path, torch.device("cuda")).eval()
+                if not hasattr(encoder.memory, "gate"):
+                    raise ValueError("[gaussian_progress_pred] video weights require a dual encoder.")
+                memory = encoder.memory
+                if getattr(encoder, "memory_config", {}).get("mode") == "cross_attention":
+                    branch_labels = ("Long cross-attention", "Short source")
+                else:
+                    branch_labels = (
+                        f"Long HF{memory.long_history_frames}/HS{memory.long_history_stride}",
+                        f"Short HF{memory.short_history_frames}/HS{memory.short_history_stride}",
+                    )
         else:
             processed_h5_path = _processed_h5_path_from_embedding(nonexpert_h5_path)
         bin_progress_values = np.asarray(
@@ -1885,15 +1917,18 @@ def _save_prediction_videos(
                     f"{raw_video_path.name}"
                 )
                 weights = None
-                if encoder is not None:
+                if branch_weights:
                     source_video = embedding_file[f"videos/{video_id}"]
                     target_steps = np.asarray(video_group["target_steps"][:])
                     if not np.array_equal(source_video["target_steps"][:], target_steps):
                         raise ValueError("[gaussian_progress_pred] source/prediction target_steps mismatch.")
-                    weights = _compute_video_branch_weights(
-                        encoder, processed_videos_group[video_id]["frames"][:],
-                        source_video["embeddings"][:], target_steps,
-                    )
+                    if "temporal_diagnostics/branch_weights" in source_video:
+                        weights = source_video["temporal_diagnostics/branch_weights"][:]
+                    else:
+                        weights = _compute_video_branch_weights(
+                            encoder, processed_videos_group[video_id]["frames"][:],
+                            source_video["embeddings"][:], target_steps,
+                        )
                 _save_prediction_video(
                     video_id=video_id,
                     raw_video_path=raw_video_path,
@@ -2064,6 +2099,10 @@ class GaussianProgressPredTask(BaseTask):
                     "[gaussian_progress_pred] non-expert H5 has an empty /videos group."
                 )
 
+            diagnostic_video_ids = set(select_video_ids(pred_config["temporal_diagnostics"], video_ids))
+            if diagnostic_video_ids:
+                validate_prediction_sources(nonexpert_h5_path, gaussian_model_h5_path, calibration_h5_path)
+
             timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
             output_dir, output_h5_path, temporary_h5_path = _build_output_paths(
                 gaussian_model_h5_path=gaussian_model_h5_path,
@@ -2084,6 +2123,7 @@ class GaussianProgressPredTask(BaseTask):
                     ]
                     output_file.attrs["gaussian_model_h5_path"] = gaussian_model_h5_path
                     output_file.attrs["nonexpert_h5_path"] = nonexpert_h5_path
+                    copy_prediction_provenance(nonexpert_file, output_file)
                     output_file.attrs["num_bins"] = int(model["num_bins"])
                     output_file.attrs["enable_pca"] = bool(model["enable_pca"])
                     output_file.attrs["input_embedding_dim"] = int(
@@ -2238,6 +2278,18 @@ class GaussianProgressPredTask(BaseTask):
                                 "progress_gated",
                                 data=inferred["progress_gated"],
                             )
+                            output_video_group.create_dataset(
+                                "progress_gated_raw", data=inferred["progress_gated_raw"],
+                            )
+                        for label_name in ("phase_labels", "keyframe_labels"):
+                            if label_name in videos_group[video_id]:
+                                videos_group[video_id].copy(
+                                    videos_group[video_id][label_name], output_video_group, name=label_name,
+                                )
+                        if video_id in diagnostic_video_ids:
+                            copy_trajectory_diagnostics(
+                                videos_group[video_id], output_video_group, target_steps,
+                            )
 
                         current_steps = int(query_embeddings.shape[0])
                         current_support_sum = float(
@@ -2269,6 +2321,10 @@ class GaussianProgressPredTask(BaseTask):
                 output_dir=pred_config["video_output_dir"],
             )
 
+        temporal_result = render_prediction_diagnostics(
+            output_h5_path, pred_config["temporal_diagnostics"],
+        )
+
         if total_query_steps < 1:
             raise ValueError(
                 "[gaussian_progress_pred] no non-expert query steps were evaluated."
@@ -2284,4 +2340,5 @@ class GaussianProgressPredTask(BaseTask):
             "metric_name": "global_mean_min_mahalanobis_sq",
             "metric_value": float(global_mean_min_mahalanobis_sq),
             "output_h5_path": str(output_h5_path),
+            **temporal_result,
         }

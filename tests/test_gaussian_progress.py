@@ -21,6 +21,7 @@ from fineprog.algos.eval_task.tcc_eval_tasks.task_gaussian_progress_pred import 
     _compute_progress_gated,
     _compute_progress_posterior,
     _compute_squared_mahalanobis,
+    _filter_is_ood_short_id_gaps,
     _infer_one_trajectory,
     _parse_pred_config,
     _processed_h5_path_from_embedding,
@@ -133,23 +134,42 @@ def test_config_v2_and_task_factory_registration():
         "enable_calibration",
         "calibration_h5_path",
         "ood_p_value_threshold",
+        "enable_ood_filter",
+        "ood_filter_max_gap",
+        "ood_filter_min_ood_run",
         "save_posterior",
         "enable_visualization",
         "enable_video",
+        "temporal_diagnostics",
+        "temporal_intervention",
     }
+    assert resolved["temporal_diagnostics"]["enabled"] is False
+    assert resolved["temporal_intervention"]["enabled"] is False
     assert Path(resolved["gaussian_model_h5_path"]).is_absolute()
     assert Path(resolved["nonexpert_h5_path"]).is_absolute()
     assert Path(resolved["calibration_h5_path"]).is_absolute()
     assert Path(resolved["calibration_h5_path"]).name == (
         "fruit_expert_videos-20vid_valid-embd.h5"
     )
-    parsed = _parse_pred_config(resolved)
+    assert resolved["enable_ood_filter"] is True
+    assert resolved["ood_filter_max_gap"] == 5
+    assert resolved["ood_filter_min_ood_run"] == 20
+    parsed = _parse_pred_config(
+        {
+            **resolved,
+            "ood_filter_max_gap": 1,
+            "ood_filter_min_ood_run": 2,
+        }
+    )
     assert np.isfinite(parsed["posterior_temperature"])
     assert parsed["posterior_temperature"] > 0.0
     assert parsed["entropy_epsilon"] == 1.0e-12
     assert parsed["enable_calibration"] is True
     assert parsed["calibration_h5_path"] == resolved["calibration_h5_path"]
-    assert parsed["ood_p_value_threshold"] == 0.3
+    assert parsed["ood_p_value_threshold"] == resolved["ood_p_value_threshold"]
+    assert parsed["enable_ood_filter"] is True
+    assert parsed["ood_filter_max_gap"] == 1
+    assert parsed["ood_filter_min_ood_run"] == 2
     assert resolved["save_posterior"] is True
     assert resolved["enable_visualization"] is True
     assert resolved["enable_video"] is True
@@ -161,6 +181,11 @@ def test_config_v2_and_task_factory_registration():
     )
     assert not defaults["enable_visualization"]
     assert not defaults["enable_video"]
+    assert defaults["video_branch_weights"] is False
+    assert defaults["video_output_dir"] is None
+    assert not defaults["enable_ood_filter"]
+    assert defaults["ood_filter_max_gap"] is None
+    assert defaults["ood_filter_min_ood_run"] is None
     assert isinstance(build_task("gaussian_progress_pred"), GaussianProgressPredTask)
 
 
@@ -173,9 +198,11 @@ def test_config_v2_and_task_factory_registration():
         ("entropy_epsilon", 0.0),
         ("entropy_epsilon", np.inf),
         ("enable_calibration", "false"),
+        ("enable_ood_filter", "false"),
         ("save_posterior", "true"),
         ("enable_visualization", "true"),
         ("enable_video", "true"),
+        ("video_branch_weights", "true"),
     ],
 )
 def test_invalid_prediction_config_is_rejected(key, value):
@@ -188,13 +215,44 @@ def test_invalid_prediction_config_is_rejected(key, value):
         _parse_pred_config(config)
 
 
-def test_video_config_requires_visualization():
-    with pytest.raises(ValueError, match="enable_visualization=true"):
+def test_ood_filter_config_requires_calibration_and_positive_integer_parameters():
+    with pytest.raises(ValueError, match="requires enable_calibration=true"):
+        _parse_pred_config(
+            {
+                "gaussian_model_h5_path": "model.h5",
+                "nonexpert_h5_path": "query.h5",
+                "enable_ood_filter": True,
+            }
+        )
+
+    config = {
+        "gaussian_model_h5_path": "model.h5",
+        "nonexpert_h5_path": "query.h5",
+        "enable_calibration": True,
+        "calibration_h5_path": "calibration.h5",
+        "ood_p_value_threshold": 0.5,
+        "enable_ood_filter": True,
+        "ood_filter_max_gap": 1,
+        "ood_filter_min_ood_run": 2,
+    }
+    parsed = _parse_pred_config(config)
+    assert parsed["ood_filter_max_gap"] == 1
+    assert parsed["ood_filter_min_ood_run"] == 2
+
+    for name in ("ood_filter_max_gap", "ood_filter_min_ood_run"):
+        for invalid_value in (None, 0, -1, 1.0, True, "1"):
+            with pytest.raises(ValueError, match=name):
+                _parse_pred_config({**config, name: invalid_value})
+
+
+def test_video_config_can_run_without_figures_but_requires_video_inputs():
+    with pytest.raises(ValueError, match="requires save_posterior=true"):
         _parse_pred_config(
             {
                 "gaussian_model_h5_path": "model.h5",
                 "nonexpert_h5_path": "query.h5",
                 "enable_video": True,
+                "save_posterior": False,
             }
         )
 
@@ -205,12 +263,85 @@ def test_video_config_requires_visualization():
             "enable_calibration": True,
             "calibration_h5_path": "calibration.h5",
             "ood_p_value_threshold": 0.5,
-            "enable_visualization": True,
+            "enable_visualization": False,
             "enable_video": True,
         }
     )
-    assert parsed["enable_visualization"] is True
+    assert parsed["enable_visualization"] is False
     assert parsed["enable_video"] is True
+
+    weight_output_dir = "/tmp/gaussian_weight_videos"
+    parsed = _parse_pred_config(
+        {
+            "gaussian_model_h5_path": "model.h5",
+            "nonexpert_h5_path": "query.h5",
+            "video_branch_weights": True,
+            "video_output_dir": weight_output_dir,
+        }
+    )
+    assert parsed["video_branch_weights"] is True
+    assert Path(parsed["video_output_dir"]) == Path(weight_output_dir)
+
+
+@pytest.mark.parametrize("branch_weights", [False, True])
+def test_video_only_prediction_skips_figure_renderer(
+    tmp_path, monkeypatch, branch_weights
+):
+    monkeypatch.setattr(task_gaussian_progress_pred, "_PROJ_ROOT", tmp_path)
+    model_path, _ = _identity_model(tmp_path)
+    calibration_path = tmp_path / "calibration.h5"
+    query_path = tmp_path / "query.h5"
+    records = {
+        "video": (
+            np.array([[0.0, 0.0], [1.0, 0.0], [3.0, 0.0], [4.0, 0.0]]),
+            np.arange(4),
+        )
+    }
+    _write_nonexpert_h5(calibration_path, records)
+    _write_nonexpert_h5(query_path, records)
+
+    rendered_calls = []
+
+    def record_video_render(output_h5_path, **kwargs):
+        rendered_calls.append((Path(output_h5_path), kwargs))
+
+    monkeypatch.setattr(
+        task_gaussian_progress_pred,
+        "_save_prediction_videos",
+        record_video_render,
+    )
+    monkeypatch.setattr(
+        task_gaussian_progress_pred,
+        "_save_prediction_visualizations",
+        lambda _output_h5_path: pytest.fail("figure renderer must stay disabled"),
+    )
+
+    task = GaussianProgressPredTask()
+    task.configure(
+        {
+            "gaussian_model_h5_path": str(model_path),
+            "nonexpert_h5_path": str(query_path),
+            "enable_calibration": True,
+            "calibration_h5_path": str(calibration_path),
+            "ood_p_value_threshold": 0.5,
+            "enable_visualization": False,
+            "enable_video": True,
+            "video_branch_weights": branch_weights,
+            "video_output_dir": str(tmp_path / "weight_videos"),
+        }
+    )
+    output_path = Path(task.evaluate(None)["output_h5_path"])
+
+    assert rendered_calls == [
+        (
+            output_path,
+            {
+                "branch_weights": branch_weights,
+                "output_dir": str(tmp_path / "weight_videos"),
+            },
+        )
+    ]
+    assert not (output_path.parent / "figures").exists()
 
 
 def test_calibration_config_requires_path_only_when_enabled():
@@ -263,14 +394,15 @@ def test_calibration_requires_valid_ood_p_value_threshold():
             _parse_pred_config({**config, "ood_p_value_threshold": threshold})
 
 
-def test_visualization_requires_saved_posterior_and_calibration():
+@pytest.mark.parametrize("output_kind", ["enable_visualization", "enable_video"])
+def test_rendered_outputs_require_saved_posterior_and_calibration(output_kind):
     with pytest.raises(ValueError, match="requires save_posterior=true"):
         _parse_pred_config(
             {
                 "gaussian_model_h5_path": "model.h5",
                 "nonexpert_h5_path": "query.h5",
                 "save_posterior": False,
-                "enable_visualization": True,
+                output_kind: True,
             }
         )
     with pytest.raises(ValueError, match="requires enable_calibration=true"):
@@ -278,7 +410,7 @@ def test_visualization_requires_saved_posterior_and_calibration():
             {
                 "gaussian_model_h5_path": "model.h5",
                 "nonexpert_h5_path": "query.h5",
-                "enable_visualization": True,
+                output_kind: True,
             }
         )
 
@@ -476,6 +608,50 @@ def test_conformal_p_value_uses_strict_less_than():
     assert conformal_p_value.dtype == np.dtype("float64")
 
 
+@pytest.mark.parametrize(
+    ("raw", "max_gap", "min_ood_run", "expected"),
+    [
+        ([1, 1, 0, 1, 1], 1, 2, [1, 1, 1, 1, 1]),
+        ([1, 1, 0, 0, 1, 1], 1, 2, [1, 1, 0, 0, 1, 1]),
+        ([1, 0, 1, 1], 1, 2, [1, 0, 1, 1]),
+        ([1, 1, 0, 1], 1, 2, [1, 1, 0, 1]),
+        ([0, 1, 1, 0, 1, 1, 0], 1, 2, [0, 1, 1, 1, 1, 1, 0]),
+        ([1, 1, 0, 1, 0, 1, 1], 1, 2, [1, 1, 0, 1, 0, 1, 1]),
+        ([0, 0, 0], 2, 1, [0, 0, 0]),
+        ([1, 1, 1], 2, 1, [1, 1, 1]),
+    ],
+)
+def test_ood_filter_fills_only_qualified_internal_id_gaps(
+    raw,
+    max_gap,
+    min_ood_run,
+    expected,
+):
+    raw_array = np.asarray(raw, dtype=np.bool_)
+    original = raw_array.copy()
+
+    filtered = _filter_is_ood_short_id_gaps(
+        raw_array,
+        max_gap=max_gap,
+        min_ood_run=min_ood_run,
+    )
+
+    np.testing.assert_array_equal(filtered, np.asarray(expected, dtype=np.bool_))
+    np.testing.assert_array_equal(raw_array, original)
+    assert not np.shares_memory(filtered, raw_array)
+
+
+def test_ood_filter_rejects_invalid_inputs():
+    with pytest.raises(ValueError, match="one-dimensional boolean"):
+        _filter_is_ood_short_id_gaps(np.array([0, 1]), 1, 1)
+    with pytest.raises(ValueError, match="one-dimensional boolean"):
+        _filter_is_ood_short_id_gaps(np.ones((1, 2), dtype=np.bool_), 1, 1)
+    with pytest.raises(ValueError, match="max_gap"):
+        _filter_is_ood_short_id_gaps(np.ones(2, dtype=np.bool_), 0, 1)
+    with pytest.raises(ValueError, match="min_ood_run"):
+        _filter_is_ood_short_id_gaps(np.ones(2, dtype=np.bool_), 1, True)
+
+
 def test_progress_gated_holds_last_in_distribution_progress():
     progress_mean = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7])
     is_ood = np.array([True, True, False, True, True, False, True])
@@ -486,6 +662,34 @@ def test_progress_gated_holds_last_in_distribution_progress():
         progress_gated,
         [0.0, 0.0, 0.3, 0.3, 0.3, 0.6, 0.6],
     )
+
+
+def test_trajectory_gate_uses_filtered_ood(monkeypatch, tmp_path):
+    _, model = _identity_model(tmp_path)
+    raw_is_ood = np.array([True, True, False, True, True])
+    conformal_p_value = np.where(raw_is_ood[:, None], 0.1, 0.9)
+    conformal_p_value = np.repeat(conformal_p_value, model["num_bins"], axis=1)
+    monkeypatch.setattr(
+        task_gaussian_progress_pred,
+        "_compute_conformal_p_values",
+        lambda **kwargs: conformal_p_value,
+    )
+
+    inferred = _infer_one_trajectory(
+        query_embeddings=np.tile(np.array([[4.0, 0.0]]), (5, 1)),
+        model=model,
+        posterior_temperature=1.0,
+        entropy_epsilon=1.0e-12,
+        calibration_distance_bins=[np.ones(1), np.ones(1)],
+        ood_p_value_threshold=0.5,
+        enable_ood_filter=True,
+        ood_filter_max_gap=1,
+        ood_filter_min_ood_run=2,
+    )
+
+    np.testing.assert_array_equal(inferred["is_ood_raw"], raw_is_ood)
+    np.testing.assert_array_equal(inferred["is_ood"], np.ones(5, dtype=np.bool_))
+    np.testing.assert_allclose(inferred["progress_gated"], np.zeros(5))
 
 
 def test_saved_log_determinants_control_the_posterior(tmp_path):
@@ -609,7 +813,10 @@ def test_end_to_end_h5_schema_and_frame_weighted_metric(tmp_path, monkeypatch):
         assert output_file.attrs["input_embedding_dim"] == 2
         assert output_file.attrs["embedding_dim"] == 2
         assert not bool(output_file.attrs["enable_calibration"])
+        assert not bool(output_file.attrs["enable_ood_filter"])
         assert "ood_p_value_threshold" not in output_file.attrs
+        assert "ood_filter_max_gap" not in output_file.attrs
+        assert "ood_filter_min_ood_run" not in output_file.attrs
         assert bool(output_file.attrs["save_posterior"])
         assert "backward_delta_threshold" not in output_file.attrs
 
@@ -704,7 +911,19 @@ def test_calibration_end_to_end_uses_matching_gaussian_column(tmp_path, monkeypa
                     ]
                 ),
                 np.arange(8),
-            )
+            ),
+            "filtered_video": (
+                np.array(
+                    [
+                        [19.0, 0.0],
+                        [19.0, 0.0],
+                        [0.0, 0.0],
+                        [19.0, 0.0],
+                        [19.0, 0.0],
+                    ]
+                ),
+                np.arange(5),
+            ),
         },
     )
 
@@ -716,6 +935,9 @@ def test_calibration_end_to_end_uses_matching_gaussian_column(tmp_path, monkeypa
             "enable_calibration": True,
             "calibration_h5_path": str(calibration_path),
             "ood_p_value_threshold": 0.5,
+            "enable_ood_filter": True,
+            "ood_filter_max_gap": 1,
+            "ood_filter_min_ood_run": 2,
             "save_posterior": False,
         }
     )
@@ -727,6 +949,9 @@ def test_calibration_end_to_end_uses_matching_gaussian_column(tmp_path, monkeypa
             calibration_path.resolve()
         )
         assert output_file.attrs["ood_p_value_threshold"] == 0.5
+        assert bool(output_file.attrs["enable_ood_filter"])
+        assert output_file.attrs["ood_filter_max_gap"] == 1
+        assert output_file.attrs["ood_filter_min_ood_run"] == 2
         video_group = output_file["nonexperts/video"]
         assert "posterior" not in video_group
         assert "conformal_p_value" in video_group
@@ -747,6 +972,9 @@ def test_calibration_end_to_end_uses_matching_gaussian_column(tmp_path, monkeypa
                 [1.0 / 3.0, 1.0 / 4.0],
             ],
         )
+        is_ood_raw_dataset = video_group["is_ood_raw"]
+        assert is_ood_raw_dataset.shape == (8,)
+        assert is_ood_raw_dataset.dtype == np.dtype("bool")
         is_ood_dataset = video_group["is_ood"]
         assert is_ood_dataset.shape == (8,)
         assert is_ood_dataset.dtype == np.dtype("bool")
@@ -754,6 +982,7 @@ def test_calibration_end_to_end_uses_matching_gaussian_column(tmp_path, monkeypa
             is_ood_dataset[:],
             [False, False, False, False, False, False, False, True],
         )
+        np.testing.assert_array_equal(is_ood_raw_dataset[:], is_ood_dataset[:])
         progress_gated_dataset = video_group["progress_gated"]
         assert progress_gated_dataset.shape == (8,)
         assert progress_gated_dataset.dtype == np.dtype("float64")
@@ -763,6 +992,20 @@ def test_calibration_end_to_end_uses_matching_gaussian_column(tmp_path, monkeypa
         np.testing.assert_allclose(
             progress_gated_dataset[:],
             expected_progress_gated,
+        )
+
+        filtered_video_group = output_file["nonexperts/filtered_video"]
+        np.testing.assert_array_equal(
+            filtered_video_group["is_ood_raw"][:],
+            [True, True, False, True, True],
+        )
+        np.testing.assert_array_equal(
+            filtered_video_group["is_ood"][:],
+            np.ones(5, dtype=np.bool_),
+        )
+        np.testing.assert_allclose(
+            filtered_video_group["progress_gated"][:],
+            np.zeros(5),
         )
 
 
@@ -1119,14 +1362,87 @@ def test_raw_video_mapping_uses_current_project_root(tmp_path, monkeypatch):
     assert frame_count == 3
 
 
-def test_prediction_video_end_to_end_and_alignment_fail_fast(tmp_path):
+@pytest.fixture
+def fake_video_weight_encoder():
+    torch = pytest.importorskip("torch")
+
+    class FakeEncoder(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.raw = torch.nn.Parameter(
+                torch.tensor([[-1.0, 1.0], [0.0, 0.0], [1.0, -1.0]])
+            )
+            self.memory = torch.nn.Module()
+            self.memory.gate = torch.nn.Identity()
+            self.fail_forward = False
+
+        def encode_local_episode(self, frames):
+            assert frames.shape == (3, 3, 2, 2)
+            assert not self.training
+            assert not torch.is_grad_enabled()
+            return self.raw
+
+        def forward_episode(
+            self, raw, lengths, target_steps, *, memory_norm_stats=None
+        ):
+            assert not self.training
+            assert not torch.is_grad_enabled()
+            assert memory_norm_stats is None
+            assert list(lengths) == [3]
+            torch.testing.assert_close(target_steps, torch.arange(3)[None])
+            logits = self.memory.gate(raw[0][None])
+            self.last_output = raw[0][None] + logits.softmax(-1)
+            if self.fail_forward:
+                raise RuntimeError("synthetic forward failure")
+            return self.last_output
+
+    encoder = FakeEncoder()
+    frames = np.zeros((3, 2, 2, 3), dtype=np.uint8)
+    with torch.no_grad():
+        weights = encoder.raw.softmax(-1).numpy()
+        expected = encoder.raw.numpy() + weights
+    return encoder, frames, expected, weights
+
+
+def test_video_branch_weight_capture_preserves_output_and_removes_hook(
+    fake_video_weight_encoder,
+):
+    encoder, frames, expected, expected_weights = fake_video_weight_encoder
+    weights = task_gaussian_progress_pred._compute_video_branch_weights(
+        encoder, frames, expected, np.arange(3)
+    )
+    np.testing.assert_allclose(weights, expected_weights, rtol=0, atol=1e-7)
+    np.testing.assert_allclose(encoder.last_output[0].numpy(), expected)
+    assert not encoder.memory.gate._forward_hooks
+
+
+@pytest.mark.parametrize("failure", ["embedding_mismatch", "forward_failure"])
+def test_video_branch_weight_capture_removes_hook_on_failure(
+    fake_video_weight_encoder, failure
+):
+    encoder, frames, expected, _ = fake_video_weight_encoder
+    if failure == "embedding_mismatch":
+        expected = expected + 0.01
+        error, message = ValueError, "embeddings"
+    else:
+        encoder.fail_forward = True
+        error, message = RuntimeError, "synthetic forward failure"
+    with pytest.raises(error, match=message):
+        task_gaussian_progress_pred._compute_video_branch_weights(
+            encoder, frames, expected, np.arange(3)
+        )
+    assert not encoder.memory.gate._forward_hooks
+
+
+@pytest.mark.parametrize("raw_width", [16, 760])
+def test_prediction_video_end_to_end_and_alignment_fail_fast(tmp_path, raw_width):
     import cv2
 
     raw_path = tmp_path / "raw.mp4"
     frames = [
-        np.full((16, 16, 3), (255, 0, 0), dtype=np.uint8),
-        np.full((16, 16, 3), (0, 255, 0), dtype=np.uint8),
-        np.full((16, 16, 3), (0, 0, 255), dtype=np.uint8),
+        np.full((16, raw_width, 3), (255, 0, 0), dtype=np.uint8),
+        np.full((16, raw_width, 3), (0, 255, 0), dtype=np.uint8),
+        np.full((16, raw_width, 3), (0, 0, 255), dtype=np.uint8),
     ]
     _write_rgb_mp4(raw_path, frames, fps=7.0)
     output_path = tmp_path / "video.mp4"
@@ -1160,8 +1476,65 @@ def test_prediction_video_end_to_end_and_alignment_fail_fast(tmp_path):
     assert width % 2 == 0
     assert height % 2 == 0
     assert width > height * 3
+    if raw_width == 760:
+        # 820 / 100 inches can round to a 819px Agg canvas without resizing.
+        assert width == 820
     first_rgb = cv2.cvtColor(first_bgr, cv2.COLOR_BGR2RGB)
     assert first_rgb[height // 2, height // 2, 0] > 200
+
+    weighted_output_path = tmp_path / "video_with_weights.mp4"
+    _save_prediction_video(
+        **{
+            **common,
+            "output_path": weighted_output_path,
+            "branch_weights": np.array([[0.9, 0.1], [0.5, 0.5], [0.1, 0.9]]),
+        }
+    )
+    capture = cv2.VideoCapture(str(weighted_output_path))
+    try:
+        assert capture.isOpened()
+        assert int(capture.get(cv2.CAP_PROP_FRAME_COUNT)) == 3
+        assert capture.get(cv2.CAP_PROP_FPS) == pytest.approx(7.0)
+        assert int(capture.get(cv2.CAP_PROP_FRAME_WIDTH)) == width
+        assert int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT)) == height + 160
+        weighted_frames = []
+        while True:
+            ok, frame = capture.read()
+            if not ok:
+                break
+            weighted_frames.append(frame)
+    finally:
+        capture.release()
+    assert len(weighted_frames) == 3
+    first_weighted_rgb = cv2.cvtColor(weighted_frames[0], cv2.COLOR_BGR2RGB)
+    assert first_weighted_rgb[height // 2, height // 2, 0] > 200
+    # A real chart occupies the new band; its cursor and values change in time.
+    assert weighted_frames[0][height:].std() > 5.0
+    assert np.mean(
+        np.abs(
+            weighted_frames[0][height:].astype(np.float32)
+            - weighted_frames[-1][height:].astype(np.float32)
+        )
+    ) > 0.1
+
+    invalid_weights = [
+        np.ones((2, 2)) * 0.5,
+        np.ones(3) * 0.5,
+        np.array([[np.nan, np.nan], [0.5, 0.5], [0.5, 0.5]]),
+        np.array([[1.2, -0.2], [0.5, 0.5], [0.5, 0.5]]),
+        np.array([[0.2, 0.2], [0.5, 0.5], [0.5, 0.5]]),
+    ]
+    for index, branch_weights in enumerate(invalid_weights):
+        invalid_output_path = tmp_path / f"bad_weights_{index}.mp4"
+        with pytest.raises(ValueError, match="branch_weights"):
+            _save_prediction_video(
+                **{
+                    **common,
+                    "output_path": invalid_output_path,
+                    "branch_weights": branch_weights,
+                }
+            )
+        assert not invalid_output_path.exists()
 
     bad = dict(common)
     bad["target_steps"] = np.array([0, 2, 4])

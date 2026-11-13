@@ -1,4 +1,4 @@
-"""Render three-panel videos from one Gaussian progress prediction H5."""
+"""Render Gaussian prediction videos, optionally including dual encoder weights."""
 
 from __future__ import annotations
 
@@ -27,8 +27,16 @@ def main() -> None:
         required=True,
         help="Path to one gaussian_progress_pred-*.h5 file.",
     )
+    parser.add_argument(
+        "--branch_weights", action="store_true",
+        help="Recompute dual fusion weights using the source embedding H5 metadata.",
+    )
+    parser.add_argument("--output_dir", type=Path, help="Directory for rendered MP4s.")
     args = parser.parse_args()
-    _save_prediction_videos(Path(args.prediction_h5_path))
+    _save_prediction_videos(
+        Path(args.prediction_h5_path), branch_weights=args.branch_weights,
+        output_dir=args.output_dir,
+    )
 
 
 if __name__ == "__main__":

@@ -114,6 +114,8 @@ def extract_embeddings(
     dataloader: torch.utils.data.DataLoader,
     device: torch.device,
     frames_per_batch: int | None = None,
+    *,
+    temporal_diagnostics: dict | None = None,
 ) -> list[dict]:
     """Extract embeddings for every video in dataloader.
 
@@ -138,15 +140,38 @@ def extract_embeddings(
     if frames_per_batch is None:
         frames_per_batch = encoder.clip_len
 
+    diagnostic_config = temporal_diagnostics or {}
+    diagnostic_ids = diagnostic_config.get("video_ids", [])
+    enabled = diagnostic_config.get("enabled", False)
+    if not isinstance(enabled, bool):
+        raise ValueError("temporal_diagnostics.enabled must be boolean.")
+    if enabled:
+        if (not isinstance(diagnostic_ids, list) or not diagnostic_ids
+                or not all(isinstance(v, str) for v in diagnostic_ids)):
+            raise ValueError("Temporal diagnostics require an explicit nonempty video_ids list.")
+        if encoder.memory_config.get("mode") != "cross_attention":
+            raise ValueError("Temporal diagnostics require memory.mode=cross_attention.")
+    selected_ids = set(diagnostic_ids) if enabled else set()
+    seen_ids = set()
+
     results = []
     with torch.no_grad():
         for i, batch in enumerate(dataloader):
+            video_id = batch["video_id"][0]
+            seen_ids.add(video_id)
+            diagnostics = {} if video_id in selected_ids else None
             # frames: [1, T_out, context_size, 3, H, W]
             if encoder.memory is not None:
                 if "frames_full" not in batch:
                     raise ValueError("Memory extraction requires a full_episode dataloader.")
                 raw = encoder.encode_local_episode(batch["frames_full"][0])
-                embs = encoder.forward_episode([raw], batch["seq_len"], batch["target_steps"])
+                if diagnostics is not None:
+                    if not torch.equal(batch["target_steps"][0].cpu(), torch.arange(len(raw))):
+                        raise ValueError("Temporal diagnostics require sample_all_stride=1 and all frames.")
+                    embs = encoder.forward_episode([raw], batch["seq_len"], batch["target_steps"],
+                                                  diagnostics=diagnostics)
+                else:
+                    embs = encoder.forward_episode([raw], batch["seq_len"], batch["target_steps"])
             else:
                 embs = _run_encoder_chunked(encoder, batch["frames"], frames_per_batch, device)
             T_out = embs.shape[1]
@@ -161,6 +186,21 @@ def extract_embeddings(
                 "seq_len":      int(batch["seq_len"][0].item()),
                 "action_id":    int(batch["action_id"][0].item()),
             }
+            if diagnostics is not None:
+                entry["temporal_diagnostics"] = {
+                    key: value.detach().cpu().numpy()[0] for key, value in diagnostics.items()
+                }
+                entry["temporal_diagnostics"]["frame_indices"] = target_steps_np.copy()
+                entry["temporal_diagnostics_config"] = {
+                    "attention_mode": encoder.memory.attention_mode,
+                    "encoder_config": encoder_config(encoder),
+                }
+            # Preserve optional event annotations without making them model inputs.
+            for key in ("phase_labels", "keyframe_labels"):
+                if key in batch and batch[key] is not None:
+                    values = batch[key][0]
+                    if values is not None:
+                        entry[key] = values.cpu().numpy() if isinstance(values, torch.Tensor) else np.asarray(values)
             results.append(entry)
 
             print(
@@ -168,6 +208,8 @@ def extract_embeddings(
                 f"  T_out={T_out}  embeddings={embs_np.shape}"
             )
 
+    if selected_ids - seen_ids:
+        raise ValueError(f"Unknown temporal diagnostic video_ids: {sorted(selected_ids - seen_ids)}")
     return results
 
 
@@ -183,6 +225,7 @@ def save_embeddings_h5(
     *,
     checkpoint_path: str | Path | None = None,
     processed_h5_path: str | Path | None = None,
+    training_provenance: dict | None = None,
 ) -> None:
     """Save extracted embeddings to an H5 file.
 
@@ -208,6 +251,20 @@ def save_embeddings_h5(
         embedding_normalization,
         str(save_path),
     )
+    # The frame dataloader does not carry optional event annotations. Copy
+    # them directly at export time, using the actual original frame indices.
+    if processed_h5_path is not None and Path(processed_h5_path).is_file():
+        with h5py.File(processed_h5_path, "r") as source:
+            for entry in results:
+                group = source.get(f"videos/{entry['video_id']}")
+                if group is None:
+                    continue
+                for key in ("phase_labels", "keyframe_labels"):
+                    if key in group and key not in entry:
+                        labels = np.asarray(group[key])
+                        if labels.shape != (entry["seq_len"],):
+                            raise ValueError(f"{key} must match the complete source trajectory length.")
+                        entry[key] = labels[np.asarray(entry["target_steps"], dtype=np.int64)]
     embedding_dim = None
     for entry in results:
         validate_embeddings_for_normalization(
@@ -229,6 +286,12 @@ def save_embeddings_h5(
                 f"expected D={embedding_dim}, got D={current_dim} "
                 f"for video '{entry['video_id']}'."
             )
+        if "temporal_diagnostics" in entry:
+            from utils.temporal_diagnostics import validate_temporal_diagnostics
+            mode = entry.get("temporal_diagnostics_config", {}).get("attention_mode", "learned")
+            validate_temporal_diagnostics(entry["temporal_diagnostics"], attention_mode=mode)
+            if not np.array_equal(entry["temporal_diagnostics"]["frame_indices"], entry["target_steps"]):
+                raise ValueError("Diagnostic frame_indices must match embedding target_steps.")
 
     provenance = {}
     if checkpoint_path is not None:
@@ -248,6 +311,8 @@ def save_embeddings_h5(
         f.attrs["embedding_dim"] = embedding_dim
         if encoder_metadata is not None:
             f.attrs["encoder_config"] = json.dumps(encoder_metadata)
+        if training_provenance:
+            f.attrs["training_provenance"] = json.dumps(training_provenance)
         for name, value in provenance.items():
             f.attrs[name] = value
         videos_grp = f.create_group("videos")
@@ -264,6 +329,20 @@ def save_embeddings_h5(
             )
             vid.attrs["seq_len"]   = entry["seq_len"]
             vid.attrs["action_id"] = entry["action_id"]
+            for key in ("phase_labels", "keyframe_labels"):
+                if key in entry:
+                    vid.create_dataset(key, data=entry[key])
+            if "temporal_diagnostics" in entry:
+                data = entry["temporal_diagnostics"]
+                metadata = entry.get("temporal_diagnostics_config", {})
+                mode = metadata.get("attention_mode", "learned")
+                group = vid.create_group("temporal_diagnostics")
+                for key, value in data.items():
+                    group.create_dataset(key, data=value, compression="gzip")
+                group.attrs["attention_mode"] = mode
+                group.attrs["encoder_config"] = json.dumps(metadata.get("encoder_config", encoder_metadata))
+                for key, value in provenance.items():
+                    group.attrs[key] = value
     print(f"[save_embeddings_h5] Saved {len(results)} videos to {save_path}")
 
 
@@ -319,7 +398,8 @@ def main(extract_h5_path: str | None = None,
     print(f"[main] Extracting embeddings for {len(dataloader.dataset)} videos ...")
 
     # --- Extract ---
-    results = extract_embeddings(encoder, dataloader, device, frames_per_batch)
+    results = extract_embeddings(encoder, dataloader, device, frames_per_batch,
+                                 temporal_diagnostics=cfg.get("temporal_diagnostics"))
 
     # --- Save ---
     # Use embedding_save_path from config if set; otherwise derive from extract_h5_path stem.
@@ -336,6 +416,7 @@ def main(extract_h5_path: str | None = None,
         encoder_metadata=encoder_config(encoder),
         checkpoint_path=ckpt_path,
         processed_h5_path=cfg["extract_h5_path"],
+        training_provenance=getattr(encoder, "training_provenance", None),
     )
     print(f"[main] Done. Embeddings saved to {save_path}")
 

@@ -30,6 +30,12 @@ context_stride: 15
 num_workers:       4
 sample_all_stride: 1    # 1 = every frame; 2 = every other frame
 
+# Optional full temporal retrieval data, captured during the same encoder pass.
+# Requires cross_attention memory and sample_all_stride=1; no matrices go to W&B.
+temporal_diagnostics:
+  enabled: false
+  video_ids: []
+
 # ── Output ────────────────────────────────────────────────────────────
 # Default (recommended): auto-derived from checkpoint_ref + extract_dataset.
 #   saves to: datasets/embeddings/{run_name}/{extract_dataset_h5_stem}-embd.h5

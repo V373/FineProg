@@ -687,10 +687,19 @@ def _write_gaussian_model_h5(
     embedding_normalization: str,
 ) -> None:
     """Write the validated Gaussian model to a new H5 artifact."""
+    # Pin the encoder identity at fitting time; an expert path alone can later
+    # point to overwritten embeddings from a different checkpoint.
+    provenance = {}
+    with h5py.File(expert_h5_path, "r") as expert_file:
+        for key in ("checkpoint_path", "checkpoint_sha256", "encoder_config", "training_provenance"):
+            if key in expert_file.attrs:
+                provenance[key] = expert_file.attrs[key]
     with h5py.File(output_h5_path, "w-") as output_file:
         output_file.attrs["task_name"] = "gaussian_progress_fitting"
         output_file.attrs["embedding_normalization"] = embedding_normalization
         output_file.attrs["expert_h5_path"] = str(expert_h5_path)
+        for key, value in provenance.items():
+            output_file.attrs[key] = value
         output_file.attrs["num_expert_videos"] = int(num_expert_videos)
         output_file.attrs["num_expert_features"] = int(model["num_expert_features"])
         output_file.attrs["num_bins"] = int(fitting_config["num_bins"])

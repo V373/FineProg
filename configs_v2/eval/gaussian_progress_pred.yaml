@@ -18,3 +18,27 @@ ood_filter_min_ood_run: 20   # L_min; required positive integer when enabled, I 
 save_posterior: true
 enable_visualization: true
 enable_video: true
+
+# Offline only; consumes diagnostics captured during embedding extraction.
+# Existing spatial activation / in-training evaluation settings are independent.
+temporal_diagnostics:
+  enabled: false
+  video_ids: []                 # Nonempty explicit IDs in display order when enabled.
+  baseline_prediction_h5: ~     # Baseline's own Gaussian/calibration prediction H5.
+  save_png: true
+  save_mp4: true
+  interval_frames: 16
+  num_intervals: 3
+  enrichment_vmax: 4.0
+  log_to_wandb: false           # New offline eval run; local artifacts are saved first.
+  wandb_log_video: false
+  wandb_max_videos: 1           # First N selected trajectories: one composite PNG each.
+
+# Optional offline causal replay; this is not a trained structural ablation.
+temporal_intervention:
+  enabled: false
+  attention_mode: ~
+  fusion_mode: ~
+  mask_mode: none
+  query_step: -1
+  seed: 42
