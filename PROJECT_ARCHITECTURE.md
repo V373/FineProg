@@ -120,6 +120,66 @@ TCCTemporalEmbedder
 - 全局 3D MaxPool → 两层 FC（512→512）→ 线性投影至 128 维
 - 输出：`[B, clip_len, 128]`
 
+单帧 local ablation 使用训练配置 `single_frame_context: true`，在 ResNet 前将
+过去 context 槽位替换为当前帧，保持 `context_size=2` 及原网络结构。该开关随
+checkpoint 保存，缓存、完整 episode 和流式路径保持一致；旧 checkpoint 默认关闭。
+`scripts/train_pick_mango_single_frame_baselines_serial.py` 串行训练 local、frozen HF1、
+warm only-BN HF1，各 20,000 epochs；两组 HF1 均从同一个新 local checkpoint 初始化。
+第三组更新 BN 参数/统计、temporal embedder 和 Mamba，关闭 local embedding cache。
+运行产物及三个 checkpoint 的路径记录在指定输出目录的 `manifest.json`。
+
+### 可选 cross-attention memory
+
+`configs_v2/train.yaml` 的 `memory.mode: cross_attention` 在完整 episode 上执行
+short → 严格因果全历史检索 → long → 融合，再 gather loss targets。
+两路共享 Mamba/P 参数，在线状态与 K/V 长度按环境独立；没有最终 local residual。
+关闭 `memory.enabled` 或保持 `mode: null` 可继续原有 local/single/dual 路径。
+
+首次迁移设置 `memory.source_checkpoint_path` 为完整单路 HF1、无 residual checkpoint，
+同时清空 `local_checkpoint_path`。源 checkpoint 决定 D、context、输入预处理和输出 normalization；
+不能用 local-only 加载入口装入完整 memory 权重。
+源 checkpoint 由运行时显式提供，归档代码不固定到某次本地实验。
+
+首轮冻结配置为 `train_base: frozen`、`train_embedding: false`、
+`memory.freeze_pretrained_memory: true`、`freeze_bn_stats: true`，复用 local embedding cache。
+冻结 Mamba/P 仍保留 long 输入梯度。原 TCC + 0.5 Temporal Triplet 不变。
+
+| YAML 字段 | 取值及行为 |
+|---|---|
+| `attention_dim` | `null` 自动取 `min(32,D)` |
+| `attention_mode` | `learned` 内容检索；`uniform` 有效过去等权；`none` 令历史 readout 为零 |
+| `fusion_mode` | `learned` gate；`fixed` 固定权重；`short_only` 精确 source 短路；`long_only` 仅 long |
+| `fixed_fusion_weights` | `[long,short]`，默认 `[0.1,0.9]`，非负且和为 1 |
+| `branch_output_l2` | 源 L2 模型默认开启；最终 normalization 仍由 encoder 控制 |
+
+新模式每次只 fuse 一次。日志沿 `log_every` 记录当个 epoch 的全真实帧均值，
+增加分支差异、实际融合权重、当前/历史分量范数和注入比；后三项共用非空历史 mask。
+训练不持久化 attention 矩阵。全冻结 short-only 没有可训练输出路径，只用于评估。
+新 checkpoint 保存 source hash 和可选 training provenance，重载不依赖 source 文件。
+
+完整诊断按选定 checkpoint 离线生成：在 `extract.yaml` 设置
+`temporal_diagnostics.enabled: true` 和显式 `video_ids`，要求 `sample_all_stride: 1`。
+H5 在 `/videos/<id>/temporal_diagnostics` 保存同次 forward 的 A、mask、索引和逐帧指标。
+可选事件标签从 processed H5 按原始帧索引复制。
+重新为该模型提取 expert/calibration/query，拟合 Gaussian 后，运行现有
+`python evaluate_encoder.py --task gaussian_progress_pred`，并开启评估 YAML 中相同的诊断选项。
+该流程校验 query/Gaussian/calibration 的 checkpoint hash；普通旧工件流程保持兼容。
+
+结果位于 prediction H5 同目录下的 `temporal_diagnostics/`：综合 PNG、联动 MP4 和
+`manifest.json`；完整矩阵在 H5。baseline 通过 `baseline_prediction_h5` 指向其自己的
+prediction 工件。`progress_gated_raw` 为严格在线 gating，旧 `progress_gated` 保留 final 含义。
+
+`log_to_wandb` 默认 false；开启后在本地结果完成后新建 evaluation run，
+默认摘要覆盖 `wandb_max_videos: 1` 条轨迹，`wandb_log_video` 默认 false。
+不上传原始矩阵，不写回训练 run。失败后可仅重试上传：
+`python -m utils.temporal_diagnostics --upload-summary-only /path/to/manifest.json`。
+
+离线干预入口为 `python scripts/diagnose_temporal_retrieval.py --config /path/to/pred.yaml`。
+显式开启 `temporal_intervention.enabled`，使用 attention/fusion override 或
+`mask_mode: top_mass|random_matched`；`query_step: -1` 表示最后一帧。
+同一 raw 序列从起点重放，历史屏蔽只改 long 的访问；输出 H5、叠加 PNG 和配置到
+`outputs/temporal_interventions/<timestamp>/`，使用固定 Gaussian，不训练或重新拟合。
+
 ---
 
 ## 四、算法组件（`algos/`）
