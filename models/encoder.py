@@ -395,8 +395,7 @@ class TCCEncoder(nn.Module):
     def forward(self, frames: torch.Tensor, return_backbone_feats: bool = None) -> Union[torch.Tensor, Dict[str, torch.Tensor]]:
         if self.memory is not None:
             raise ValueError("Memory needs complete episodes: use forward_episode or encode_step.")
-        assert frames.shape[1] == self.clip_len, \
-            f"Input clip_len {frames.shape[1]} does not match config clip_len {self.clip_len}"
+        # clip_len is the replay sampling budget; stage2 appends reference contexts.
         return self._encode_contexts(frames, return_backbone_feats)
 
     def encode_local_raw(self, contexts):
