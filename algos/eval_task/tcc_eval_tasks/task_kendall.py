@@ -188,17 +188,20 @@ class KendallsTauTask(BaseTask):
         visualize: bool = False,
         config_path: str = None,
         output_dir: str = None,
+        save_heatmap: bool = True,
     ):
         super().__init__(task_name="kendalls_tau", downstream_task=True)
         self.distance = distance
         self.stride = stride
         self.visualize = visualize  # reserved; not used in current implementation
         self.output_dir = output_dir  # None → falls back to _OUTPUTS_DIR
+        self.save_heatmap = save_heatmap
 
     def configure(self, config: dict) -> None:
         """Apply resolved V2 config dict to this task."""
         self.stride   = config.get("kendall_stride",   self.stride)
         self.distance = config.get("kendall_distance", self.distance)
+        self.save_heatmap = bool(config.get("save_heatmap", self.save_heatmap))
         if config.get("output_dir"):
             self.output_dir = config["output_dir"]
 
@@ -239,8 +242,9 @@ class KendallsTauTask(BaseTask):
         heatmap_path = None
         if len(embs_list) > 1:
             _print_kendall_report(tau_matrix, video_ids)
-            heatmap_path = _save_kendall_heatmap(tau_matrix, video_ids, tau, output_dir=self.output_dir)
-            print(f"[kendalls_tau] heatmap saved → {heatmap_path}")
+            if self.save_heatmap:
+                heatmap_path = _save_kendall_heatmap(tau_matrix, video_ids, tau, output_dir=self.output_dir)
+                print(f"[kendalls_tau] heatmap saved → {heatmap_path}")
 
         result = {
             "task_name": self.task_name,

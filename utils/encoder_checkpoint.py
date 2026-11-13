@@ -22,6 +22,7 @@ def encoder_config(encoder):
     return {
         "clip_len": encoder.clip_len, "context_size": encoder.context_size,
         "context_stride": encoder.context_stride, "embedding_dim": encoder.embedding_dim,
+        "single_frame_context": encoder.single_frame_context,
         "embedding_normalization": encoder.embedding_normalization, "pretrained": False,
         "train_base": encoder._train_base, "train_embedding": encoder._train_embedding,
         "memory_config": dict(encoder.memory_config),
@@ -48,8 +49,16 @@ def _load_weights(model, checkpoint, path):
     else:
         normalization = checkpoint["embedding_normalization"]
     normalization = validate_embedding_normalization(normalization, str(path))
+    if hasattr(model, "single_frame_context"):
+        # This input contract belongs to the saved weights, including old weights
+        # that predate the flag and must keep their original temporal context.
+        single_frame_context = model._resolve_single_frame_context(
+            (checkpoint.get("encoder_config") or {}).get("single_frame_context", False)
+        )
     model.load_state_dict({k.removeprefix("module."): v for k, v in state.items()}, strict=True)
     model.embedding_normalization = normalization
+    if hasattr(model, "single_frame_context"):
+        model.single_frame_context = single_frame_context
     return normalization
 
 
@@ -59,7 +68,7 @@ def load_checkpoint(model, ckpt_path, device):
 
 def _kwargs(config):
     keys = ("clip_len", "context_size", "context_stride", "embedding_dim", "pretrained",
-            "embedding_normalization", "train_base", "train_embedding")
+            "embedding_normalization", "train_base", "train_embedding", "single_frame_context")
     return {**{k: config[k] for k in keys if k in config},
             "memory_config": dict(config.get("memory", {}))}
 
@@ -92,6 +101,7 @@ def build_training_encoder(config, device):
                 source = yaml.safe_load(f)
         for key in ("context_size", "context_stride", "embedding_dim"):
             config[key] = source[key]
+        config["single_frame_context"] = source.get("single_frame_context", False)
         digest = hashlib.sha256()
         with open(local_path, "rb") as f:
             for chunk in iter(lambda: f.read(1024 * 1024), b""):
@@ -112,6 +122,7 @@ def build_training_encoder(config, device):
     encoder.enable_memory(memory)
     encoder.configure_trainability()
     config.update({k: getattr(encoder, k) for k in
-                   ("context_size", "context_stride", "embedding_dim", "embedding_normalization")})
+                   ("context_size", "context_stride", "embedding_dim", "embedding_normalization",
+                    "single_frame_context")})
     config["memory"] = dict(encoder.memory_config)
     return encoder.to(device), config

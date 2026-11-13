@@ -5,13 +5,13 @@
 
 # ── Dataset ───────────────────────────────────────────────────────────
 # Key from configs_v2/datasets.yaml  →  resolved to processed_h5_path at runtime
-train_dataset: fruit_expert_videos_36vid_train
+train_dataset: pick_mango_vid
 
 # ── Model ─────────────────────────────────────────────────────────────
 backbone_name:   resnet50_conv4c
 pretrained:      true
-train_base:      only_bn      # frozen | only_bn | train_all
-train_embedding: true
+train_base:      only_bn      # frozen | only_bn | train_all, this is for resnet backbone
+train_embedding: true         # this is for temporal embedder conv3d
 
 # Optional full-episode memory. Freeze local: frozen + false above.
 # Original FineProg: only_bn + true, with freeze_bn_stats=false below.
@@ -78,7 +78,8 @@ transport_frames_as_uint8: true   # move uint8 frames to GPU, then cast/normaliz
 # WARNING: extract.yaml MUST use the same clip_len / context_size / context_stride.
 clip_len:           20
 context_size:       2
-context_stride:     8
+context_stride:     20
+single_frame_context: false  # repeat current frame in both ctx slots; saved in checkpoint
 sampling_strategy:  offset_uniform
 random_offset:      1
 

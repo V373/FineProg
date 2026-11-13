@@ -85,6 +85,7 @@ class TCCEncoder(nn.Module):
         memory_config: Optional[dict] = None,
         train_base: Optional[str] = None,
         train_embedding: Optional[bool] = None,
+        single_frame_context=_UNSET,
     ):
         """
         Initialize TCCEncoder.
@@ -115,6 +116,9 @@ class TCCEncoder(nn.Module):
                         weights. Legacy checkpoints carry no such metadata and
                         must therefore be interpreted as "none".
             debug: If True, print debug information during forward pass.
+            single_frame_context: Repeat the current frame in every context slot
+                        without changing the local architecture. Resolution:
+                        explicit argument > train_config_path YAML > False.
         """
         super(TCCEncoder, self).__init__()
         
@@ -181,11 +185,16 @@ class TCCEncoder(nn.Module):
             _embedding_normalization
         )
         self.embedding_normalization_eps = 1e-12
+        self.single_frame_context = self._resolve_single_frame_context(
+            train_cfg.get("single_frame_context", False)
+            if single_frame_context is _UNSET else single_frame_context
+        )
         
         print(f"[TCCEncoder] Config:")
         print(f"  - clip_len: {self.clip_len}")
         print(f"  - context_size: {self.context_size}")
         print(f"  - context_stride: {self.context_stride}")
+        print(f"  - single_frame_context: {self.single_frame_context}")
         print(f"  - embedding_dim: {self.embedding_dim}")
         print(f"  - backbone_name: {self._backbone_name}")
         print(f"  - pretrained: {self.pretrained}")
@@ -234,6 +243,16 @@ class TCCEncoder(nn.Module):
         if mode and getattr(self, "memory", None) is not None:
             self.configure_trainability()
         return self
+
+    @staticmethod
+    def _resolve_single_frame_context(value) -> bool:
+        if not isinstance(value, bool):
+            raise ValueError(f"single_frame_context must be a boolean, got {value!r}")
+        return value
+
+    def _apply_single_frame_context(self, contexts):
+        """Repeat the final (current) context slot without mutating the input."""
+        return contexts[:, :, -1:, ...].expand_as(contexts) if self.single_frame_context else contexts
 
     @staticmethod
     def _resolve_embedding_dim(value) -> int:
@@ -418,6 +437,9 @@ class TCCEncoder(nn.Module):
         assert H == 224 and W == 224, f"Expected 224x224 spatial size, got {H}x{W}"
         assert context_size == self.context_size, \
             f"Input context_size {context_size} does not match config context_size {self.context_size}"
+
+        # Repeat pixels before the backbone: training BN must not see past frames.
+        frames = self._apply_single_frame_context(frames)
         
         if self.debug:
             print(f"[TCCEncoder.forward] Input shape: {frames.shape}")
@@ -489,6 +511,7 @@ class TCCEncoder(nn.Module):
         """
         if self.memory is not None:
             raise ValueError("Memory needs full frame features, not sampled contexts.")
+        backbone_feats = self._apply_single_frame_context(backbone_feats)
         embeddings = self.temporal_embedder(backbone_feats)
         return self._apply_embedding_normalization(embeddings)
 
@@ -537,6 +560,8 @@ class TCCEncoder(nn.Module):
             indices = (times[:, None] - offsets * self.context_stride).clamp_min(0)
             contexts = frames[indices].unsqueeze(0).to(device)
             contexts = contexts.float().div(255) if contexts.dtype == torch.uint8 else contexts.float()
+            if from_feats:
+                contexts = self._apply_single_frame_context(contexts)
             raw = (checkpoint(local_fn, contexts, use_reentrant=False,
                               context_fn=lambda: (nullcontext(), self._recompute_bn_stats()))
                    if recompute else local_fn(contexts))
@@ -642,6 +667,7 @@ class TCCEncoder(nn.Module):
             past = (times - self.context_stride).clamp_min(0) % (self.context_stride + 1)
             state["ring"][rows, current] = feats
             contexts = torch.stack((state["ring"][rows, past], feats), dim=1).unsqueeze(1)
+            contexts = self._apply_single_frame_context(contexts)
             raw = self.temporal_embedder(contexts)[:, 0]
             y = self.memory.step(raw, state)
             state["embedding"] = self._apply_embedding_normalization(self.memory.fuse(raw, y))
