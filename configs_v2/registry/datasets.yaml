@@ -77,6 +77,23 @@ datasets:
     processed_h5: fruit_expert_videos-20vid_valid.h5
     raw_dir: fruit_expert_videos
 
+  # ── Fruit Expert Videos (260917 clipped source frames) ─────────────
+  fruit_expert_videos_260917_36vid_train:
+    display_name: Fruit Expert Videos 260917 Train (36 clips)
+    processed_h5: 260917_fruit_expert_videos-36vid_train.h5
+    raw_dir: fruit_expert_videos_260917
+    validation_dataset_ref: fruit_expert_videos_260917_4vid_valid
+
+  fruit_expert_videos_260917_4vid_valid:
+    display_name: Fruit Expert Videos 260917 Valid (4 clips)
+    processed_h5: 260917_fruit_expert_videos-4vid_valid.h5
+    raw_dir: fruit_expert_videos_260917
+
+  fruit_expert_videos_260917_14vid_valid:
+    display_name: Fruit Expert Videos 260917 Large Valid (14 clips)
+    processed_h5: 260917_fruit_expert_videos-14vid_valid.h5
+    raw_dir: fruit_expert_videos_260917
+
   # ── Robomimic Can PH (professional human) ──────────────────────────
   robomimic_can_ph_180vid_train:
     display_name: Robomimic Can PH Train (180 videos)
@@ -258,6 +275,49 @@ datasets:
     display_name: fruit_fail_videos (fruit_fail_videos-7vid.h5)
     processed_h5: fruit_fail_videos-7vid.h5
     raw_dir: fruit_fail_videos
+
+  # ── Pick Mango Videos ───────────────────────────────────────────────
+  pick_mango_filtered_vid_36vid_train:
+    display_name: Pick Mango Filtered Train (36 videos)
+    processed_h5: pick_mango_filtered_vid-36vid_train.h5
+    raw_dir: pick_mango_filtered_vid
+    validation_dataset_ref: pick_mango_filtered_vid_4vid_valid
+
+  pick_mango_filtered_vid_4vid_valid:
+    display_name: Pick Mango Filtered Valid (4 videos)
+    processed_h5: pick_mango_filtered_vid-4vid_valid.h5
+    raw_dir: pick_mango_filtered_vid
+
+  pick_mango_filtered_vid_18vid_calibration:
+    display_name: Pick Mango Filtered Calibration (18 videos)
+    processed_h5: pick_mango_filtered_vid-18vid_calibration.h5
+    raw_dir: pick_mango_filtered_vid
+
+  pick_mango_filtered_vid_18vid_fail:
+    display_name: Pick Mango Filtered Fail (18 videos)
+    processed_h5: pick_mango_filtered_vid-18vid_fail.h5
+    raw_dir: pick_mango_filtered_vid
+
+  pick_mango_vid_36vid_train:
+    display_name: Pick Mango Train (36 videos)
+    processed_h5: pick_mango_vid-36vid_train.h5
+    raw_dir: pick_mango_vid
+    validation_dataset_ref: pick_mango_vid_4vid_valid
+
+  pick_mango_vid_4vid_valid:
+    display_name: Pick Mango Valid (4 videos)
+    processed_h5: pick_mango_vid-4vid_valid.h5
+    raw_dir: pick_mango_vid
+
+  pick_mango_vid_18vid_calibration:
+    display_name: Pick Mango Calibration (18 videos)
+    processed_h5: pick_mango_vid-18vid_calibration.h5
+    raw_dir: pick_mango_vid
+
+  pick_mango_vid_18vid_fail:
+    display_name: Pick Mango Fail (18 videos)
+    processed_h5: pick_mango_vid-18vid_fail.h5
+    raw_dir: pick_mango_vid
 
   # ── MetaWorld ──────────────────────────────────────────────────────
   metaworld_assembly_v2_36vid_train:
@@ -469,3 +529,48 @@ datasets:
   metaworld_hammer_v2_50vid_noise02:
     display_name: MetaWorld Hammer V2 (50 videos, noise 0.2)
     processed_h5: metaworld/hammer-v2-50vid_noise02.h5
+
+  fruits_real_rollout_vid_48vid:
+    display_name: Fruits Real Rollout (48 videos)
+    processed_h5: fruits_real_rollout_vid-48vid_all.h5
+    raw_dir: fruits_real_rollout_vid
+
+  # Real-task reviewed clips (zero-based inclusive, no frame filter)
+  drawer_place_36vid_train:
+    display_name: drawer_place reviewed real demonstrations (train)
+    processed_h5: drawer_place-36vid_train.h5
+    raw_dir: drawer_place/collect_data
+    validation_dataset_ref: drawer_place_4vid_valid
+  drawer_place_4vid_valid:
+    display_name: drawer_place reviewed real demonstrations (valid)
+    processed_h5: drawer_place-4vid_valid.h5
+    raw_dir: drawer_place/collect_data
+  drawer_place_6vid_calibration:
+    display_name: drawer_place reviewed real demonstrations (calibration)
+    processed_h5: drawer_place-6vid_calibration.h5
+    raw_dir: drawer_place/collect_data
+  towel_36vid_train:
+    display_name: towel reviewed real demonstrations (train)
+    processed_h5: towel-36vid_train.h5
+    raw_dir: towel/collect_data
+    validation_dataset_ref: towel_4vid_valid
+  towel_4vid_valid:
+    display_name: towel reviewed real demonstrations (valid)
+    processed_h5: towel-4vid_valid.h5
+    raw_dir: towel/collect_data
+  towel_13vid_calibration:
+    display_name: towel reviewed real demonstrations (calibration)
+    processed_h5: towel-13vid_calibration.h5
+    raw_dir: towel/collect_data
+
+  # AntMaze U-maze multi-quality collection (2026-10-30).
+  # Expert trains FineProg; fail/subopt are held-out diagnostic queries.
+  antmaze_umaze_v2_expert_36vid_train:
+    display_name: AntMaze U-maze expert (36 training videos)
+    processed_h5: antmaze_umaze_v2_expert-36vid_train.h5
+  antmaze_umaze_v2_fail_16vid:
+    display_name: AntMaze U-maze failure (12 atomic + 4 composite videos)
+    processed_h5: antmaze_umaze_v2_fail-16vid.h5
+  antmaze_umaze_v2_subopt_4vid:
+    display_name: AntMaze U-maze suboptimal (4 recovery videos)
+    processed_h5: antmaze_umaze_v2_subopt-4vid.h5

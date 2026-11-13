@@ -1,0 +1,9 @@
+name,id,key_frame_idx,event,kind
+demo_41.mp4,000001,87,grasp,strong
+demo_41.mp4,000001,138,goal,tail
+demo_32.mp4,000002,53,grasp,strong
+demo_32.mp4,000002,97,goal,stable
+demo_51.mp4,000003,53,grasp,strong
+demo_51.mp4,000003,99,goal,tail
+demo_13.mp4,000004,57,grasp,strong
+demo_13.mp4,000004,108,goal,stable

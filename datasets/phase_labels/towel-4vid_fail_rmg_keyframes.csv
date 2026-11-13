@@ -1,0 +1,13 @@
+name,id,key_frame_idx,event,kind
+ood_1.mp4,000001,68,grasp,effective_contact
+ood_3.mp4,000002,76,grasp,effective_contact
+ood_5.mp4,000003,207,grasp,effective_contact
+ood_5.mp4,000003,237,drop,reset_flat
+ood_5.mp4,000003,272,grasp,effective_contact
+ood_5.mp4,000003,296,drop,reset_flat
+ood_5.mp4,000003,342,grasp,effective_contact
+ood_5.mp4,000003,393,drop,reset_flat
+ood_5.mp4,000003,448,grasp,effective_contact
+ood_6.mp4,000004,68,grasp,effective_contact
+ood_6.mp4,000004,83,drop,reset_flat
+ood_6.mp4,000004,95,grasp,effective_contact

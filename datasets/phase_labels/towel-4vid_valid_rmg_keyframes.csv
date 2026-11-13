@@ -1,0 +1,9 @@
+name,id,key_frame_idx,event,kind
+20260924224352.mp4,000001,56,grasp,effective_contact
+20260924224352.mp4,000001,318,goal,released_goal
+20260924225122.mp4,000002,55,grasp,effective_contact
+20260924225122.mp4,000002,223,goal,released_goal
+20260924175337.mp4,000003,74,grasp,effective_contact
+20260924175337.mp4,000003,414,goal,released_goal
+20260924221719.mp4,000004,56,grasp,effective_contact
+20260924221719.mp4,000004,293,goal,released_goal

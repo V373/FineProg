@@ -1,0 +1,1495 @@
+{
+  "task": "towel",
+  "index_convention": "zero_based_inclusive",
+  "camera": "topFullImg",
+  "roi_xywh": [
+    80,
+    0,
+    480,
+    480
+  ],
+  "output_size": [
+    224,
+    224
+  ],
+  "duplicate_frame_filter": false,
+  "timestamp_policy": "No per-frame timestamp; same integer JPEG/observation index.",
+  "kept_count": 53,
+  "excluded_count": 2,
+  "episodes": [
+    {
+      "source_episode": "20260924175215",
+      "source_frames": 534,
+      "review_index": 0,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_00_04.jpg",
+        "visuals/towel/start_00_04.jpg",
+        "visuals/towel/end_00_04.jpg",
+        "visuals/towel/release_fine_00_04.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 10,
+      "completion_frame": 468,
+      "end_frame": 470,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        461,
+        473,
+        0,
+        0.0,
+        0.976
+      ],
+      "candidate_release_half_frame": 467
+    },
+    {
+      "source_episode": "20260924175301",
+      "source_frames": 394,
+      "review_index": 1,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_00_04.jpg",
+        "visuals/towel/start_00_04.jpg",
+        "visuals/towel/end_00_04.jpg",
+        "visuals/towel/release_fine_00_04.jpg",
+        "visuals/towel/detail_01_left_adjust.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 3,
+      "completion_frame": 346,
+      "end_frame": 348,
+      "reason": "完整折叠成功；短暂局部夹爪调整经近景复核后保留，无长段反复试抓，不删除片段内部帧。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        339,
+        353,
+        0,
+        0.0,
+        0.98
+      ],
+      "candidate_release_half_frame": 346
+    },
+    {
+      "source_episode": "20260924175337",
+      "source_frames": 465,
+      "review_index": 2,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_00_04.jpg",
+        "visuals/towel/start_00_04.jpg",
+        "visuals/towel/end_00_04.jpg",
+        "visuals/towel/release_fine_00_04.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 4,
+      "completion_frame": 419,
+      "end_frame": 421,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        413,
+        424,
+        0,
+        0.012,
+        0.973
+      ],
+      "candidate_release_half_frame": 419
+    },
+    {
+      "source_episode": "20260924175433",
+      "source_frames": 399,
+      "review_index": 3,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_00_04.jpg",
+        "visuals/towel/start_00_04.jpg",
+        "visuals/towel/end_00_04.jpg",
+        "visuals/towel/release_fine_00_04.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 5,
+      "completion_frame": 358,
+      "end_frame": 360,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        351,
+        363,
+        0,
+        0.0,
+        0.98
+      ],
+      "candidate_release_half_frame": 358
+    },
+    {
+      "source_episode": "20260924175520",
+      "source_frames": 453,
+      "review_index": 4,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_00_04.jpg",
+        "visuals/towel/start_00_04.jpg",
+        "visuals/towel/end_00_04.jpg",
+        "visuals/towel/release_fine_00_04.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 3,
+      "completion_frame": 389,
+      "end_frame": 391,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        383,
+        396,
+        0,
+        0.004,
+        0.973
+      ],
+      "candidate_release_half_frame": 389
+    },
+    {
+      "source_episode": "20260924175616",
+      "source_frames": 428,
+      "review_index": 5,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_05_09.jpg",
+        "visuals/towel/start_05_09.jpg",
+        "visuals/towel/end_05_09.jpg",
+        "visuals/towel/release_fine_05_09.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 8,
+      "completion_frame": 367,
+      "end_frame": 369,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        361,
+        373,
+        0,
+        0.004,
+        0.976
+      ],
+      "candidate_release_half_frame": 367
+    },
+    {
+      "source_episode": "20260924175734",
+      "source_frames": 397,
+      "review_index": 6,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_05_09.jpg",
+        "visuals/towel/start_05_09.jpg",
+        "visuals/towel/end_05_09.jpg",
+        "visuals/towel/release_fine_05_09.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 1,
+      "completion_frame": 356,
+      "end_frame": 358,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        351,
+        362,
+        0,
+        0.012,
+        0.973
+      ],
+      "candidate_release_half_frame": 356
+    },
+    {
+      "source_episode": "20260924181014",
+      "source_frames": 389,
+      "review_index": 7,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_05_09.jpg",
+        "visuals/towel/start_05_09.jpg",
+        "visuals/towel/end_05_09.jpg",
+        "visuals/towel/release_fine_05_09.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 6,
+      "completion_frame": 346,
+      "end_frame": 348,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        341,
+        352,
+        0,
+        0.008,
+        0.976
+      ],
+      "candidate_release_half_frame": 346
+    },
+    {
+      "source_episode": "20260924181304",
+      "source_frames": 439,
+      "review_index": 8,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_05_09.jpg",
+        "visuals/towel/start_05_09.jpg",
+        "visuals/towel/end_05_09.jpg",
+        "visuals/towel/release_fine_05_09.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 0,
+      "completion_frame": 393,
+      "end_frame": 395,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "录制开始已紧接正式接近动作，首帧可用；没有证据要求强制删除固定前缀。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        388,
+        400,
+        0,
+        0.0,
+        0.976
+      ],
+      "candidate_release_half_frame": 393
+    },
+    {
+      "source_episode": "20260924201724",
+      "source_frames": 436,
+      "review_index": 9,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_05_09.jpg",
+        "visuals/towel/start_05_09.jpg",
+        "visuals/towel/end_05_09.jpg",
+        "visuals/towel/release_fine_05_09.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 12,
+      "completion_frame": 381,
+      "end_frame": 383,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        375,
+        388,
+        0,
+        0.004,
+        0.976
+      ],
+      "candidate_release_half_frame": 381
+    },
+    {
+      "source_episode": "20260924201815",
+      "source_frames": 429,
+      "review_index": 10,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_10_14.jpg",
+        "visuals/towel/start_10_14.jpg",
+        "visuals/towel/end_10_14.jpg",
+        "visuals/towel/release_fine_10_14.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 7,
+      "completion_frame": 386,
+      "end_frame": 388,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        380,
+        392,
+        0,
+        0.0,
+        0.969
+      ],
+      "candidate_release_half_frame": 386
+    },
+    {
+      "source_episode": "20260924202355",
+      "source_frames": 374,
+      "review_index": 11,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_10_14.jpg",
+        "visuals/towel/start_10_14.jpg",
+        "visuals/towel/end_10_14.jpg",
+        "visuals/towel/release_fine_10_14.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 5,
+      "completion_frame": 334,
+      "end_frame": 336,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        327,
+        340,
+        0,
+        0.0,
+        0.98
+      ],
+      "candidate_release_half_frame": 334
+    },
+    {
+      "source_episode": "20260924202431",
+      "source_frames": 370,
+      "review_index": 12,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_10_14.jpg",
+        "visuals/towel/start_10_14.jpg",
+        "visuals/towel/end_10_14.jpg",
+        "visuals/towel/release_fine_10_14.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 1,
+      "completion_frame": 327,
+      "end_frame": 329,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        321,
+        332,
+        0,
+        0.004,
+        0.973
+      ],
+      "candidate_release_half_frame": 327
+    },
+    {
+      "source_episode": "20260924202515",
+      "source_frames": 395,
+      "review_index": 13,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_10_14.jpg",
+        "visuals/towel/start_10_14.jpg",
+        "visuals/towel/end_10_14.jpg",
+        "visuals/towel/release_fine_10_14.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 9,
+      "completion_frame": 363,
+      "end_frame": 365,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        356,
+        369,
+        0,
+        0.0,
+        0.976
+      ],
+      "candidate_release_half_frame": 363
+    },
+    {
+      "source_episode": "20260924202604",
+      "source_frames": 356,
+      "review_index": 14,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_10_14.jpg",
+        "visuals/towel/start_10_14.jpg",
+        "visuals/towel/end_10_14.jpg",
+        "visuals/towel/release_fine_10_14.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 1,
+      "completion_frame": 318,
+      "end_frame": 320,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        311,
+        325,
+        0,
+        0.004,
+        0.976
+      ],
+      "candidate_release_half_frame": 318
+    },
+    {
+      "source_episode": "20260924202643",
+      "source_frames": 384,
+      "review_index": 15,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_15_19.jpg",
+        "visuals/towel/start_15_19.jpg",
+        "visuals/towel/end_15_19.jpg",
+        "visuals/towel/release_fine_15_19.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 3,
+      "completion_frame": 347,
+      "end_frame": 349,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        340,
+        354,
+        0,
+        0.0,
+        0.976
+      ],
+      "candidate_release_half_frame": 347
+    },
+    {
+      "source_episode": "20260924202719",
+      "source_frames": 370,
+      "review_index": 16,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_15_19.jpg",
+        "visuals/towel/start_15_19.jpg",
+        "visuals/towel/end_15_19.jpg",
+        "visuals/towel/release_fine_15_19.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 5,
+      "completion_frame": 330,
+      "end_frame": 332,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        324,
+        337,
+        0,
+        0.0,
+        0.973
+      ],
+      "candidate_release_half_frame": 330
+    },
+    {
+      "source_episode": "20260924221005",
+      "source_frames": 375,
+      "review_index": 17,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_15_19.jpg",
+        "visuals/towel/start_15_19.jpg",
+        "visuals/towel/end_15_19.jpg",
+        "visuals/towel/release_fine_15_19.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 6,
+      "completion_frame": 323,
+      "end_frame": 325,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        316,
+        330,
+        0,
+        0.004,
+        0.976
+      ],
+      "candidate_release_half_frame": 323
+    },
+    {
+      "source_episode": "20260924221049",
+      "source_frames": 326,
+      "review_index": 18,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_15_19.jpg",
+        "visuals/towel/start_15_19.jpg",
+        "visuals/towel/end_15_19.jpg",
+        "visuals/towel/release_fine_15_19.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 6,
+      "completion_frame": 288,
+      "end_frame": 290,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        282,
+        294,
+        0,
+        0.0,
+        0.976
+      ],
+      "candidate_release_half_frame": 288
+    },
+    {
+      "source_episode": "20260924221130",
+      "source_frames": 324,
+      "review_index": 19,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_15_19.jpg",
+        "visuals/towel/start_15_19.jpg",
+        "visuals/towel/end_15_19.jpg",
+        "visuals/towel/release_fine_15_19.jpg",
+        "visuals/towel/detail_19_left_adjust.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 3,
+      "completion_frame": 289,
+      "end_frame": 291,
+      "reason": "完整折叠成功；短暂局部夹爪调整经近景复核后保留，无长段反复试抓，不删除片段内部帧。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        283,
+        295,
+        0,
+        0.0,
+        0.98
+      ],
+      "candidate_release_half_frame": 289
+    },
+    {
+      "source_episode": "20260924221250",
+      "source_frames": 285,
+      "review_index": 20,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_20_24.jpg",
+        "visuals/towel/start_20_24.jpg",
+        "visuals/towel/end_20_24.jpg",
+        "visuals/towel/release_fine_20_24.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 2,
+      "completion_frame": 248,
+      "end_frame": 250,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        241,
+        254,
+        0,
+        0.0,
+        0.973
+      ],
+      "candidate_release_half_frame": 248
+    },
+    {
+      "source_episode": "20260924221335",
+      "source_frames": 349,
+      "review_index": 21,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_20_24.jpg",
+        "visuals/towel/start_20_24.jpg",
+        "visuals/towel/end_20_24.jpg",
+        "visuals/towel/release_fine_20_24.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 7,
+      "completion_frame": 319,
+      "end_frame": 321,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        313,
+        325,
+        0,
+        0.0,
+        0.969
+      ],
+      "candidate_release_half_frame": 319
+    },
+    {
+      "source_episode": "20260924221409",
+      "source_frames": 334,
+      "review_index": 22,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_20_24.jpg",
+        "visuals/towel/start_20_24.jpg",
+        "visuals/towel/end_20_24.jpg",
+        "visuals/towel/release_fine_20_24.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 3,
+      "completion_frame": 295,
+      "end_frame": 297,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        288,
+        300,
+        0,
+        0.0,
+        0.965
+      ],
+      "candidate_release_half_frame": 295
+    },
+    {
+      "source_episode": "20260924221448",
+      "source_frames": 324,
+      "review_index": 23,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_20_24.jpg",
+        "visuals/towel/start_20_24.jpg",
+        "visuals/towel/end_20_24.jpg",
+        "visuals/towel/release_fine_20_24.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 2,
+      "completion_frame": 289,
+      "end_frame": 291,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        282,
+        296,
+        0,
+        0.004,
+        0.976
+      ],
+      "candidate_release_half_frame": 289
+    },
+    {
+      "source_episode": "20260924221522",
+      "source_frames": 360,
+      "review_index": 24,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_20_24.jpg",
+        "visuals/towel/start_20_24.jpg",
+        "visuals/towel/end_20_24.jpg",
+        "visuals/towel/release_fine_20_24.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 10,
+      "completion_frame": 318,
+      "end_frame": 320,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        311,
+        324,
+        0,
+        0.0,
+        0.976
+      ],
+      "candidate_release_half_frame": 318
+    },
+    {
+      "source_episode": "20260924221557",
+      "source_frames": 335,
+      "review_index": 25,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_25_29.jpg",
+        "visuals/towel/start_25_29.jpg",
+        "visuals/towel/end_25_29.jpg",
+        "visuals/towel/release_fine_25_29.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 2,
+      "completion_frame": 300,
+      "end_frame": 302,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        294,
+        305,
+        0,
+        0.012,
+        0.976
+      ],
+      "candidate_release_half_frame": 300
+    },
+    {
+      "source_episode": "20260924221632",
+      "source_frames": 366,
+      "review_index": 26,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_25_29.jpg",
+        "visuals/towel/start_25_29.jpg",
+        "visuals/towel/end_25_29.jpg",
+        "visuals/towel/release_fine_25_29.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 4,
+      "completion_frame": 329,
+      "end_frame": 331,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        322,
+        336,
+        0,
+        0.0,
+        0.98
+      ],
+      "candidate_release_half_frame": 329
+    },
+    {
+      "source_episode": "20260924221719",
+      "source_frames": 341,
+      "review_index": 27,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_25_29.jpg",
+        "visuals/towel/start_25_29.jpg",
+        "visuals/towel/end_25_29.jpg",
+        "visuals/towel/release_fine_25_29.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 6,
+      "completion_frame": 299,
+      "end_frame": 301,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        293,
+        304,
+        0,
+        0.016,
+        0.969
+      ],
+      "candidate_release_half_frame": 299
+    },
+    {
+      "source_episode": "20260924221906",
+      "source_frames": 929,
+      "review_index": 28,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_25_29.jpg",
+        "visuals/towel/start_25_29.jpg",
+        "visuals/towel/end_25_29.jpg",
+        "visuals/towel/release_fine_25_29.jpg",
+        "visuals/towel/detail_28_right_retries.jpg",
+        "visuals/towel/detail_28_left_retries.jpg"
+      ],
+      "status": "exclude",
+      "start_frame": null,
+      "completion_frame": null,
+      "end_frame": null,
+      "reason": "最终成功，但右臂约190–345帧和左臂约560–735帧反复开合、重抓，存在长时间抓取调整/重试，不作为第一轮专家轨迹；排除依据为动作与图像，不是929帧长度。",
+      "start_reason": "不纳入成功专家池",
+      "end_reason": "不纳入成功专家池"
+    },
+    {
+      "source_episode": "20260924222308",
+      "source_frames": 87,
+      "review_index": 29,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_25_29.jpg",
+        "visuals/towel/start_25_29.jpg",
+        "visuals/towel/end_25_29.jpg",
+        "visuals/towel/release_fine_25_29.jpg"
+      ],
+      "status": "exclude",
+      "start_frame": null,
+      "completion_frame": null,
+      "end_frame": null,
+      "reason": "整条87帧实测关节/EEF/夹爪均静止，毛巾未折叠。",
+      "start_reason": "不纳入成功专家池",
+      "end_reason": "不纳入成功专家池"
+    },
+    {
+      "source_episode": "20260924222539",
+      "source_frames": 591,
+      "review_index": 30,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_30_34.jpg",
+        "visuals/towel/start_30_34.jpg",
+        "visuals/towel/end_30_34.jpg",
+        "visuals/towel/release_fine_30_34.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 16,
+      "completion_frame": 510,
+      "end_frame": 512,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        504,
+        515,
+        0,
+        0.0,
+        0.973
+      ],
+      "candidate_release_half_frame": 510
+    },
+    {
+      "source_episode": "20260924222633",
+      "source_frames": 547,
+      "review_index": 31,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_30_34.jpg",
+        "visuals/towel/start_30_34.jpg",
+        "visuals/towel/end_30_34.jpg",
+        "visuals/towel/release_fine_30_34.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 10,
+      "completion_frame": 461,
+      "end_frame": 463,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        454,
+        467,
+        0,
+        0.004,
+        0.969
+      ],
+      "candidate_release_half_frame": 461
+    },
+    {
+      "source_episode": "20260924222729",
+      "source_frames": 621,
+      "review_index": 32,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_30_34.jpg",
+        "visuals/towel/start_30_34.jpg",
+        "visuals/towel/end_30_34.jpg",
+        "visuals/towel/release_fine_30_34.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 9,
+      "completion_frame": 510,
+      "end_frame": 512,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        503,
+        516,
+        0,
+        0.008,
+        0.976
+      ],
+      "candidate_release_half_frame": 510
+    },
+    {
+      "source_episode": "20260924222836",
+      "source_frames": 508,
+      "review_index": 33,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_30_34.jpg",
+        "visuals/towel/start_30_34.jpg",
+        "visuals/towel/end_30_34.jpg",
+        "visuals/towel/release_fine_30_34.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 11,
+      "completion_frame": 453,
+      "end_frame": 455,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        447,
+        459,
+        0,
+        0.0,
+        0.98
+      ],
+      "candidate_release_half_frame": 453
+    },
+    {
+      "source_episode": "20260924222923",
+      "source_frames": 522,
+      "review_index": 34,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_30_34.jpg",
+        "visuals/towel/start_30_34.jpg",
+        "visuals/towel/end_30_34.jpg",
+        "visuals/towel/release_fine_30_34.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 8,
+      "completion_frame": 385,
+      "end_frame": 387,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        379,
+        391,
+        0,
+        0.004,
+        0.965
+      ],
+      "candidate_release_half_frame": 385
+    },
+    {
+      "source_episode": "20260924223006",
+      "source_frames": 446,
+      "review_index": 35,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_35_39.jpg",
+        "visuals/towel/start_35_39.jpg",
+        "visuals/towel/end_35_39.jpg",
+        "visuals/towel/release_fine_35_39.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 16,
+      "completion_frame": 398,
+      "end_frame": 400,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "前7–12帧短促调整后13–18帧有短暂停顿，选16帧，排除首次调整并保留正式接近前约3帧。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        392,
+        404,
+        0,
+        0.0,
+        0.976
+      ],
+      "candidate_release_half_frame": 398
+    },
+    {
+      "source_episode": "20260924223058",
+      "source_frames": 408,
+      "review_index": 36,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_35_39.jpg",
+        "visuals/towel/start_35_39.jpg",
+        "visuals/towel/end_35_39.jpg",
+        "visuals/towel/release_fine_35_39.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 15,
+      "completion_frame": 351,
+      "end_frame": 353,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        345,
+        357,
+        0,
+        0.0,
+        0.969
+      ],
+      "candidate_release_half_frame": 351
+    },
+    {
+      "source_episode": "20260924223136",
+      "source_frames": 434,
+      "review_index": 37,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_35_39.jpg",
+        "visuals/towel/start_35_39.jpg",
+        "visuals/towel/end_35_39.jpg",
+        "visuals/towel/release_fine_35_39.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 7,
+      "completion_frame": 377,
+      "end_frame": 379,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        371,
+        383,
+        0,
+        0.0,
+        0.976
+      ],
+      "candidate_release_half_frame": 377
+    },
+    {
+      "source_episode": "20260924223219",
+      "source_frames": 309,
+      "review_index": 38,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_35_39.jpg",
+        "visuals/towel/start_35_39.jpg",
+        "visuals/towel/end_35_39.jpg",
+        "visuals/towel/release_fine_35_39.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 8,
+      "completion_frame": 266,
+      "end_frame": 268,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        261,
+        272,
+        0,
+        0.0,
+        0.969
+      ],
+      "candidate_release_half_frame": 266
+    },
+    {
+      "source_episode": "20260924223253",
+      "source_frames": 525,
+      "review_index": 39,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_35_39.jpg",
+        "visuals/towel/start_35_39.jpg",
+        "visuals/towel/end_35_39.jpg",
+        "visuals/towel/release_fine_35_39.jpg",
+        "visuals/towel/detail_39_grasp_adjust.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 8,
+      "completion_frame": 419,
+      "end_frame": 421,
+      "reason": "完整折叠成功；短暂局部夹爪调整经近景复核后保留，无长段反复试抓，不删除片段内部帧。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        412,
+        425,
+        0,
+        0.0,
+        0.976
+      ],
+      "candidate_release_half_frame": 419
+    },
+    {
+      "source_episode": "20260924224137",
+      "source_frames": 513,
+      "review_index": 40,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_40_44.jpg",
+        "visuals/towel/start_40_44.jpg",
+        "visuals/towel/end_40_44.jpg",
+        "visuals/towel/release_fine_40_44.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 11,
+      "completion_frame": 462,
+      "end_frame": 464,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        456,
+        468,
+        0,
+        0.0,
+        0.984
+      ],
+      "candidate_release_half_frame": 462
+    },
+    {
+      "source_episode": "20260924224227",
+      "source_frames": 570,
+      "review_index": 41,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_40_44.jpg",
+        "visuals/towel/start_40_44.jpg",
+        "visuals/towel/end_40_44.jpg",
+        "visuals/towel/release_fine_40_44.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 6,
+      "completion_frame": 492,
+      "end_frame": 494,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        485,
+        499,
+        0,
+        0.0,
+        0.98
+      ],
+      "candidate_release_half_frame": 492
+    },
+    {
+      "source_episode": "20260924224313",
+      "source_frames": 400,
+      "review_index": 42,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_40_44.jpg",
+        "visuals/towel/start_40_44.jpg",
+        "visuals/towel/end_40_44.jpg",
+        "visuals/towel/release_fine_40_44.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 2,
+      "completion_frame": 336,
+      "end_frame": 338,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        330,
+        342,
+        0,
+        0.0,
+        0.98
+      ],
+      "candidate_release_half_frame": 336
+    },
+    {
+      "source_episode": "20260924224352",
+      "source_frames": 393,
+      "review_index": 43,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_40_44.jpg",
+        "visuals/towel/start_40_44.jpg",
+        "visuals/towel/end_40_44.jpg",
+        "visuals/towel/release_fine_40_44.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 8,
+      "completion_frame": 326,
+      "end_frame": 328,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        319,
+        332,
+        0,
+        0.0,
+        0.965
+      ],
+      "candidate_release_half_frame": 326
+    },
+    {
+      "source_episode": "20260924224431",
+      "source_frames": 513,
+      "review_index": 44,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_40_44.jpg",
+        "visuals/towel/start_40_44.jpg",
+        "visuals/towel/end_40_44.jpg",
+        "visuals/towel/release_fine_40_44.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 5,
+      "completion_frame": 447,
+      "end_frame": 449,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        440,
+        453,
+        0,
+        0.0,
+        0.976
+      ],
+      "candidate_release_half_frame": 447
+    },
+    {
+      "source_episode": "20260924224613",
+      "source_frames": 406,
+      "review_index": 45,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_45_49.jpg",
+        "visuals/towel/start_45_49.jpg",
+        "visuals/towel/end_45_49.jpg",
+        "visuals/towel/release_fine_45_49.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 5,
+      "completion_frame": 349,
+      "end_frame": 351,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        343,
+        355,
+        0,
+        0.0,
+        0.976
+      ],
+      "candidate_release_half_frame": 349
+    },
+    {
+      "source_episode": "20260924224658",
+      "source_frames": 375,
+      "review_index": 46,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_45_49.jpg",
+        "visuals/towel/start_45_49.jpg",
+        "visuals/towel/end_45_49.jpg",
+        "visuals/towel/release_fine_45_49.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 5,
+      "completion_frame": 338,
+      "end_frame": 340,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        332,
+        345,
+        0,
+        0.0,
+        0.976
+      ],
+      "candidate_release_half_frame": 338
+    },
+    {
+      "source_episode": "20260924224734",
+      "source_frames": 407,
+      "review_index": 47,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_45_49.jpg",
+        "visuals/towel/start_45_49.jpg",
+        "visuals/towel/end_45_49.jpg",
+        "visuals/towel/release_fine_45_49.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 5,
+      "completion_frame": 371,
+      "end_frame": 373,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        364,
+        377,
+        0,
+        0.0,
+        0.973
+      ],
+      "candidate_release_half_frame": 371
+    },
+    {
+      "source_episode": "20260924224810",
+      "source_frames": 483,
+      "review_index": 48,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_45_49.jpg",
+        "visuals/towel/start_45_49.jpg",
+        "visuals/towel/end_45_49.jpg",
+        "visuals/towel/release_fine_45_49.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 8,
+      "completion_frame": 440,
+      "end_frame": 442,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        434,
+        446,
+        0,
+        0.0,
+        0.976
+      ],
+      "candidate_release_half_frame": 440
+    },
+    {
+      "source_episode": "20260924224848",
+      "source_frames": 434,
+      "review_index": 49,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_45_49.jpg",
+        "visuals/towel/start_45_49.jpg",
+        "visuals/towel/end_45_49.jpg",
+        "visuals/towel/release_fine_45_49.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 6,
+      "completion_frame": 391,
+      "end_frame": 393,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        385,
+        397,
+        0,
+        0.0,
+        0.965
+      ],
+      "candidate_release_half_frame": 391
+    },
+    {
+      "source_episode": "20260924225001",
+      "source_frames": 347,
+      "review_index": 50,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_50_54.jpg",
+        "visuals/towel/start_50_54.jpg",
+        "visuals/towel/end_50_54.jpg",
+        "visuals/towel/release_fine_50_54.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 16,
+      "completion_frame": 289,
+      "end_frame": 291,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        284,
+        295,
+        0,
+        0.09,
+        0.973
+      ],
+      "candidate_release_half_frame": 289
+    },
+    {
+      "source_episode": "20260924225054",
+      "source_frames": 278,
+      "review_index": 51,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_50_54.jpg",
+        "visuals/towel/start_50_54.jpg",
+        "visuals/towel/end_50_54.jpg",
+        "visuals/towel/release_fine_50_54.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 9,
+      "completion_frame": 230,
+      "end_frame": 232,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        224,
+        236,
+        0,
+        0.0,
+        0.973
+      ],
+      "candidate_release_half_frame": 230
+    },
+    {
+      "source_episode": "20260924225122",
+      "source_frames": 269,
+      "review_index": 52,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_50_54.jpg",
+        "visuals/towel/start_50_54.jpg",
+        "visuals/towel/end_50_54.jpg",
+        "visuals/towel/release_fine_50_54.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 9,
+      "completion_frame": 232,
+      "end_frame": 234,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        227,
+        238,
+        0,
+        0.0,
+        0.973
+      ],
+      "candidate_release_half_frame": 232
+    },
+    {
+      "source_episode": "20260924225151",
+      "source_frames": 355,
+      "review_index": 53,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_50_54.jpg",
+        "visuals/towel/start_50_54.jpg",
+        "visuals/towel/end_50_54.jpg",
+        "visuals/towel/release_fine_50_54.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 7,
+      "completion_frame": 303,
+      "end_frame": 305,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "从正式右臂接近毛巾前的最后短暂停顿/连续接近起始处保留；剔除此前录制等待或微调，不以首次关节变化直接定起点。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        297,
+        309,
+        0,
+        0.047,
+        0.973
+      ],
+      "candidate_release_half_frame": 303
+    },
+    {
+      "source_episode": "20260924225242",
+      "source_frames": 365,
+      "review_index": 54,
+      "evidence": "全量机器人状态；逐条查看全程抽样、首段、最终释放窗口与近景释放对照图；边界为图像+实测状态审核估计，不是物理GT。",
+      "evidence_files": [
+        "visuals/towel/overview_50_54.jpg",
+        "visuals/towel/start_50_54.jpg",
+        "visuals/towel/end_50_54.jpg",
+        "visuals/towel/release_fine_50_54.jpg"
+      ],
+      "status": "keep",
+      "start_frame": 7,
+      "completion_frame": 316,
+      "end_frame": 318,
+      "reason": "完整两阶段折叠并最终松手；保留任务内正常停顿和短暂夹爪调整。",
+      "start_reason": "排除4–6帧短促初始变化；从7帧短暂停顿/正式接近启动处保留。",
+      "end_reason": "最后一次左夹爪释放附近，近景确认最终折叠形态已落在托盘上且手指放开；取该语义完成帧后2帧，不等待夹爪全行程张开或机械臂退让回位。",
+      "final_release_ramp": [
+        309,
+        323,
+        0,
+        0.012,
+        0.973
+      ],
+      "candidate_release_half_frame": 316
+    }
+  ]
+}

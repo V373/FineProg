@@ -1,0 +1,16 @@
+processed_h5_name,video_idx,source_video_name,source_video_path
+robomimic_can_fail-15vid.h5,000001,can_fail_01_grasp_miss_front.mp4,/home/user/zhangzk/projects/fineprog/.vibe/.claude/opus/20261024-175235_can_fail/videos/can_fail_01_grasp_miss_front.mp4
+robomimic_can_fail-15vid.h5,000002,can_fail_02_grasp_miss_back.mp4,/home/user/zhangzk/projects/fineprog/.vibe/.claude/opus/20261024-175235_can_fail/videos/can_fail_02_grasp_miss_back.mp4
+robomimic_can_fail-15vid.h5,000003,can_fail_03_grasp_miss_high.mp4,/home/user/zhangzk/projects/fineprog/.vibe/.claude/opus/20261024-175235_can_fail/videos/can_fail_03_grasp_miss_high.mp4
+robomimic_can_fail-15vid.h5,000004,can_fail_04_drop_carry_early.mp4,/home/user/zhangzk/projects/fineprog/.vibe/.claude/opus/20261024-175235_can_fail/videos/can_fail_04_drop_carry_early.mp4
+robomimic_can_fail-15vid.h5,000005,can_fail_05_drop_carry_mid.mp4,/home/user/zhangzk/projects/fineprog/.vibe/.claude/opus/20261024-175235_can_fail/videos/can_fail_05_drop_carry_mid.mp4
+robomimic_can_fail-15vid.h5,000006,can_fail_06_drop_carry_late.mp4,/home/user/zhangzk/projects/fineprog/.vibe/.claude/opus/20261024-175235_can_fail/videos/can_fail_06_drop_carry_late.mp4
+robomimic_can_fail-15vid.h5,000007,can_fail_07_stall_high.mp4,/home/user/zhangzk/projects/fineprog/.vibe/.claude/opus/20261024-175235_can_fail/videos/can_fail_07_stall_high.mp4
+robomimic_can_fail-15vid.h5,000008,can_fail_08_stall_hover.mp4,/home/user/zhangzk/projects/fineprog/.vibe/.claude/opus/20261024-175235_can_fail/videos/can_fail_08_stall_hover.mp4
+robomimic_can_fail-15vid.h5,000009,can_fail_09_stall_aligned.mp4,/home/user/zhangzk/projects/fineprog/.vibe/.claude/opus/20261024-175235_can_fail/videos/can_fail_09_stall_aligned.mp4
+robomimic_can_fail-15vid.h5,000010,can_fail_10_wrong_target_q0.mp4,/home/user/zhangzk/projects/fineprog/.vibe/.claude/opus/20261024-175235_can_fail/videos/can_fail_10_wrong_target_q0.mp4
+robomimic_can_fail-15vid.h5,000011,can_fail_11_wrong_target_q1.mp4,/home/user/zhangzk/projects/fineprog/.vibe/.claude/opus/20261024-175235_can_fail/videos/can_fail_11_wrong_target_q1.mp4
+robomimic_can_fail-15vid.h5,000012,can_fail_12_wrong_target_q2.mp4,/home/user/zhangzk/projects/fineprog/.vibe/.claude/opus/20261024-175235_can_fail/videos/can_fail_12_wrong_target_q2.mp4
+robomimic_can_fail-15vid.h5,000013,can_fail_13_composite_miss_miss_drop.mp4,/home/user/zhangzk/projects/fineprog/.vibe/.claude/opus/20261024-175235_can_fail/videos/can_fail_13_composite_miss_miss_drop.mp4
+robomimic_can_fail-15vid.h5,000014,can_fail_14_composite_stall_miss_wrong.mp4,/home/user/zhangzk/projects/fineprog/.vibe/.claude/opus/20261024-175235_can_fail/videos/can_fail_14_composite_stall_miss_wrong.mp4
+robomimic_can_fail-15vid.h5,000015,can_fail_15_composite_miss_miss_stall.mp4,/home/user/zhangzk/projects/fineprog/.vibe/.claude/opus/20261024-175235_can_fail/videos/can_fail_15_composite_miss_miss_stall.mp4

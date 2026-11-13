@@ -473,9 +473,52 @@ runs:
 
   # ── MetaWorld Assembly V2 ────────────────────────────────────────────
   comp_tt_assembly_v2_36_ep20k_s20260901:
-    description: "MetaWorld Assembly V2 36-vid Composite(TCC+TemporalTriplet), epoch 20000"
-    run_name: COMPOSITE_TCC_TEMPORAL_TRIPLET-assembly-v2-36vid_train-resnet50_conv4c-only_bn-20260901-031213
+    description: "MetaWorld Assembly V2 36-vid Composite(TCC+TemporalTriplet), epoch 20000 [updated 20260902]"
+    run_name: COMPOSITE_TCC_TEMPORAL_TRIPLET-assembly-v2-36vid_train-resnet50_conv4c-only_bn-20260902-232740
     train_dataset: metaworld_assembly_v2_36vid_train
+    backbone: resnet50_conv4c
+    train_base: only_bn
+    checkpoint_epoch: 20000
+
+  # ── MetaWorld Soccer V2 ──────────────────────────────────────────────
+  comp_tt_soccer_v2_36_ep20k_s20260903:
+    description: "MetaWorld Soccer V2 36-vid Composite(TCC+TemporalTriplet), epoch 20000"
+    run_name: COMPOSITE_TCC_TEMPORAL_TRIPLET-soccer-v2-36vid_train-resnet50_conv4c-only_bn-20260903-033439
+    train_dataset: metaworld_soccer_v2_36vid_train
+    backbone: resnet50_conv4c
+    train_base: only_bn
+    checkpoint_epoch: 20000
+
+  # ── MetaWorld Disassemble V2 ─────────────────────────────────────────
+  comp_tt_disassemble_v2_36_ep20k_s20260903:
+    description: "MetaWorld Disassemble V2 36-vid Composite(TCC+TemporalTriplet), epoch 20000"
+    run_name: COMPOSITE_TCC_TEMPORAL_TRIPLET-disassemble-v2-36vid_train-resnet50_conv4c-only_bn-20260903-074224
+    train_dataset: metaworld_disassemble_v2_36vid_train
+    backbone: resnet50_conv4c
+    train_base: only_bn
+    checkpoint_epoch: 20000
+
+  # ── MetaWorld Coffee Push V2 ─────────────────────────────────────────
+  comp_tt_coffee_push_v2_36_ep20k_s20260903:
+    description: "MetaWorld Coffee Push V2 36-vid Composite(TCC+TemporalTriplet), epoch 20000"
+    run_name: COMPOSITE_TCC_TEMPORAL_TRIPLET-coffee-push-v2-36vid_train-resnet50_conv4c-only_bn-20260903-114713
+    train_dataset: metaworld_coffee_push_v2_36vid_train
+    backbone: resnet50_conv4c
+    train_base: only_bn
+    checkpoint_epoch: 20000
+
+  fruit_260917_ctx10_ep20k:
+    description: "Fruit Expert 260917, context stride 10, epoch 20000"
+    run_name: COMPOSITE_TCC_TEMPORAL_TRIPLET-260917_fruit_expert_videos-36vid_train-resnet50_conv4c-only_bn-20260923-004921-ctxstride10
+    train_dataset: fruit_expert_videos_260917_36vid_train
+    backbone: resnet50_conv4c
+    train_base: only_bn
+    checkpoint_epoch: 20000
+
+  fruit_260917_ctx20_ep20k:
+    description: "Fruit Expert 260917, context stride 20, epoch 20000"
+    run_name: COMPOSITE_TCC_TEMPORAL_TRIPLET-260917_fruit_expert_videos-36vid_train-resnet50_conv4c-only_bn-20260923-045240-ctxstride20
+    train_dataset: fruit_expert_videos_260917_36vid_train
     backbone: resnet50_conv4c
     train_base: only_bn
     checkpoint_epoch: 20000
@@ -1582,4 +1625,136 @@ embeddings:
     description: metaworld_assembly_v2_50vid_noise02 embeddings (standard)
     run_ref: comp_tt_assembly_v2_36_ep20k_s20260901
     dataset_ref: metaworld_assembly_v2_50vid_noise02
+    variant: standard
+
+  comp_tt_soccer_v2_36_ep20k_s20260903_train:
+    description: metaworld_soccer_v2_36vid_train embeddings (standard)
+    run_ref: comp_tt_soccer_v2_36_ep20k_s20260903
+    dataset_ref: metaworld_soccer_v2_36vid_train
+    variant: standard
+
+  comp_tt_soccer_v2_36_ep20k_s20260903_valid4:
+    description: metaworld_soccer_v2_4vid_valid embeddings (standard)
+    run_ref: comp_tt_soccer_v2_36_ep20k_s20260903
+    dataset_ref: metaworld_soccer_v2_4vid_valid
+    variant: standard
+
+  comp_tt_soccer_v2_36_ep20k_s20260903_valid20:
+    description: metaworld_soccer_v2_20vid_valid embeddings (standard)
+    run_ref: comp_tt_soccer_v2_36_ep20k_s20260903
+    dataset_ref: metaworld_soccer_v2_20vid_valid
+    variant: standard
+
+  comp_tt_soccer_v2_36_ep20k_s20260903_noise01:
+    description: metaworld_soccer_v2_50vid_noise01 embeddings (standard)
+    run_ref: comp_tt_soccer_v2_36_ep20k_s20260903
+    dataset_ref: metaworld_soccer_v2_50vid_noise01
+    variant: standard
+
+  comp_tt_soccer_v2_36_ep20k_s20260903_noise02:
+    description: metaworld_soccer_v2_50vid_noise02 embeddings (standard)
+    run_ref: comp_tt_soccer_v2_36_ep20k_s20260903
+    dataset_ref: metaworld_soccer_v2_50vid_noise02
+    variant: standard
+
+  comp_tt_disassemble_v2_36_ep20k_s20260903_train:
+    description: metaworld_disassemble_v2_36vid_train embeddings (standard)
+    run_ref: comp_tt_disassemble_v2_36_ep20k_s20260903
+    dataset_ref: metaworld_disassemble_v2_36vid_train
+    variant: standard
+
+  comp_tt_disassemble_v2_36_ep20k_s20260903_valid4:
+    description: metaworld_disassemble_v2_4vid_valid embeddings (standard)
+    run_ref: comp_tt_disassemble_v2_36_ep20k_s20260903
+    dataset_ref: metaworld_disassemble_v2_4vid_valid
+    variant: standard
+
+  comp_tt_disassemble_v2_36_ep20k_s20260903_valid20:
+    description: metaworld_disassemble_v2_20vid_valid embeddings (standard)
+    run_ref: comp_tt_disassemble_v2_36_ep20k_s20260903
+    dataset_ref: metaworld_disassemble_v2_20vid_valid
+    variant: standard
+
+  comp_tt_disassemble_v2_36_ep20k_s20260903_noise01:
+    description: metaworld_disassemble_v2_50vid_noise01 embeddings (standard)
+    run_ref: comp_tt_disassemble_v2_36_ep20k_s20260903
+    dataset_ref: metaworld_disassemble_v2_50vid_noise01
+    variant: standard
+
+  comp_tt_disassemble_v2_36_ep20k_s20260903_noise02:
+    description: metaworld_disassemble_v2_50vid_noise02 embeddings (standard)
+    run_ref: comp_tt_disassemble_v2_36_ep20k_s20260903
+    dataset_ref: metaworld_disassemble_v2_50vid_noise02
+    variant: standard
+
+  comp_tt_coffee_push_v2_36_ep20k_s20260903_train:
+    description: metaworld_coffee_push_v2_36vid_train embeddings (standard)
+    run_ref: comp_tt_coffee_push_v2_36_ep20k_s20260903
+    dataset_ref: metaworld_coffee_push_v2_36vid_train
+    variant: standard
+
+  comp_tt_coffee_push_v2_36_ep20k_s20260903_valid4:
+    description: metaworld_coffee_push_v2_4vid_valid embeddings (standard)
+    run_ref: comp_tt_coffee_push_v2_36_ep20k_s20260903
+    dataset_ref: metaworld_coffee_push_v2_4vid_valid
+    variant: standard
+
+  comp_tt_coffee_push_v2_36_ep20k_s20260903_valid20:
+    description: metaworld_coffee_push_v2_20vid_valid embeddings (standard)
+    run_ref: comp_tt_coffee_push_v2_36_ep20k_s20260903
+    dataset_ref: metaworld_coffee_push_v2_20vid_valid
+    variant: standard
+
+  comp_tt_coffee_push_v2_36_ep20k_s20260903_noise01:
+    description: metaworld_coffee_push_v2_50vid_noise01 embeddings (standard)
+    run_ref: comp_tt_coffee_push_v2_36_ep20k_s20260903
+    dataset_ref: metaworld_coffee_push_v2_50vid_noise01
+    variant: standard
+
+  comp_tt_coffee_push_v2_36_ep20k_s20260903_noise02:
+    description: metaworld_coffee_push_v2_50vid_noise02 embeddings (standard)
+    run_ref: comp_tt_coffee_push_v2_36_ep20k_s20260903
+    dataset_ref: metaworld_coffee_push_v2_50vid_noise02
+    variant: standard
+
+  fruit_260917_ctx10_train36:
+    run_ref: fruit_260917_ctx10_ep20k
+    dataset_ref: fruit_expert_videos_260917_36vid_train
+    variant: standard
+  fruit_260917_ctx10_calib14:
+    run_ref: fruit_260917_ctx10_ep20k
+    dataset_ref: fruit_expert_videos_260917_14vid_valid
+    variant: standard
+  fruit_260917_ctx10_valid4:
+    run_ref: fruit_260917_ctx10_ep20k
+    dataset_ref: fruit_expert_videos_260917_4vid_valid
+    variant: standard
+  fruit_260917_ctx10_fail18:
+    run_ref: fruit_260917_ctx10_ep20k
+    dataset_ref: pick_mango_vid_18vid_fail
+    variant: standard
+  fruit_260917_ctx10_rollout48:
+    run_ref: fruit_260917_ctx10_ep20k
+    dataset_ref: fruits_real_rollout_vid_48vid
+    variant: standard
+
+  fruit_260917_ctx20_train36:
+    run_ref: fruit_260917_ctx20_ep20k
+    dataset_ref: fruit_expert_videos_260917_36vid_train
+    variant: standard
+  fruit_260917_ctx20_calib14:
+    run_ref: fruit_260917_ctx20_ep20k
+    dataset_ref: fruit_expert_videos_260917_14vid_valid
+    variant: standard
+  fruit_260917_ctx20_valid4:
+    run_ref: fruit_260917_ctx20_ep20k
+    dataset_ref: fruit_expert_videos_260917_4vid_valid
+    variant: standard
+  fruit_260917_ctx20_fail18:
+    run_ref: fruit_260917_ctx20_ep20k
+    dataset_ref: pick_mango_vid_18vid_fail
+    variant: standard
+  fruit_260917_ctx20_rollout48:
+    run_ref: fruit_260917_ctx20_ep20k
+    dataset_ref: fruits_real_rollout_vid_48vid
     variant: standard

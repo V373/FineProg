@@ -1,0 +1,1020 @@
+{
+  "task": "drawer_place",
+  "index_convention": "original zero-based inclusive [start_frame,end_frame]",
+  "camera": "topFullImg",
+  "roi_xywh": [
+    256,
+    168,
+    224,
+    224
+  ],
+  "review_method": "实测关节/末端/夹爪候选 + 各episode开始、中段和闭合附近图像复核；不用自动标签直接确定成功或最终边界。",
+  "invalid_state_fields": [
+    "joint_velocities (=joint_positions)"
+  ],
+  "duplicate_frame_filter": false,
+  "episodes": [
+    {
+      "source_episode": "episode_init_0",
+      "source_frames": 450,
+      "status": "keep",
+      "start_frame": 22,
+      "completion_frame": 352,
+      "end_frame": 354,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_00_04.jpg",
+        "visuals/drawer_place/start_00_04.jpg",
+        "visuals/drawer_place/completion_00_04.jpg",
+        "visuals/drawer_place/detail_00_04.jpg"
+      ],
+      "first_motion_candidate": 19,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_1",
+      "source_frames": 371,
+      "status": "keep",
+      "start_frame": 18,
+      "completion_frame": 307,
+      "end_frame": 309,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_00_04.jpg",
+        "visuals/drawer_place/start_00_04.jpg",
+        "visuals/drawer_place/completion_00_04.jpg",
+        "visuals/drawer_place/detail_00_04.jpg"
+      ],
+      "first_motion_candidate": 14,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_2",
+      "source_frames": 371,
+      "status": "keep",
+      "start_frame": 31,
+      "completion_frame": 295,
+      "end_frame": 297,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_00_04.jpg",
+        "visuals/drawer_place/start_00_04.jpg",
+        "visuals/drawer_place/completion_00_04.jpg",
+        "visuals/drawer_place/detail_00_04.jpg"
+      ],
+      "first_motion_candidate": 15,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_3",
+      "source_frames": 405,
+      "status": "keep",
+      "start_frame": 46,
+      "completion_frame": 342,
+      "end_frame": 344,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_00_04.jpg",
+        "visuals/drawer_place/start_00_04.jpg",
+        "visuals/drawer_place/completion_00_04.jpg",
+        "visuals/drawer_place/detail_00_04.jpg"
+      ],
+      "first_motion_candidate": 43,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_4",
+      "source_frames": 310,
+      "status": "keep",
+      "start_frame": 25,
+      "completion_frame": 254,
+      "end_frame": 256,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_00_04.jpg",
+        "visuals/drawer_place/start_00_04.jpg",
+        "visuals/drawer_place/completion_00_04.jpg",
+        "visuals/drawer_place/detail_00_04.jpg"
+      ],
+      "first_motion_candidate": 22,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_5",
+      "source_frames": 372,
+      "status": "keep",
+      "start_frame": 15,
+      "completion_frame": 312,
+      "end_frame": 314,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_05_09.jpg",
+        "visuals/drawer_place/start_05_09.jpg",
+        "visuals/drawer_place/completion_05_09.jpg",
+        "visuals/drawer_place/detail_05_09.jpg"
+      ],
+      "first_motion_candidate": 13,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_6",
+      "source_frames": 364,
+      "status": "keep",
+      "start_frame": 31,
+      "completion_frame": 296,
+      "end_frame": 298,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_05_09.jpg",
+        "visuals/drawer_place/start_05_09.jpg",
+        "visuals/drawer_place/completion_05_09.jpg",
+        "visuals/drawer_place/detail_05_09.jpg"
+      ],
+      "first_motion_candidate": 28,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_7",
+      "source_frames": 347,
+      "status": "keep",
+      "start_frame": 20,
+      "completion_frame": 295,
+      "end_frame": 297,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_05_09.jpg",
+        "visuals/drawer_place/start_05_09.jpg",
+        "visuals/drawer_place/completion_05_09.jpg",
+        "visuals/drawer_place/detail_05_09.jpg"
+      ],
+      "first_motion_candidate": 18,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_8",
+      "source_frames": 309,
+      "status": "keep",
+      "start_frame": 15,
+      "completion_frame": 247,
+      "end_frame": 249,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_05_09.jpg",
+        "visuals/drawer_place/start_05_09.jpg",
+        "visuals/drawer_place/completion_05_09.jpg",
+        "visuals/drawer_place/detail_05_09.jpg"
+      ],
+      "first_motion_candidate": 13,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_9",
+      "source_frames": 385,
+      "status": "keep",
+      "start_frame": 22,
+      "completion_frame": 322,
+      "end_frame": 324,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_05_09.jpg",
+        "visuals/drawer_place/start_05_09.jpg",
+        "visuals/drawer_place/completion_05_09.jpg",
+        "visuals/drawer_place/detail_05_09.jpg"
+      ],
+      "first_motion_candidate": 18,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_10",
+      "source_frames": 285,
+      "status": "keep",
+      "start_frame": 22,
+      "completion_frame": 220,
+      "end_frame": 222,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_10_14.jpg",
+        "visuals/drawer_place/start_10_14.jpg",
+        "visuals/drawer_place/completion_10_14.jpg",
+        "visuals/drawer_place/detail_10_14.jpg"
+      ],
+      "first_motion_candidate": 17,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_11",
+      "source_frames": 362,
+      "status": "keep",
+      "start_frame": 21,
+      "completion_frame": 304,
+      "end_frame": 306,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_10_14.jpg",
+        "visuals/drawer_place/start_10_14.jpg",
+        "visuals/drawer_place/completion_10_14.jpg",
+        "visuals/drawer_place/detail_10_14.jpg"
+      ],
+      "first_motion_candidate": 18,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_12",
+      "source_frames": 388,
+      "status": "keep",
+      "start_frame": 23,
+      "completion_frame": 307,
+      "end_frame": 309,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_10_14.jpg",
+        "visuals/drawer_place/start_10_14.jpg",
+        "visuals/drawer_place/completion_10_14.jpg",
+        "visuals/drawer_place/detail_10_14.jpg"
+      ],
+      "first_motion_candidate": 20,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_13",
+      "source_frames": 351,
+      "status": "keep",
+      "start_frame": 15,
+      "completion_frame": 282,
+      "end_frame": 284,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_10_14.jpg",
+        "visuals/drawer_place/start_10_14.jpg",
+        "visuals/drawer_place/completion_10_14.jpg",
+        "visuals/drawer_place/detail_10_14.jpg"
+      ],
+      "first_motion_candidate": 12,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_14",
+      "source_frames": 409,
+      "status": "keep",
+      "start_frame": 19,
+      "completion_frame": 339,
+      "end_frame": 341,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_10_14.jpg",
+        "visuals/drawer_place/start_10_14.jpg",
+        "visuals/drawer_place/completion_10_14.jpg",
+        "visuals/drawer_place/detail_10_14.jpg"
+      ],
+      "first_motion_candidate": 16,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_15",
+      "source_frames": 373,
+      "status": "keep",
+      "start_frame": 19,
+      "completion_frame": 300,
+      "end_frame": 302,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_15_19.jpg",
+        "visuals/drawer_place/start_15_19.jpg",
+        "visuals/drawer_place/completion_15_19.jpg",
+        "visuals/drawer_place/detail_15_19.jpg"
+      ],
+      "first_motion_candidate": 17,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_16",
+      "source_frames": 399,
+      "status": "keep",
+      "start_frame": 17,
+      "completion_frame": 335,
+      "end_frame": 337,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_15_19.jpg",
+        "visuals/drawer_place/start_15_19.jpg",
+        "visuals/drawer_place/completion_15_19.jpg",
+        "visuals/drawer_place/detail_15_19.jpg"
+      ],
+      "first_motion_candidate": 14,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_17",
+      "source_frames": 364,
+      "status": "keep",
+      "start_frame": 15,
+      "completion_frame": 316,
+      "end_frame": 318,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_15_19.jpg",
+        "visuals/drawer_place/start_15_19.jpg",
+        "visuals/drawer_place/completion_15_19.jpg",
+        "visuals/drawer_place/detail_15_19.jpg"
+      ],
+      "first_motion_candidate": 12,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_18",
+      "source_frames": 316,
+      "status": "keep",
+      "start_frame": 14,
+      "completion_frame": 256,
+      "end_frame": 258,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_15_19.jpg",
+        "visuals/drawer_place/start_15_19.jpg",
+        "visuals/drawer_place/completion_15_19.jpg",
+        "visuals/drawer_place/detail_15_19.jpg"
+      ],
+      "first_motion_candidate": 10,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_19",
+      "source_frames": 357,
+      "status": "keep",
+      "start_frame": 20,
+      "completion_frame": 305,
+      "end_frame": 307,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_15_19.jpg",
+        "visuals/drawer_place/start_15_19.jpg",
+        "visuals/drawer_place/completion_15_19.jpg",
+        "visuals/drawer_place/detail_15_19.jpg"
+      ],
+      "first_motion_candidate": 17,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_20",
+      "source_frames": 326,
+      "status": "exclude",
+      "start_frame": null,
+      "completion_frame": null,
+      "end_frame": null,
+      "reason": "终态物体/吊牌疑似卡边突出，无法确认干净放入与关合，按专家标准隔离；不宣称有物理失败GT。",
+      "start_reason": "",
+      "end_reason": "",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_20_24.jpg",
+        "visuals/drawer_place/start_20_24.jpg",
+        "visuals/drawer_place/completion_20_24.jpg",
+        "visuals/drawer_place/detail_20_24.jpg",
+        "datasets/raw/drawer_place/collect_data/episode_init_20/topImg/325.jpg",
+        "datasets/raw/drawer_place/collect_data/episode_init_20/rightImg/275.jpg"
+      ],
+      "first_motion_candidate": 10,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_21",
+      "source_frames": 325,
+      "status": "keep",
+      "start_frame": 17,
+      "completion_frame": 269,
+      "end_frame": 271,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_20_24.jpg",
+        "visuals/drawer_place/start_20_24.jpg",
+        "visuals/drawer_place/completion_20_24.jpg",
+        "visuals/drawer_place/detail_20_24.jpg"
+      ],
+      "first_motion_candidate": 14,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_22",
+      "source_frames": 277,
+      "status": "keep",
+      "start_frame": 13,
+      "completion_frame": 231,
+      "end_frame": 233,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_20_24.jpg",
+        "visuals/drawer_place/start_20_24.jpg",
+        "visuals/drawer_place/completion_20_24.jpg",
+        "visuals/drawer_place/detail_20_24.jpg"
+      ],
+      "first_motion_candidate": 11,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_23",
+      "source_frames": 328,
+      "status": "keep",
+      "start_frame": 16,
+      "completion_frame": 262,
+      "end_frame": 264,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_20_24.jpg",
+        "visuals/drawer_place/start_20_24.jpg",
+        "visuals/drawer_place/completion_20_24.jpg",
+        "visuals/drawer_place/detail_20_24.jpg"
+      ],
+      "first_motion_candidate": 14,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_24",
+      "source_frames": 340,
+      "status": "keep",
+      "start_frame": 17,
+      "completion_frame": 283,
+      "end_frame": 285,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_20_24.jpg",
+        "visuals/drawer_place/start_20_24.jpg",
+        "visuals/drawer_place/completion_20_24.jpg",
+        "visuals/drawer_place/detail_20_24.jpg"
+      ],
+      "first_motion_candidate": 12,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_25",
+      "source_frames": 313,
+      "status": "keep",
+      "start_frame": 16,
+      "completion_frame": 245,
+      "end_frame": 247,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_25_29.jpg",
+        "visuals/drawer_place/start_25_29.jpg",
+        "visuals/drawer_place/completion_25_29.jpg",
+        "visuals/drawer_place/detail_25_29.jpg"
+      ],
+      "first_motion_candidate": 13,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_26",
+      "source_frames": 281,
+      "status": "keep",
+      "start_frame": 13,
+      "completion_frame": 238,
+      "end_frame": 240,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_25_29.jpg",
+        "visuals/drawer_place/start_25_29.jpg",
+        "visuals/drawer_place/completion_25_29.jpg",
+        "visuals/drawer_place/detail_25_29.jpg"
+      ],
+      "first_motion_candidate": 10,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_27",
+      "source_frames": 398,
+      "status": "keep",
+      "start_frame": 19,
+      "completion_frame": 331,
+      "end_frame": 333,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_25_29.jpg",
+        "visuals/drawer_place/start_25_29.jpg",
+        "visuals/drawer_place/completion_25_29.jpg",
+        "visuals/drawer_place/detail_25_29.jpg"
+      ],
+      "first_motion_candidate": 15,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_28",
+      "source_frames": 333,
+      "status": "keep",
+      "start_frame": 15,
+      "completion_frame": 279,
+      "end_frame": 281,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_25_29.jpg",
+        "visuals/drawer_place/start_25_29.jpg",
+        "visuals/drawer_place/completion_25_29.jpg",
+        "visuals/drawer_place/detail_25_29.jpg"
+      ],
+      "first_motion_candidate": 12,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_29",
+      "source_frames": 351,
+      "status": "keep",
+      "start_frame": 17,
+      "completion_frame": 291,
+      "end_frame": 293,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_25_29.jpg",
+        "visuals/drawer_place/start_25_29.jpg",
+        "visuals/drawer_place/completion_25_29.jpg",
+        "visuals/drawer_place/detail_25_29.jpg"
+      ],
+      "first_motion_candidate": 13,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_30",
+      "source_frames": 346,
+      "status": "keep",
+      "start_frame": 17,
+      "completion_frame": 292,
+      "end_frame": 294,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_30_34.jpg",
+        "visuals/drawer_place/start_30_34.jpg",
+        "visuals/drawer_place/completion_30_34.jpg",
+        "visuals/drawer_place/detail_30_34.jpg"
+      ],
+      "first_motion_candidate": 13,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_31",
+      "source_frames": 306,
+      "status": "keep",
+      "start_frame": 14,
+      "completion_frame": 261,
+      "end_frame": 263,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_30_34.jpg",
+        "visuals/drawer_place/start_30_34.jpg",
+        "visuals/drawer_place/completion_30_34.jpg",
+        "visuals/drawer_place/detail_30_34.jpg"
+      ],
+      "first_motion_candidate": 11,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_32",
+      "source_frames": 333,
+      "status": "keep",
+      "start_frame": 15,
+      "completion_frame": 279,
+      "end_frame": 281,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_30_34.jpg",
+        "visuals/drawer_place/start_30_34.jpg",
+        "visuals/drawer_place/completion_30_34.jpg",
+        "visuals/drawer_place/detail_30_34.jpg"
+      ],
+      "first_motion_candidate": 12,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_33",
+      "source_frames": 301,
+      "status": "keep",
+      "start_frame": 30,
+      "completion_frame": 250,
+      "end_frame": 252,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_30_34.jpg",
+        "visuals/drawer_place/start_30_34.jpg",
+        "visuals/drawer_place/completion_30_34.jpg",
+        "visuals/drawer_place/detail_30_34.jpg"
+      ],
+      "first_motion_candidate": 27,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_34",
+      "source_frames": 271,
+      "status": "keep",
+      "start_frame": 15,
+      "completion_frame": 221,
+      "end_frame": 223,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_30_34.jpg",
+        "visuals/drawer_place/start_30_34.jpg",
+        "visuals/drawer_place/completion_30_34.jpg",
+        "visuals/drawer_place/detail_30_34.jpg"
+      ],
+      "first_motion_candidate": 11,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_35",
+      "source_frames": 285,
+      "status": "keep",
+      "start_frame": 18,
+      "completion_frame": 231,
+      "end_frame": 233,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_35_39.jpg",
+        "visuals/drawer_place/start_35_39.jpg",
+        "visuals/drawer_place/completion_35_39.jpg",
+        "visuals/drawer_place/detail_35_39.jpg"
+      ],
+      "first_motion_candidate": 15,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_36",
+      "source_frames": 323,
+      "status": "keep",
+      "start_frame": 19,
+      "completion_frame": 261,
+      "end_frame": 263,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_35_39.jpg",
+        "visuals/drawer_place/start_35_39.jpg",
+        "visuals/drawer_place/completion_35_39.jpg",
+        "visuals/drawer_place/detail_35_39.jpg"
+      ],
+      "first_motion_candidate": 15,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_37",
+      "source_frames": 344,
+      "status": "keep",
+      "start_frame": 28,
+      "completion_frame": 289,
+      "end_frame": 291,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_35_39.jpg",
+        "visuals/drawer_place/start_35_39.jpg",
+        "visuals/drawer_place/completion_35_39.jpg",
+        "visuals/drawer_place/detail_35_39.jpg"
+      ],
+      "first_motion_candidate": 14,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_38",
+      "source_frames": 49,
+      "status": "exclude",
+      "start_frame": null,
+      "completion_frame": null,
+      "end_frame": null,
+      "reason": "全段实测状态近静止，玩偶仍在桌上、抽屉敞开，未执行完整任务；自动事件为robot_dataset_prior先验，不作成功证据。",
+      "start_reason": "",
+      "end_reason": "",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_35_39.jpg",
+        "visuals/drawer_place/start_35_39.jpg",
+        "visuals/drawer_place/completion_35_39.jpg",
+        "visuals/drawer_place/detail_35_39.jpg"
+      ],
+      "first_motion_candidate": 0,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_39",
+      "source_frames": 96,
+      "status": "exclude",
+      "start_frame": null,
+      "completion_frame": null,
+      "end_frame": null,
+      "reason": "全段实测状态近静止，玩偶仍在桌上、抽屉敞开，未执行完整任务；自动事件为robot_dataset_prior先验，不作成功证据。",
+      "start_reason": "",
+      "end_reason": "",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_35_39.jpg",
+        "visuals/drawer_place/start_35_39.jpg",
+        "visuals/drawer_place/completion_35_39.jpg",
+        "visuals/drawer_place/detail_35_39.jpg"
+      ],
+      "first_motion_candidate": 0,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_40",
+      "source_frames": 303,
+      "status": "keep",
+      "start_frame": 16,
+      "completion_frame": 241,
+      "end_frame": 243,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_40_44.jpg",
+        "visuals/drawer_place/start_40_44.jpg",
+        "visuals/drawer_place/completion_40_44.jpg",
+        "visuals/drawer_place/detail_40_44.jpg"
+      ],
+      "first_motion_candidate": 14,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_41",
+      "source_frames": 246,
+      "status": "keep",
+      "start_frame": 13,
+      "completion_frame": 192,
+      "end_frame": 194,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_40_44.jpg",
+        "visuals/drawer_place/start_40_44.jpg",
+        "visuals/drawer_place/completion_40_44.jpg",
+        "visuals/drawer_place/detail_40_44.jpg"
+      ],
+      "first_motion_candidate": 11,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_42",
+      "source_frames": 275,
+      "status": "keep",
+      "start_frame": 19,
+      "completion_frame": 221,
+      "end_frame": 223,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_40_44.jpg",
+        "visuals/drawer_place/start_40_44.jpg",
+        "visuals/drawer_place/completion_40_44.jpg",
+        "visuals/drawer_place/detail_40_44.jpg"
+      ],
+      "first_motion_candidate": 16,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_43",
+      "source_frames": 288,
+      "status": "keep",
+      "start_frame": 18,
+      "completion_frame": 222,
+      "end_frame": 224,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_40_44.jpg",
+        "visuals/drawer_place/start_40_44.jpg",
+        "visuals/drawer_place/completion_40_44.jpg",
+        "visuals/drawer_place/detail_40_44.jpg"
+      ],
+      "first_motion_candidate": 15,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_44",
+      "source_frames": 38,
+      "status": "exclude",
+      "start_frame": null,
+      "completion_frame": null,
+      "end_frame": null,
+      "reason": "录制仅38帧，结束时仍在接近玩偶，未完成抓取、放入与关抽屉。",
+      "start_reason": "",
+      "end_reason": "",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_40_44.jpg",
+        "visuals/drawer_place/start_40_44.jpg",
+        "visuals/drawer_place/completion_40_44.jpg",
+        "visuals/drawer_place/detail_40_44.jpg"
+      ],
+      "first_motion_candidate": 14,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_45",
+      "source_frames": 292,
+      "status": "keep",
+      "start_frame": 17,
+      "completion_frame": 234,
+      "end_frame": 236,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_45_49.jpg",
+        "visuals/drawer_place/start_45_49.jpg",
+        "visuals/drawer_place/completion_45_49.jpg",
+        "visuals/drawer_place/detail_45_49.jpg"
+      ],
+      "first_motion_candidate": 14,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_46",
+      "source_frames": 335,
+      "status": "keep",
+      "start_frame": 15,
+      "completion_frame": 275,
+      "end_frame": 277,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_45_49.jpg",
+        "visuals/drawer_place/start_45_49.jpg",
+        "visuals/drawer_place/completion_45_49.jpg",
+        "visuals/drawer_place/detail_45_49.jpg"
+      ],
+      "first_motion_candidate": 12,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_47",
+      "source_frames": 261,
+      "status": "keep",
+      "start_frame": 15,
+      "completion_frame": 212,
+      "end_frame": 214,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_45_49.jpg",
+        "visuals/drawer_place/start_45_49.jpg",
+        "visuals/drawer_place/completion_45_49.jpg",
+        "visuals/drawer_place/detail_45_49.jpg"
+      ],
+      "first_motion_candidate": 12,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_48",
+      "source_frames": 227,
+      "status": "keep",
+      "start_frame": 11,
+      "completion_frame": 178,
+      "end_frame": 180,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_45_49.jpg",
+        "visuals/drawer_place/start_45_49.jpg",
+        "visuals/drawer_place/completion_45_49.jpg",
+        "visuals/drawer_place/detail_45_49.jpg"
+      ],
+      "first_motion_candidate": 8,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    },
+    {
+      "source_episode": "episode_init_49",
+      "source_frames": 273,
+      "status": "keep",
+      "start_frame": 23,
+      "completion_frame": 225,
+      "end_frame": 227,
+      "reason": "完整放入并关抽屉；通过专家示范视觉审核。",
+      "start_reason": "剔除录制等待及启动下沉/回摆，以末端恢复向玩偶持续接近的转折附近为起点；未采用首次运动阈值作为最终边界。",
+      "end_reason": "对照抽屉前板闭合细窗、右腕图像和实测推入末端轨迹定位语义完成，之后仅保留2帧；不等撤退回位。",
+      "evidence": "逐条查看任务概览、3帧间隔前段细窗、推入终点前后细窗和抽屉局部放大图；完整实测状态曲线辅助。不是全视频逐帧GT标注。",
+      "evidence_files": [
+        "visuals/drawer_place/overview_45_49.jpg",
+        "visuals/drawer_place/start_45_49.jpg",
+        "visuals/drawer_place/completion_45_49.jpg",
+        "visuals/drawer_place/detail_45_49.jpg"
+      ],
+      "first_motion_candidate": 20,
+      "boundary_precision": "视觉及实测状态估计；没有物理成功传感器GT。"
+    }
+  ]
+}

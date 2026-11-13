@@ -1,0 +1,7 @@
+processed_h5_name,video_idx,source_video_name,source_video_path
+assembly-v2-6vid_subopt.h5,000001,assembly_subopt_01_AS1_miss_regrasp_insert_high.mp4,/home/user/zhangzk/projects/fineprog/.vibe/.claude/opus/20261029-181956_metaworld_fail/videos/assembly_subopt_01_AS1_miss_regrasp_insert_high.mp4
+assembly-v2-6vid_subopt.h5,000002,assembly_subopt_02_AS1_miss_regrasp_insert_side.mp4,/home/user/zhangzk/projects/fineprog/.vibe/.claude/opus/20261029-181956_metaworld_fail/videos/assembly_subopt_02_AS1_miss_regrasp_insert_side.mp4
+assembly-v2-6vid_subopt.h5,000003,assembly_subopt_03_AS1_miss_regrasp_insert_outward.mp4,/home/user/zhangzk/projects/fineprog/.vibe/.claude/opus/20261029-181956_metaworld_fail/videos/assembly_subopt_03_AS1_miss_regrasp_insert_outward.mp4
+assembly-v2-6vid_subopt.h5,000004,assembly_subopt_04_AS2_rim_realign_hover_insert_dx30mm.mp4,/home/user/zhangzk/projects/fineprog/.vibe/.claude/opus/20261029-181956_metaworld_fail/videos/assembly_subopt_04_AS2_rim_realign_hover_insert_dx30mm.mp4
+assembly-v2-6vid_subopt.h5,000005,assembly_subopt_05_AS2_rim_realign_hover_insert_dx35mm.mp4,/home/user/zhangzk/projects/fineprog/.vibe/.claude/opus/20261029-181956_metaworld_fail/videos/assembly_subopt_05_AS2_rim_realign_hover_insert_dx35mm.mp4
+assembly-v2-6vid_subopt.h5,000006,assembly_subopt_06_AS2_rim_realign_hover_insert_dx40mm.mp4,/home/user/zhangzk/projects/fineprog/.vibe/.claude/opus/20261029-181956_metaworld_fail/videos/assembly_subopt_06_AS2_rim_realign_hover_insert_dx40mm.mp4
