@@ -17,6 +17,8 @@ import os
 import sys
 import yaml
 import argparse
+import hashlib
+import json
 import random
 import time
 from datetime import datetime
@@ -50,9 +52,41 @@ _loss_cfg_file = _TRAIN_V2.get("loss_config", "loss/loss_tcc.yaml")
 _V2_LOSS_YAML  = str(_CFG_V2._root / _loss_cfg_file) # path to configs_v2/<loss_config>
 
 
-def _save_encoder_checkpoint(encoder: TCCEncoder, checkpoint_path: str) -> None:
+def _save_encoder_checkpoint(encoder: TCCEncoder, checkpoint_path: str, *, epoch=None) -> None:
     """Save encoder weights together with the output-normalization mode."""
-    torch.save(checkpoint_dict(encoder), checkpoint_path)
+    run = getattr(wandb, "run", None)
+    provenance = {}
+    if run is not None:
+        for key, attribute in (("run_id", "id"), ("run_name", "name"),
+                               ("project", "project"), ("entity", "entity")):
+            value = getattr(run, attribute, None)
+            if value is not None:
+                provenance[key] = str(value)
+    if epoch is not None:
+        provenance["epoch"] = int(epoch)
+    torch.save(checkpoint_dict(encoder, training_provenance=provenance), checkpoint_path)
+
+
+def _trainable_parameters(encoder):
+    parameters = [p for p in encoder.parameters() if p.requires_grad]
+    if not parameters:
+        raise ValueError("No trainable encoder parameters. A frozen short_only source is "
+                         "an evaluation baseline; select a trainable memory variant for training.")
+    return parameters
+
+
+def _seed_raw_cache_epoch(data_seed, epoch):
+    """Optional sampling isolation from model initialization and evaluation hooks."""
+    if data_seed is None:
+        return
+    if isinstance(data_seed, bool) or not isinstance(data_seed, int):
+        raise ValueError("data_seed must be an integer or null.")
+    epoch_seed = data_seed + epoch
+    if not 0 <= epoch_seed < 2 ** 32:
+        raise ValueError("data_seed + epoch must be in [0, 2**32).")
+    random.seed(epoch_seed)
+    np.random.seed(epoch_seed)
+    torch.manual_seed(epoch_seed)
 
 
 def _memory_log(encoder, norm_stats=None):
@@ -72,6 +106,19 @@ def _memory_log(encoder, norm_stats=None):
             long_weight, short_weight = (norm_stats["branch_weight_sum"] / count).cpu().tolist()
             metrics.update({"memory/long_weight_mean": long_weight,
                             "memory/short_weight_mean": short_weight})
+        if "branch_cosine_distance_sum" in norm_stats:
+            metrics["memory/branch_cosine_distance_mean"] = (
+                norm_stats["branch_cosine_distance_sum"] / count).cpu().item()
+        if "num_history_frames" in norm_stats:
+            history_count = norm_stats["num_history_frames"]
+            metrics["memory/real_frame_count"] = int(count)
+            metrics["memory/nonempty_history_count"] = int(history_count)
+            if history_count > 0:
+                for name in ("current_component_norm", "history_component_norm", "history_injection_ratio"):
+                    key = f"{name}_sum"
+                    if key in norm_stats:
+                        metrics[f"memory/{name}_mean"] = (
+                            norm_stats[key] / history_count).cpu().item()
     return metrics
 
 
@@ -250,6 +297,7 @@ def train(
         torch.cuda.manual_seed_all(_seed)
     print(f"[train] Random seed: {_seed}")
     encoder, _train_cfg = build_training_encoder(_train_cfg, device)
+    _trainable_parameters(encoder)  # Reject an evaluation-only setup before starting a W&B run.
     _use_memory = encoder.memory is not None
 
     # Resolve checkpoint directory (run-specific subfolder)
@@ -365,7 +413,7 @@ def train(
     # ------------------------------------------------------------------
     # 4. Optimizer  (only trainable parameters)
     # ------------------------------------------------------------------
-    trainable_params_list = [p for p in encoder.parameters() if p.requires_grad]
+    trainable_params_list = _trainable_parameters(encoder)
     optimizer = optim.Adam(trainable_params_list, lr=learning_rate)
 
     # AMP GradScaler (no-op when CUDA is unavailable)
@@ -390,6 +438,9 @@ def train(
         encoder._train_base in ("only_bn", "frozen")
         and _train_cfg_full.get("extract_backbone_cache", False)
     )
+    _data_seed = _train_cfg.get("data_seed")
+    if _data_seed is not None and not _use_raw_cache:
+        raise ValueError("data_seed currently requires frozen local raw-embedding cache training.")
     _cache_refresh_every = int(_train_cfg_full.get("cache_refresh_every", 100))
 
     steps_per_epoch = len(dataloader)
@@ -451,7 +502,16 @@ def train(
             should_log = (epoch + 1) % log_every == 0
             memory_norm_stats = {} if _use_memory and should_log else None
 
+            _seed_raw_cache_epoch(_data_seed, epoch)
+            sampling_digest = hashlib.sha256() if _data_seed is not None and epoch == 0 else None
+
             for batch in _cache_dataloader:
+                if sampling_digest is not None:
+                    sampling_digest.update(json.dumps(
+                        {"video_ids": list(batch["video_id"]),
+                         "target_steps": batch["target_steps"].tolist()},
+                        sort_keys=True, separators=(",", ":"),
+                    ).encode("utf-8"))
                 # backbone_feats: [B, clip_len, context_size, 1024, 14, 14] fp16
                 loss_batch = {
                     "target_steps": batch["target_steps"].to(device, non_blocking=True),
@@ -477,6 +537,9 @@ def train(
                 for k, v in out.get("metrics", {}).items():
                     _accumulate_metric(epoch_metrics_sum, k, v)
 
+            if sampling_digest is not None:
+                print(f"[train] sampling_epoch=1 sha256={sampling_digest.hexdigest()}", flush=True)
+
             if should_log:
                 epoch_loss_avg = (epoch_loss_sum / max(epoch_steps, 1)).cpu().item()
                 epoch_metrics_avg = _finalize_metric_averages(epoch_metrics_sum, epoch_steps)
@@ -500,7 +563,7 @@ def train(
 
             if (epoch + 1) % checkpoint_every == 0:
                 ckpt_path = os.path.join(run_checkpoint_dir, f"encoder_epoch{epoch+1:06d}.pt")
-                _save_encoder_checkpoint(encoder, ckpt_path)
+                _save_encoder_checkpoint(encoder, ckpt_path, epoch=epoch + 1)
                 tqdm.write(f"[train] Saved checkpoint: {ckpt_path}")
                 # [v2] In-training eval hook (lazy import; only active when enabled=true)
                 _ite_eval_cfg = _train_cfg_full.get("in_training_eval", {})
@@ -588,7 +651,7 @@ def train(
             # Save checkpoint every checkpoint_every epochs
             if (epoch + 1) % checkpoint_every == 0:
                 ckpt_path = os.path.join(run_checkpoint_dir, f"encoder_epoch{epoch+1:06d}.pt")
-                _save_encoder_checkpoint(encoder, ckpt_path)
+                _save_encoder_checkpoint(encoder, ckpt_path, epoch=epoch + 1)
                 tqdm.write(f"[train] Saved checkpoint: {ckpt_path}")
                 # [v2] In-training eval hook (lazy import; only active when enabled=true)
                 _ite_eval_cfg = _train_cfg_full.get("in_training_eval", {})

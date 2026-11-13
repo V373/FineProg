@@ -17,6 +17,13 @@ train_embedding: true         # this is for temporal embedder conv3d
 # Original FineProg: only_bn + true, with freeze_bn_stats=false below.
 memory:
   enabled: false
+  mode: null                  # null: legacy single/dual; cross_attention: short-guided history
+  source_checkpoint_path: null # cross_attention warm-start: complete HF1/no-residual memory checkpoint
+  freeze_pretrained_memory: true # cross_attention: freeze source Mamba/P, retain long input gradients
+  attention_dim: null         # cross_attention: min(32, embedding_dim)
+  attention_mode: learned     # learned | uniform | none (none keeps the long recurrence)
+  fusion_mode: learned        # learned | fixed | short_only | long_only
+  fixed_fusion_weights: [0.1, 0.9] # [long, short]; used only with fusion_mode=fixed
   dual_branch: false
   # Dual branch: fixed input L2 + RMSNorm, no local residual.
   # Each branch defaults to history_stride unless its own stride is specified.

@@ -1,5 +1,7 @@
 """Mamba2 with optional causal history fusion and residual output adaptation."""
 
+import math
+
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -211,3 +213,250 @@ class DualStreamingMamba2(nn.Module):
                     tokens.unsqueeze(1), state[f"conv_{branch}"], state[f"ssm_{branch}"])
                 outputs.append(y[:, 0])
             return torch.stack(outputs, dim=-2)
+
+
+class CrossAttentionStreamingMamba2(StreamingMamba2):
+    """Short-guided, past-only retrieval with shared Mamba/P and separate states.
+
+    Unlike the legacy wrappers, forward/step return *projected* [long, short]
+    tensors. fuse never applies P again. The encoder owns final normalization.
+    Streaming steps are inference-only and leave the encoder's ``steps`` counter
+    to its caller; ``kv_lengths`` tracks the independently reset history banks.
+    """
+
+    def __init__(self, embedding_dim, config):
+        config = dict(config)
+        if config.get("history_frames", 1) != 1 or config.get("use_residual", False):
+            raise ValueError("Cross-attention requires a single-input, non-residual source memory.")
+        config["use_residual"] = False
+        super().__init__(embedding_dim, config)
+        attention_dim = config.get("attention_dim")
+        self.attention_dim = min(32, embedding_dim) if attention_dim is None else attention_dim
+        if (isinstance(self.attention_dim, bool) or not isinstance(self.attention_dim, int)
+                or self.attention_dim < 1):
+            raise ValueError("memory.attention_dim must be a positive integer or null.")
+        self.attention_mode = config.get("attention_mode", "learned")
+        self.fusion_mode = config.get("fusion_mode", "learned")
+        if self.attention_mode not in ("learned", "uniform", "none"):
+            raise ValueError("memory.attention_mode must be learned, uniform or none.")
+        if self.fusion_mode not in ("learned", "fixed", "short_only", "long_only"):
+            raise ValueError("memory.fusion_mode must be learned, fixed, short_only or long_only.")
+        self.branch_output_l2 = config.get("branch_output_l2", True)
+        self.freeze_pretrained_memory = config.get("freeze_pretrained_memory", True)
+        for name in ("branch_output_l2", "freeze_pretrained_memory"):
+            if not isinstance(getattr(self, name), bool):
+                raise ValueError(f"memory.{name} must be a boolean.")
+        weights = config.get("fixed_fusion_weights", [0.1, 0.9])
+        if (not isinstance(weights, (list, tuple)) or len(weights) != 2
+                or any(isinstance(w, bool) or not isinstance(w, (int, float))
+                       or not math.isfinite(w) or w < 0 for w in weights)
+                or not math.isclose(sum(weights), 1.0, rel_tol=0, abs_tol=1e-6)):
+            raise ValueError("memory.fixed_fusion_weights must be two nonnegative weights summing to one.")
+        self.fixed_fusion_weights = tuple(float(w) for w in weights)
+        self.attention_norm = nn.RMSNorm(embedding_dim, eps=1e-5, elementwise_affine=False)
+        self.query_proj = nn.Linear(embedding_dim, self.attention_dim, bias=False)
+        self.key_proj = nn.Linear(embedding_dim, self.attention_dim, bias=False)
+        self.current_proj = nn.Linear(embedding_dim, embedding_dim, bias=False)
+        self.retrieval_proj = nn.Linear(embedding_dim, embedding_dim, bias=False)
+        self.gate = nn.Sequential(
+            nn.Linear(2 * embedding_dim, embedding_dim), nn.SiLU(), nn.Linear(embedding_dim, 2))
+        with torch.no_grad():
+            self.current_proj.weight.copy_(torch.eye(embedding_dim))
+            self.retrieval_proj.weight.copy_(1e-3 * torch.eye(embedding_dim))
+            self.gate[-1].weight.zero_()
+            self.gate[-1].bias.copy_(torch.tensor([math.log(0.1), math.log(0.9)]))
+        self.config.update(
+            mode="cross_attention", dual_branch=True, use_residual=False,
+            attention_dim=self.attention_dim, attention_mode=self.attention_mode,
+            fusion_mode=self.fusion_mode, fixed_fusion_weights=list(self.fixed_fusion_weights),
+            branch_output_l2=self.branch_output_l2,
+            freeze_pretrained_memory=self.freeze_pretrained_memory)
+        self.configure_trainability()
+
+    def train(self, mode=True):
+        super().train(mode)
+        self.configure_trainability()
+        return self
+
+    def configure_trainability(self):
+        for module in (self.block, self.proj, self.history_proj, self.pre_norm):
+            module.requires_grad_(not self.freeze_pretrained_memory)
+            module.train(self.training and not self.freeze_pretrained_memory)
+        self.alpha.requires_grad_(False)
+        long_active = self.fusion_mode != "short_only" and not (
+            self.fusion_mode == "fixed" and self.fixed_fusion_weights[0] == 0)
+        self.query_proj.requires_grad_(long_active and self.attention_mode == "learned")
+        self.key_proj.requires_grad_(long_active and self.attention_mode == "learned")
+        self.current_proj.requires_grad_(long_active)
+        self.retrieval_proj.requires_grad_(long_active and self.attention_mode != "none")
+        self.gate.requires_grad_(self.fusion_mode == "learned")
+
+    def _branch_normalize(self, projected):
+        return F.normalize(projected, dim=-1, eps=1e-12) if self.branch_output_l2 else projected
+
+    def _scan(self, tokens):
+        # mamba-ssm 2.3.2's fused convolution may retain an unaligned stride
+        # when both batch and time are singleton (contiguous() is a no-op).
+        # A right-padding token fixes the layout without changing the causal
+        # first output or breaking the gradient through a frozen Mamba block.
+        if tokens.is_cuda and tokens.shape[:2] == (1, 1):
+            return self.block(F.pad(tokens, (0, 0, 0, 1)))[:, :1]
+        return self.block(tokens)
+
+    def _read_history(self, query, keys, values, allowed):
+        counts = allowed.sum(-1)
+        if keys.shape[1] == 0:
+            attention = query.new_zeros(allowed.shape)
+            readout = values.new_zeros((*query.shape[:-1], values.shape[-1]))
+        elif self.attention_mode == "none":
+            attention = query.new_zeros(allowed.shape)
+            readout = values.new_zeros((*query.shape[:-1], values.shape[-1]))
+        elif self.attention_mode == "uniform":
+            attention = allowed.to(query.dtype) / counts.clamp_min(1).unsqueeze(-1)
+            readout = attention @ values
+        else:
+            logits = (query @ keys.transpose(-1, -2)) / math.sqrt(self.attention_dim)
+            logits = logits.masked_fill(~allowed, -torch.inf)
+            # Empty rows must never enter softmax as an all-minus-infinity row.
+            logits = torch.where((counts > 0).unsqueeze(-1), logits, torch.zeros_like(logits))
+            attention = logits.softmax(-1).masked_fill(~allowed, 0)
+            readout = attention @ values
+        return readout, attention, counts
+
+    @staticmethod
+    def _add_stat(stats, name, value):
+        value = value.detach()
+        stats[name] = stats.get(name, 0) + value
+
+    def _collect_read(self, current, history, counts, valid, attention, allowed,
+                      stats, diagnostics):
+        if stats is None and diagnostics is None:
+            return
+        with torch.no_grad():
+            current_norm = current.detach().float().norm(dim=-1)
+            history_norm = history.detach().float().norm(dim=-1)
+            ratio = history_norm / (current_norm + 1e-12)
+            if stats is not None:
+                history_valid = valid & (counts > 0)
+                for name, values in (
+                        ("current_component_norm_sum", current_norm),
+                        ("history_component_norm_sum", history_norm),
+                        ("history_injection_ratio_sum", ratio)):
+                    self._add_stat(stats, name, values.masked_fill(~history_valid, 0).sum())
+                self._add_stat(stats, "num_history_frames", history_valid.sum())
+            if diagnostics is not None:
+                diagnostics.update(
+                    attention=attention.detach(), attention_valid=allowed.detach(),
+                    history_lengths=counts.detach(),
+                    current_component_norm=current_norm.masked_fill(~valid, 0),
+                    history_component_norm=history_norm.masked_fill(~valid, 0),
+                    history_injection_ratio=ratio.masked_fill(~valid, 0))
+
+    def forward(self, raw, *, lengths=None, stats=None, diagnostics=None, history_mask=None):
+        if raw.ndim != 3 or raw.shape[-1] != self.proj.in_features or raw.shape[1] < 1:
+            raise ValueError("Cross-attention inputs must have shape [B,T,D], T >= 1.")
+        batch, time, _ = raw.shape
+        lengths = (torch.full((batch,), time, device=raw.device, dtype=torch.long)
+                   if lengths is None else torch.as_tensor(lengths, device=raw.device))
+        if (lengths.shape != (batch,) or lengths.dtype == torch.bool or lengths.is_floating_point()
+                or bool(((lengths < 1) | (lengths > time)).any())):
+            raise ValueError("lengths must contain one real episode length in [1,T] per batch row.")
+        valid = torch.arange(time, device=raw.device)[None, :] < lengths[:, None]
+        if history_mask is not None:
+            history_mask = torch.as_tensor(history_mask, device=raw.device)
+            if history_mask.shape != valid.shape or history_mask.dtype != torch.bool:
+                raise ValueError("history_mask must be a boolean [B,T] allowed-key mask.")
+        allowed_keys = valid if history_mask is None else valid & history_mask
+        allowed = (valid[:, :, None] & allowed_keys[:, None, :]
+                   & torch.ones(time, time, device=raw.device, dtype=torch.bool).tril(-1))
+        with torch.autocast(device_type=raw.device.type, enabled=False):
+            # Mask before phi/scan: a zero attention weight cannot suppress a
+            # NaN value (0 * NaN is NaN), and padding is not an observation.
+            local = raw.float().masked_fill(~valid.unsqueeze(-1), 0)
+            tokens = self._prepare_input(local.unsqueeze(-2))
+            short = self.proj(self._scan(tokens)).float()
+            query = self.query_proj(self.attention_norm(self._branch_normalize(short)))
+            keys = self.key_proj(self.attention_norm(tokens))
+            readout, attention, counts = self._read_history(query, keys, tokens, allowed)
+            current, history = self.current_proj(tokens), self.retrieval_proj(readout)
+            long = self.proj(self._scan(current + history)).float()
+            self._collect_read(current, history, counts, valid, attention, allowed, stats, diagnostics)
+            return torch.stack((long, short), dim=-2)
+
+    def fuse(self, raw, projected, *, weight_stats=None, valid=None, diagnostics=None):
+        with torch.autocast(device_type=projected.device.type, enabled=False):
+            projected = projected.float()
+            branches = self._branch_normalize(projected)
+            if self.fusion_mode == "learned":
+                weights = self.gate(branches.flatten(start_dim=-2)).softmax(-1)
+                output = (weights.unsqueeze(-1) * branches).sum(-2)
+            else:
+                fixed = ((0., 1.) if self.fusion_mode == "short_only" else
+                         (1., 0.) if self.fusion_mode == "long_only" else self.fixed_fusion_weights)
+                weights = projected.new_tensor(fixed).expand(*projected.shape[:-2], 2)
+                # Preserve exactly the source's pre-final-normalization path.
+                output = (projected[..., 1, :] if self.fusion_mode == "short_only" else
+                          (weights.unsqueeze(-1) * branches).sum(-2))
+            if weight_stats is not None or diagnostics is not None:
+                with torch.no_grad():
+                    valid = (torch.ones(output.shape[:-1], dtype=torch.bool, device=output.device)
+                             if valid is None else valid.to(device=output.device, dtype=torch.bool))
+                    difference = 1 - F.cosine_similarity(
+                        branches[..., 0, :].detach(), branches[..., 1, :].detach(), dim=-1, eps=1e-12)
+                    logged_weights = weights.detach().masked_fill(~valid.unsqueeze(-1), 0)
+                    if weight_stats is not None:
+                        self._add_stat(weight_stats, "branch_weight_sum", logged_weights.reshape(-1, 2).sum(0))
+                        for name, values in (
+                                ("input_norm_sum", raw.detach().float().norm(dim=-1)),
+                                ("pre_normalization_norm_sum", output.detach().norm(dim=-1)),
+                                ("branch_cosine_distance_sum", difference)):
+                            self._add_stat(weight_stats, name, values.masked_fill(~valid, 0).sum())
+                        self._add_stat(weight_stats, "num_frames", valid.sum())
+                    if diagnostics is not None:
+                        diagnostics.update(branch_weights=logged_weights,
+                                           branch_difference=difference.masked_fill(~valid, 0))
+            return output
+
+    def init_stream_state(self, batch_size):
+        device = self.proj.weight.device
+        state = {"steps": torch.zeros(batch_size, dtype=torch.long, device=device),
+                 "kv_lengths": torch.zeros(batch_size, dtype=torch.long, device=device),
+                 "keys": self.proj.weight.new_zeros(batch_size, 0, self.attention_dim),
+                 "values": self.proj.weight.new_zeros(batch_size, 0, self.proj.in_features)}
+        for branch in ("long", "short"):
+            state[f"conv_{branch}"], state[f"ssm_{branch}"] = self.allocate_cache(batch_size)
+        return state
+
+    def step(self, raw, state, *, stats=None, diagnostics=None):
+        with torch.autocast(device_type=raw.device.type, enabled=False):
+            tokens = self._prepare_input(raw.float().unsqueeze(-2))
+            short, state["conv_short"], state["ssm_short"] = self.block.step(
+                tokens.unsqueeze(1), state["conv_short"], state["ssm_short"])
+            short = self.proj(short[:, 0]).float()
+            query = self.query_proj(self.attention_norm(self._branch_normalize(short))).unsqueeze(1)
+            lengths = state["kv_lengths"]
+            capacity = state["keys"].shape[1]
+            allowed = (torch.arange(capacity, device=raw.device)[None, :] < lengths[:, None]).unsqueeze(1)
+            readout, attention, counts = self._read_history(query, state["keys"], state["values"], allowed)
+            current = self.current_proj(tokens)
+            history = self.retrieval_proj(readout[:, 0])
+            long, state["conv_long"], state["ssm_long"] = self.block.step(
+                (current + history).unsqueeze(1), state["conv_long"], state["ssm_long"])
+            long = self.proj(long[:, 0]).float()
+            self._collect_read(current, history, counts[:, 0],
+                               torch.ones(len(raw), dtype=torch.bool, device=raw.device),
+                               attention[:, 0], allowed[:, 0], stats, diagnostics)
+            # Append only after retrieval. Capacity growth never discards history.
+            required = int(lengths.max().item()) + 1
+            if required > capacity:
+                new_capacity = max(required, max(1, capacity * 2))
+                for name in ("keys", "values"):
+                    old = state[name]
+                    expanded = old.new_zeros(len(raw), new_capacity, old.shape[-1])
+                    expanded[:, :capacity] = old
+                    state[name] = expanded
+            rows = torch.arange(len(raw), device=raw.device)
+            state["keys"][rows, lengths] = self.key_proj(self.attention_norm(tokens))
+            state["values"][rows, lengths] = tokens
+            lengths.add_(1)
+            return torch.stack((long, short), dim=-2)

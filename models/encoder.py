@@ -233,8 +233,14 @@ class TCCEncoder(nn.Module):
         if config.get("enabled", False):
             if self.context_size != 2 or self.context_stride < 1:
                 raise ValueError("Memory requires two-frame causal contexts and a positive stride.")
-            from .streaming_mamba2 import DualStreamingMamba2, StreamingMamba2
-            memory_cls = DualStreamingMamba2 if config.get("dual_branch", False) else StreamingMamba2
+            from .streaming_mamba2 import (
+                CrossAttentionStreamingMamba2, DualStreamingMamba2, StreamingMamba2,
+            )
+            mode = config.get("mode")
+            if mode not in (None, "cross_attention"):
+                raise ValueError(f"Unsupported memory.mode: {mode!r}")
+            memory_cls = (CrossAttentionStreamingMamba2 if mode == "cross_attention" else
+                          DualStreamingMamba2 if config.get("dual_branch", False) else StreamingMamba2)
             self.memory = memory_cls(self.embedding_dim, config)
             self.memory_config.update(self.memory.config)
 
@@ -355,6 +361,8 @@ class TCCEncoder(nn.Module):
             for module in self.backbone.modules():
                 if isinstance(module, nn.modules.batchnorm._BatchNorm):
                     module.eval()
+        if self.memory is not None and self.memory_config.get("mode") == "cross_attention":
+            self.memory.configure_trainability()
 
     def get_trainable_parameter_groups_summary(self) -> Dict[str, int]:
         """
@@ -585,7 +593,8 @@ class TCCEncoder(nn.Module):
             stats[key] = stats[key] + value if key in stats else value
         stats["num_frames"] = stats.get("num_frames", 0) + count
 
-    def forward_episode(self, raw, lengths, target_steps=None, *, memory_norm_stats=None):
+    def forward_episode(self, raw, lengths, target_steps=None, *, memory_norm_stats=None,
+                        diagnostics=None, history_mask=None):
         """Full sequence forward, then optional loss gather. raw may be a ragged list.
 
         Optional memory_norm_stats accumulates detached norms, dual weights and frame counts
@@ -607,6 +616,23 @@ class TCCEncoder(nn.Module):
                 raise ValueError("target_steps must have shape [B, K].")
             if ((indices_cpu < 0) | (indices_cpu >= lengths_cpu[:, None])).any():
                 raise ValueError("target_steps must index real episode observations.")
+        if self.memory_config.get("mode") == "cross_attention":
+            # Fuse once over every observation. Logging must never change the
+            # gate's batch shape or cause a second forward/state advance.
+            e = nn.utils.rnn.pad_sequence(
+                [x[:n] for x, n in zip(raw, lengths_list)], batch_first=True)
+            valid = torch.arange(e.shape[1], device=e.device)[None, :] < lengths_cpu.to(e.device)[:, None]
+            y = self.memory(e, lengths=lengths_cpu, stats=memory_norm_stats,
+                            diagnostics=diagnostics, history_mask=history_mask)
+            fused = self.memory.fuse(e, y, valid=valid, weight_stats=memory_norm_stats,
+                                    diagnostics=diagnostics)
+            outputs = self._apply_embedding_normalization(fused).masked_fill(~valid[..., None], 0)
+            if target_steps is not None:
+                idx = indices_cpu.to(e.device)
+                outputs = outputs[torch.arange(len(raw), device=e.device)[:, None], idx]
+            return outputs
+        if diagnostics is not None or history_mask is not None:
+            raise ValueError("Temporal retrieval diagnostics require memory.mode=cross_attention.")
         if self._train_base != "frozen" or self._train_embedding:
             # Preserve per-video AMP projection and gradient accumulation when
             # jointly training the visual encoder. Small rounding differences
@@ -652,7 +678,7 @@ class TCCEncoder(nn.Module):
         return state
 
     @torch.no_grad()
-    def encode_step(self, obs, state):
+    def encode_step(self, obs, state, *, memory_norm_stats=None, diagnostics=None):
         if self.training:
             raise ValueError("encode_step is inference-only; call encoder.eval().")
         # Official step caches follow parameter dtypes, not an outer AMP context.
@@ -669,8 +695,16 @@ class TCCEncoder(nn.Module):
             contexts = torch.stack((state["ring"][rows, past], feats), dim=1).unsqueeze(1)
             contexts = self._apply_single_frame_context(contexts)
             raw = self.temporal_embedder(contexts)[:, 0]
-            y = self.memory.step(raw, state)
-            state["embedding"] = self._apply_embedding_normalization(self.memory.fuse(raw, y))
+            if self.memory_config.get("mode") == "cross_attention":
+                y = self.memory.step(raw, state, stats=memory_norm_stats, diagnostics=diagnostics)
+                fused = self.memory.fuse(raw, y, weight_stats=memory_norm_stats,
+                                        diagnostics=diagnostics)
+            else:
+                if memory_norm_stats is not None or diagnostics is not None:
+                    raise ValueError("Streaming diagnostics require memory.mode=cross_attention.")
+                y = self.memory.step(raw, state)
+                fused = self.memory.fuse(raw, y)
+            state["embedding"] = self._apply_embedding_normalization(fused)
             state["steps"].add_(1)
         return state["embedding"], state
 

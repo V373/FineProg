@@ -179,6 +179,28 @@ def test_old_metadata_defaults_false_when_loading_existing_encoder(tiny_local, t
     assert existing.single_frame_context is False
 
 
+def test_cross_attention_migration_inherits_single_frame_context(cpu_memory, tmp_path):
+    source = memory_encoder(single_frame_context=True, embedding_normalization="l2",
+                            train_base="frozen", train_embedding=False).eval()
+    path = tmp_path / "hf1.pt"
+    torch.save(checkpoints.checkpoint_dict(source), path)
+    migrated, resolved = checkpoints.build_training_encoder({
+        "single_frame_context": False,
+        "memory": {"enabled": True, "mode": "cross_attention",
+                   "source_checkpoint_path": str(path), "fusion_mode": "short_only"},
+    }, "cpu")
+    assert migrated.single_frame_context is resolved["single_frame_context"] is True
+    assert resolved["memory"]["source_encoder_config"]["single_frame_context"] is True
+    migrated.eval()
+    frames = video()
+    with torch.no_grad():
+        original_raw = source.encode_local_episode(frames)
+        migrated_raw = migrated.encode_local_episode(frames)
+        torch.testing.assert_close(original_raw, migrated_raw)
+        torch.testing.assert_close(source.forward_sequence([original_raw], [7]),
+                                   migrated.forward_sequence([migrated_raw], [7]))
+
+
 @pytest.mark.parametrize("source_flag", [False, True])
 @pytest.mark.parametrize("train_base,train_embedding", [("frozen", False), ("only_bn", True)])
 def test_frozen_and_joint_stages_inherit_source_context(
